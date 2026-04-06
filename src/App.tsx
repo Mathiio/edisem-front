@@ -42,7 +42,6 @@ import { toolStudentConfig } from './pages/generic/config/toolStudentConfig';
 import { feedbackStudentConfig } from './pages/generic/config/feedbackStudentConfig';
 import { bibliographyStudentConfig } from './pages/generic/config/bibliographyStudentConfig';
 import { MonEspace } from './pages/monespace';
-import { MonEspace1 } from './pages/monespace1';
 
 import { MonEspace3 } from './pages/monespace3';
 import TestOmekaEdit from './pages/test-omeka-edit';
@@ -118,7 +117,6 @@ function App() {
             <Route path='/recherche/' Component={CahierRecherche} />
             <Route path='/espace-etudiant' Component={EspaceEtudiant} />
             <Route path='/mon-espace' Component={MonEspace} />
-            <Route path='/mon-espace-1' Component={MonEspace1} />
 
             <Route path='/mon-espace-3' Component={MonEspace3} />
             <Route path='/test-omeka-edit' Component={TestOmekaEdit} />
