@@ -1,97 +1,50 @@
-import { GenericDetailPageConfig, FetchResult } from '../config';
-import { RecitiaOverviewCard, RecitiaOverviewSkeleton } from '@/components/features/misesEnRecits/RecitiaOverview';
-import { RecitiaDetailsCard, RecitiaDetailsSkeleton } from '@/components/features/misesEnRecits/RecitiaDetails';
-import { getResourceDetails } from '@/services/Items';
+import { RESOURCE_TYPES } from '@/config/resourceConfig';
+import { SimplifiedDetailConfig } from '../simplifiedConfig';
+import { convertToGenericConfig } from '../simplifiedConfigAdapter';
 
 /**
- * Configuration pour les pages d'éléments esthétiques
+ * Configuration simplifiée pour les éléments esthétiques
+ * Template 118 - Edisem (éléments esthétiques)
  */
-export const elementEsthetiqueConfig: GenericDetailPageConfig = {
-  dataFetcher: async (id: string): Promise<FetchResult> => {
-    const data = await getResourceDetails(Number(id));
+export const elementEsthetiqueConfigSimplified: SimplifiedDetailConfig = {
+  resourceType: RESOURCE_TYPES.element_esthetique.type,
+  templateId: 118,
 
-    return {
-      itemDetails: data,
-      recommendations: [],
-    };
+  fields: {
+    title: { property: 'dcterms:title', type: 'title', zone: 'header' },
+    date: { property: 'schema:eventDate', type: 'date', label: 'Date de production', zone: 'details' },
+    contributors: {
+      property: 'dcterms:creator',
+      type: 'resource',
+      label: 'Artiste',
+      resourceTemplateId: 72,
+      multiSelect: true,
+      zone: 'overview',
+    },
   },
 
-  overviewComponent: RecitiaOverviewCard,
-  detailsComponent: RecitiaDetailsCard,
-  overviewSkeleton: RecitiaOverviewSkeleton,
-  detailsSkeleton: RecitiaDetailsSkeleton,
-
-  mapOverviewProps: (element: any, currentVideoTime: number) => ({
-    id: element.id,
-    title: element.title,
-    personnes: element.creator,
-    medias: element.associatedMedia && element.associatedMedia.length > 0 ? element.associatedMedia : [],
-    credits: element.contributor,
-    fullUrl: element.relatedResource,
-    currentTime: currentVideoTime,
-    buttonText: 'Voir plus',
-  }),
-
-  mapDetailsProps: (element: any) => ({
-    date: element.eventDate,
-    description: element.description,
-    actants: element.contributor,
-  }),
-
-  // Mapper pour les recommandations (format SmConfCard)
-  mapRecommendationProps: (element: any) => ({
-    id: element.id,
-    title: element.title,
-    type: 'elementEsthetique',
-    url: null, // url est pour YouTube, on ne l'utilise pas ici
-    thumbnail: element.associatedMedia?.[0] || element.thumbnail || null,
-    actant: [],
-  }),
-
-  // Vue unique : Analyse avec toutes les caractéristiques
-  viewOptions: [
+  views: [
     {
       key: 'Analyse',
       title: 'Analyse',
-      renderContent: ({ itemDetails }) => {
-        if (!itemDetails) {
-          return null;
-        }
-
-        const fields = [
-          { key: 'genre', label: 'Genre' },
-          { key: 'form', label: 'Forme' },
-          { key: 'duration', label: 'Durée' },
-          { key: 'language', label: 'Langue' },
-          { key: 'audience', label: 'Public' },
-          { key: 'temporal', label: 'Temporalité' },
-          { key: 'imageCharacteristic', label: 'Caractéristiques visuelles' },
-          { key: 'colourCharacteristic', label: 'Caractéristiques colorimétriques' },
-          { key: 'soundCharacteristic', label: 'Caractéristiques sonores' },
-        ];
-
-        return (
-          <div className='flex flex-col gap-5'>
-            {fields.map(
-              (field) =>
-                itemDetails[field.key] && (
-                  <div key={field.key} className='flex flex-col gap-2.5'>
-                    <h3 className='text-lg font-medium text-c6'>{field.label}</h3>
-                    <div className='w-full flex flex-row justify-between border-2 rounded-xl items-center gap-6 border-c3'>
-                      <div className='w-full gap-6 p-6 flex flex-row justify-between'>
-                        <div className='flex flex-col gap-4 items-start'>
-                          <div className='w-full flex flex-col gap-2.5'>
-                            <p className='text-c6 text-base'>{itemDetails[field.key]}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ),
-            )}
-          </div>
-        );
-      },
+      renderType: 'categories',
+      categories: [
+        {
+          key: 'characteristics',
+          title: 'Caractéristiques',
+          subcategories: [
+            { key: 'genre', label: "Genre de l'œuvre", property: 'schema:genre' },
+            { key: 'duration', label: "Durée de l'œuvre", property: 'schema:duration' },
+            { key: 'imageCharacteristic', label: 'Style visuel', property: 'schema:imageCharacteristic' },
+            { key: 'colorCharacteristic', label: 'Esthétique chromatique dominante', property: 'schema:colorCharacteristic' },
+            { key: 'formCharacteristic', label: 'Textures dominantes', property: 'schema:formCharacteristic' },
+            { key: 'soundCharacteristic', label: 'Style sonore', property: 'schema:soundCharacteristic' },
+            { key: 'language', label: 'Présence/Absence de texte', property: 'dcterms:language' },
+            { key: 'audience', label: 'Relation aux spectateur·ices', property: 'dcterms:audience' },
+            { key: 'temporal', label: "Temporalité de l'œuvre", property: 'schema:temporal' },
+          ],
+        },
+      ],
     },
   ],
 
@@ -99,18 +52,13 @@ export const elementEsthetiqueConfig: GenericDetailPageConfig = {
   showRecommendations: true,
   showComments: true,
   recommendationsTitle: 'Autres éléments esthétiques',
+  recommendationType: 'element_esthetique',
+  defaultView: 'Analyse',
+  formEnabled: true,
 
-  // Smart recommendations
   smartRecommendations: {
-    // Récupère tous les éléments esthétiques pour trouver des similaires
-    // getAllResourcesOfType: async () => {
-    //   const elements = await getElementEsthetiques();
-    //   return elements;
-    // },
-
     maxRecommendations: 5,
   },
-
-  // Type à afficher
-  type: 'Élément esthétique',
 };
+
+export const elementEsthetiqueConfig = convertToGenericConfig(elementEsthetiqueConfigSimplified);

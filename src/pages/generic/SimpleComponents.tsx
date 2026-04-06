@@ -12,7 +12,6 @@ import { DatePicker } from '@heroui/react';
 import { parseDate, type DateValue } from '@internationalized/date';
 import { Splide, SplideTrack, SplideSlide } from '@splidejs/react-splide';
 import { CameraIcon, UserIcon, ShareIcon, MovieIcon, ArrowIcon, PlusIcon, CrossIcon } from '@/components/ui/icons';
-import { carouselArrowButtonClass } from '@/components/ui/Carrousels';
 import MediaViewer from '@/components/features/conference/MediaViewer';
 import { MediaDropzone, MediaFile } from '@/components/features/forms/MediaDropzone';
 import { AnnotationDropdown } from '@/components/features/conference/AnnotationDropdown';
@@ -76,6 +75,8 @@ interface SimpleOverviewProps {
   loadingMedia?: boolean;
   removedMediaIndexes?: number[];
   onRemoveExistingMedia?: (index: number) => void;
+  currentVideoTime?: number;
+  videoSeek?: { time: number; id: number } | null;
 }
 
 interface SimpleDetailsProps {
@@ -149,6 +150,8 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
   loadingMedia = false,
   removedMediaIndexes = [],
   onRemoveExistingMedia,
+  currentVideoTime: _currentVideoTime,
+  videoSeek,
 }) => {
   const [currentMediaIndex, setCurrentMediaIndex] = useState<number>(0);
 
@@ -166,8 +169,16 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
   const mediaField = overviewFields.find((f) => f.type === 'media');
   const rawMedias = mediaField ? getOmekaValue(itemDetails, mediaField.property) || itemDetails?.associatedMedia || [] : itemDetails?.associatedMedia || [];
 
+  // URL field for media fallback (YouTube URLs stored in schema:url etc.)
+  const urlFieldForMedia = detailsFields.find((f) => f.type === 'url') || overviewFields.find((f) => f.type === 'url');
+  const externalUrl = urlFieldForMedia ? (getOmekaValue(itemDetails, urlFieldForMedia.property) as string) : itemDetails?.fullUrl || itemDetails?.url || '';
+
   // Normaliser medias pour s'assurer que c'est toujours un tableau
-  const medias: string[] = Array.isArray(rawMedias) ? rawMedias : typeof rawMedias === 'string' ? [rawMedias] : [];
+  // Fallback: si pas de médias attachés mais qu'il y a une URL YouTube externe, l'utiliser comme média
+  let medias: string[] = Array.isArray(rawMedias) ? rawMedias : typeof rawMedias === 'string' ? [rawMedias] : [];
+  if (medias.length === 0 && externalUrl && isValidYouTubeUrl(externalUrl)) {
+    medias = [externalUrl];
+  }
 
   const resourceField = overviewFields.find((f) => f.type === 'resource');
 
@@ -212,7 +223,7 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
   const segmentSpan = 100 / totalSegments;
 
   return (
-    <motion.div className='w-full flex flex-col gap-6' initial='hidden' animate='visible' variants={containerVariants}>
+    <motion.div className='w-full flex flex-col gap-25' initial='hidden' animate='visible' variants={containerVariants}>
       {/* Médias */}
       <motion.div variants={itemVariants} className='lg:w-full overflow-hidden relative'>
         {isEditing ? (
@@ -237,17 +248,18 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
             className='w-full lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px]'
           />
         ) : loadingMedia ? (
-          <div className='lg:w-[100%] lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px] rounded-xl bg-c2 border-2 border-c3 flex flex-col items-center justify-center gap-4'>
+          <div className='lg:w-[100%] lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px] rounded-12 bg-c2 border-2 border-c3 flex flex-col items-center justify-center gap-4'>
             <Spinner size='lg' />
             <span className='text-c5'>Chargement des médias...</span>
           </div>
         ) : medias && medias.length > 0 ? (
-          <div className='flex flex-col gap-2.5'>
+          <div className='flex flex-col gap-10'>
             <MediaViewer
               src={medias[currentMediaIndex]}
               alt={`Média ${currentMediaIndex + 1}`}
-              className='lg:w-[100%] lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px] rounded-xl overflow-hidden'
+              className='lg:w-[100%] lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px] rounded-12 overflow-hidden'
               isVideo={medias[currentMediaIndex]?.includes('.mov') || medias[currentMediaIndex]?.includes('.mp4') || isValidYouTubeUrl(medias[currentMediaIndex])}
+              seekTo={videoSeek ?? undefined}
             />
             {medias.length > 1 && (
               <Splide
@@ -261,7 +273,7 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
                 }}
                 hasTrack={false}
                 aria-label='Galerie de médias'
-                className='flex w-full justify-between items-center gap-6'>
+                className='flex w-full justify-between items-center gap-25'>
                 <SplideTrack className='w-full'>
                   {medias.map((media, index) => {
                     const isYouTube = isValidYouTubeUrl(media);
@@ -273,7 +285,7 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
                         <div className='relative'>
                           <button
                             onClick={() => setCurrentMediaIndex(index)}
-                            className={`flex-shrink-0 w-[136px] h-[70px] rounded-xl overflow-hidden transition-all duration-200 ${
+                            className={`flex-shrink-0 w-[136px] h-[70px] rounded-12 overflow-hidden transition-all duration-200 ${
                               index === currentMediaIndex ? 'border-2 border-c6' : 'border-2 border-transparent hover:border-gray-300'
                             }`}>
                             {isVideoFile ? (
@@ -289,25 +301,23 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
                               <img src={media} alt={`Miniature ${index + 1}`} className='w-full h-full object-cover' />
                             )}
                           </button>
-                          {isYouTube && <span className='absolute bottom-px right-px bg-red-600 text-white text-[8px] px-px rounded z-10'>YT</span>}
+                          {isYouTube && <span className='absolute bottom-1 right-1 bg-red-600 text-white text-[8px] px-1 rounded z-10'>YT</span>}
                         </div>
                       </SplideSlide>
                     );
                   })}
                 </SplideTrack>
                 <div className='flex justify-between items-center'>
-                  <div className='splide__arrows relative flex gap-2.5'>
+                  <div className='splide__arrows relative flex gap-10'>
                     <Button
-                      isIconOnly
-                      className={`${carouselArrowButtonClass} splide__arrow--prev`}
-                      aria-label='Slide precedente'>
-                      <ArrowIcon transform='rotate(180deg)' />
+                      size='sm'
+                      className='p-0 min-w-[32px] min-h-[32px] text-selected bg-action splide__arrow transform translate-y-0 splide__arrow--prev relative left-0 focus:outline-none'>
+                      <ArrowIcon size={20} transform='rotate(180deg)' />
                     </Button>
                     <Button
-                      isIconOnly
-                      className={`${carouselArrowButtonClass} splide__arrow--next`}
-                      aria-label='Slide suivante'>
-                      <ArrowIcon />
+                      size='sm'
+                      className='p-0 min-w-[32px] min-h-[32px] text-selected bg-action splide__arrow transform translate-y-0 splide__arrow--next relative right-0 focus:outline-none'>
+                      <ArrowIcon size={20} />
                     </Button>
                   </div>
                 </div>
@@ -321,61 +331,52 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
 
       {/* Titre et métadonnées - Affiché uniquement en mode lecture */}
       {!isEditing && (
-        <motion.div variants={itemVariants} className='w-full flex flex-col gap-6'>
+        <motion.div variants={itemVariants} className='w-full flex flex-col gap-25'>
           {/* Conteneur principal du titre avec flexbox pour alignement horizontal */}
-          <div className='flex items-center gap-4'>
-            <h1 className='font-medium text-c6 text-2xl'>{title}</h1>
+          <div className='flex items-center gap-15'>
+            <h1 className='font-medium text-c6 text-24'>{title}</h1>
             {/* Badge affichant le type de ressource si disponible */}
             {(type || resourceType) && (
-              <span className='text-sm text-c5 px-2.5 py-1.5 bg-c2 rounded-lg border border-c3 whitespace-nowrap'>
+              <span className='text-14 text-c5 px-10 py-5 bg-c2 rounded-8 border border-c3 whitespace-nowrap'>
                 {getResourceConfigByType(type || resourceType)?.label || type || resourceType}
               </span>
             )}
           </div>
 
           {/* Personnes/Actants */}
-          <div className='w-full flex flex-col gap-2.5'>
-            <div className='w-full flex justify-between gap-2.5 items-center'>
-              <div className='w-fit flex flex-wrap justify-start gap-2.5 items-center'>
+          <div className='w-full flex flex-col gap-10'>
+            <div className='w-full flex justify-between gap-10 items-center'>
+              <div className='w-fit flex flex-wrap justify-start gap-10 items-center'>
                 {Array.isArray(personnes) && personnes.length > 0 && personnes[0]?.id != null && (
-                  <Link href={getPersonRoute(personnes[0])} className='w-fit flex justify-start gap-2.5 items-center'>
+                  <Link href={getPersonRoute(personnes[0])} className='w-fit flex justify-start gap-10 items-center'>
                     {getPersonPicture(personnes[0]) ? (
-                      <img src={getPersonPicture(personnes[0]) ?? ''} alt='Avatar' className='w-9 h-9 rounded-md object-cover' />
+                      <img src={getPersonPicture(personnes[0]) ?? ''} alt='Avatar' className='w-9 h-9 rounded-[7px] object-cover' />
                     ) : (
                       <UserIcon size={22} className='text-default-500' />
                     )}
                     <div className='flex flex-col items-start gap-0.5'>
-                      <h3 className='text-c6 font-medium text-base'>{getPersonDisplayName(personnes[0])}</h3>
+                      <h3 className='text-c6 font-medium text-16'>{getPersonDisplayName(personnes[0])}</h3>
                     </div>
                   </Link>
                 )}
 
                 {Array.isArray(personnes) && personnes.length > 1 && (
-                  <Dropdown
-                    classNames={{
-                      content: 'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3',
-                    }}>
+                  <Dropdown>
                     <DropdownTrigger className='p-0'>
-                      <Button size='md' className='text-base h-full min-h-[36px] px-2.5 py-1.5 rounded-lg text-c6 gap-2 border-2 border-c6 bg-c1 hover:bg-c2'>
-                        <h3 className='text-c6 font-medium text-sm'>+ {personnes.length - 1}</h3>
+                      <Button size='md' className='text-16 h-full min-h-[36px] px-10 py-5 rounded-8 text-c6 gap-2 border-2 border-c6 bg-c1 hover:bg-c2'>
+                        <h3 className='text-c6 font-medium text-14'>+ {personnes.length - 1}</h3>
                       </Button>
                     </DropdownTrigger>
-                    <DropdownMenu
-                      aria-label='Autres contributeurs'
-                      className='p-2'
-                      classNames={{ base: 'bg-transparent shadow-none border-0', list: 'bg-transparent' }}>
+                    <DropdownMenu aria-label='Autres contributeurs' className='p-10 bg-c2 rounded-12'>
                       {personnes.slice(1).map((person, index) => (
-                        <DropdownItem
-                          key={person.id || `person-${index}`}
-                          className='p-0 cursor-pointer rounded-lg bg-transparent data-[hover=true]:!bg-transparent data-[selectable=true]:focus:!bg-transparent'
-                          href={getPersonRoute(person)}>
-                          <div className='flex items-center gap-4 w-full py-2 px-3 rounded-lg transition-all ease-in-out duration-200 hover:bg-c3 text-c6'>
+                        <DropdownItem key={person.id || `person-${index}`} className='p-0' href={getPersonRoute(person)}>
+                          <div className='flex items-center gap-15 w-full px-15 py-10 rounded-8 hover:bg-c3 text-c6'>
                             {getPersonPicture(person) ? (
-                              <img src={getPersonPicture(person) ?? ''} alt='Avatar' className='w-9 h-9 rounded-md object-cover' />
+                              <img src={getPersonPicture(person) ?? ''} alt='Avatar' className='w-9 h-9 rounded-[7px] object-cover' />
                             ) : (
                               <UserIcon size={22} className='text-default-500' />
                             )}
-                            <span className='text-base'>{getPersonDisplayName(person)}</span>
+                            <span className='text-16'>{getPersonDisplayName(person)}</span>
                           </div>
                         </DropdownItem>
                       ))}
@@ -385,10 +386,10 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
               </div>
 
               {/* Boutons d'action */}
-              <div className='w-fit flex justify-between gap-2.5 items-center'>
+              <div className='w-fit flex justify-between gap-10 items-center'>
                 <Button
                   size='md'
-                  className='text-base h-auto px-2.5 py-1.5 rounded-lg text-c6 gap-2 bg-c2 hover:bg-c3'
+                  className='text-16 h-auto px-10 py-5 rounded-8 text-c6 gap-2 bg-c2 hover:bg-c3'
                   onPress={() => {
                     copyToClipboard();
                     addToast({
@@ -405,7 +406,7 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
                     href={fullUrl}
                     isExternal
                     size='md'
-                    className='text-base h-auto px-2.5 py-1.5 rounded-lg text-c6 gap-2 bg-c2 hover:bg-c3'>
+                    className='text-16 h-auto px-10 py-5 rounded-8 text-c6 gap-2 bg-c2 hover:bg-c3'>
                     Voir plus
                   </Button>
                 )}
@@ -420,7 +421,7 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
 
       {/* Barre de progression - Affiché uniquement en mode lecture */}
       {!isEditing && percentage > 0 && (
-        <motion.div variants={itemVariants} className='w-full flex justify-between items-center flex-row gap-5'>
+        <motion.div variants={itemVariants} className='w-full flex justify-between items-center flex-row gap-20'>
           <div className='w-full'>
             <div className='grid grid-cols-5 gap-2'>
               {Array.from({ length: totalSegments }).map((_, index) => {
@@ -428,16 +429,16 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
                 const segmentEnd = (index + 1) * segmentSpan;
                 const segmentProgress = Math.max(0, Math.min(1, (clampedPercentage - segmentStart) / (segmentEnd - segmentStart)));
                 return (
-                  <div key={index} className='w-full h-2 bg-c3 rounded-lg overflow-hidden'>
-                    <div className='h-full bg-action rounded-lg' style={{ width: `${segmentProgress * 100}%` }} />
+                  <div key={index} className='w-full h-2 bg-c3 rounded-8 overflow-hidden'>
+                    <div className='h-full bg-action rounded-8' style={{ width: `${segmentProgress * 100}%` }} />
                   </div>
                 );
               })}
             </div>
           </div>
-          <div className='flex flex-row justify-end items-center gap-2.5'>
-            {status && <span className='text-c6 font-medium text-base whitespace-nowrap'>{status}</span>}
-            <span className='text-c6 font-medium text-base whitespace-nowrap'>{clampedPercentage}%</span>
+          <div className='flex flex-row justify-end items-center gap-10'>
+            {status && <span className='text-c6 font-medium text-16 whitespace-nowrap'>{status}</span>}
+            <span className='text-c6 font-medium text-16 whitespace-nowrap'>{clampedPercentage}%</span>
           </div>
         </motion.div>
       )}
@@ -508,7 +509,18 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
   const date = dateField ? (getOmekaValue(itemDetails, dateField.property) as string) : itemDetails?.date;
 
   const descriptionField = detailsFields.find((f) => f.type === 'textarea');
-  const description = descriptionField ? (getOmekaValue(itemDetails, descriptionField.property) as string) : itemDetails?.description;
+  // Combine all textarea fields (purpose, application, description, etc.) into a single description
+  const allTextareaFields = detailsFields.filter((f) => f.type === 'textarea');
+  const description = allTextareaFields.length > 1
+    ? allTextareaFields
+        .map((f) => {
+          const val = getOmekaValue(itemDetails, f.property) as string;
+          if (!val) return '';
+          return f.label ? `<strong>${f.label}:</strong> ${val}` : val;
+        })
+        .filter(Boolean)
+        .join('<br><br>')
+    : descriptionField ? (getOmekaValue(itemDetails, descriptionField.property) as string) : itemDetails?.description;
 
   const detailsPercentageField = detailsFields.find((f) => f.type === 'slider' || f.type === 'percentage');
   // Utiliser le pourcentage de l'overview si pas de champ spécifique dans details
@@ -554,26 +566,26 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
 
   if (isEditing) {
     return (
-      <motion.div className='w-full flex flex-col gap-6' initial='hidden' animate='visible' variants={containerVariants}>
-        <motion.div variants={itemVariants} className='flex flex-col bg-c2 p-6 rounded-xl gap-5'>
+      <motion.div className='w-full flex flex-col gap-25' initial='hidden' animate='visible' variants={containerVariants}>
+        <motion.div variants={itemVariants} className='flex flex-col bg-c2 p-25 rounded-12 gap-20'>
           {/* === Section Titre === */}
           {titleField && (
             <div className='flex flex-col gap-2'>
-              <label className='text-sm text-c5 font-medium'>{titleField.label || 'Titre'}</label>
-              <div className='flex items-center gap-4'>
+              <label className='text-14 text-c5 font-medium'>{titleField.label || 'Titre'}</label>
+              <div className='flex items-center gap-15'>
                 <Textarea
                   value={String(title || '')}
                   onChange={(e) => onFieldChange?.(titleField.property, e.target.value)}
                   placeholder={titleField.placeholder || 'Titre'}
                   classNames={{
-                    inputWrapper: 'bg-c1 border border-c3 rounded-lg',
-                    input: 'text-c6 !text-xl font-medium',
+                    inputWrapper: 'bg-c1 border border-c3 rounded-8',
+                    input: 'text-c6 !text-20 font-medium',
                   }}
                   minRows={1}
                   size='lg'
                 />
                 {/* Badge de type */}
-                {(type || resourceType) && <span className='text-sm text-c5 px-2.5 py-1.5 bg-c3 rounded-lg border border-c3 whitespace-nowrap'>{type || resourceType}</span>}
+                {(type || resourceType) && <span className='text-14 text-c5 px-10 py-5 bg-c3 rounded-8 border border-c3 whitespace-nowrap'>{type || resourceType}</span>}
               </div>
             </div>
           )}
@@ -581,10 +593,10 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
           {/* === Section Contributeurs/Personnes === */}
           {overviewResourceField && (
             <div className='flex flex-col gap-2'>
-              <label className='text-sm text-c5 font-medium'>{overviewResourceField.label || 'Contributeurs'}</label>
+              <label className='text-14 text-c5 font-medium'>{overviewResourceField.label || 'Contributeurs'}</label>
               <div className='flex flex-wrap gap-2 items-center'>
                 {personnes.map((person, index) => (
-                  <span key={person.id || index} className='flex items-center gap-2 px-3 min-h-[60px] py-1.5 bg-c3 text-c6 rounded-lg text-sm'>
+                  <span key={person.id || index} className='flex items-center gap-2 px-3 min-h-[60px] py-1.5 bg-c3 text-c6 rounded-8 text-14'>
                     {getPersonPicture(person) && <img src={getPersonPicture(person) ?? ''} alt='Avatar' className='w-6 h-6 rounded-full object-cover' />}
                     {getPersonDisplayName(person)}
                     {/* Bouton de suppression */}
@@ -596,7 +608,7 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
                           onRemoveContributor(person.id);
                         }
                       }}
-                      className='ml-px p-0.5 hover:bg-red-500/20 rounded-full transition-colors'>
+                      className='ml-1 p-0.5 hover:bg-red-500/20 rounded-full transition-colors'>
                       <CrossIcon size={12} className='text-c4 hover:text-red-500' />
                     </button>
                   </span>
@@ -604,7 +616,7 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
                 <button
                   type='button'
                   onClick={() => setIsContributorModalOpen(true)}
-                  className='px-4 py-2 border-2 border-dashed border-c4 rounded-xl text-c5 text-sm hover:border-action hover:bg-c2 transition-all duration-200'>
+                  className='px-4 py-2 border-2 border-dashed border-c4 rounded-12 text-c5 text-14 hover:border-action hover:bg-c2 transition-all duration-200'>
                   Ajouter un contributeur
                 </button>
               </div>
@@ -614,16 +626,16 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
           {/* === Section Date === */}
           {dateField && (
             <div className='flex flex-col gap-2'>
-              <label className='text-sm text-c5 font-medium'>{dateField.label}</label>
+              <label className='text-14 text-c5 font-medium'>{dateField.label}</label>
               <DatePicker
                 aria-label={dateField.label}
-                 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 value={parsedDate as any}
-                 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 onChange={(value: any) => onFieldChange?.(dateField.property, value ? value.toString() : null)}
                 classNames={{
                   base: 'w-full',
-                  inputWrapper: 'bg-c1 border border-c3 rounded-lg',
+                  inputWrapper: 'bg-c1 border border-c3 rounded-8',
                   input: 'text-c6',
                 }}
               />
@@ -633,7 +645,7 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
           {/* === Section Description === */}
           {descriptionField && (
             <div className='flex flex-col gap-2'>
-              <label className='text-sm text-c5 font-medium'>{descriptionField.label}</label>
+              <label className='text-14 text-c5 font-medium'>{descriptionField.label}</label>
               <Textarea
                 aria-label={descriptionField.label}
                 value={String(description || '')}
@@ -641,8 +653,8 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
                 placeholder={descriptionField.placeholder || 'Description...'}
                 minRows={4}
                 classNames={{
-                  inputWrapper: 'bg-c1 border border-c3 rounded-lg',
-                  input: 'text-c6 text-base',
+                  inputWrapper: 'bg-c1 border border-c3 rounded-8',
+                  input: 'text-c6 text-16',
                 }}
               />
             </div>
@@ -652,8 +664,8 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
           {percentageField && (
             <div className='flex flex-col gap-2'>
               <div className='flex justify-between items-center'>
-                <label className='text-sm text-c5 font-medium'>{percentageField.label}</label>
-                <span className='text-sm text-c6 font-medium'>{sliderValue ?? percentage}%</span>
+                <label className='text-14 text-c5 font-medium'>{percentageField.label}</label>
+                <span className='text-14 text-c6 font-semibold'>{sliderValue ?? percentage}%</span>
               </div>
               <Slider
                 aria-label={percentageField.label}
@@ -679,10 +691,10 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
           {/* === Section Actants supplémentaires (details) === */}
           {detailsResourceField && (
             <div className='flex flex-col gap-2'>
-              <label className='text-sm text-c5 font-medium'>{detailsResourceField.label}</label>
+              <label className='text-14 text-c5 font-medium'>{detailsResourceField.label}</label>
               <div className='flex flex-wrap gap-2 items-center'>
                 {actants.map((actant, index) => (
-                  <span key={actant.id || index} className='px-3 py-px bg-c3 text-c6 rounded-lg text-sm'>
+                  <span key={actant.id || index} className='px-3 py-1 bg-c3 text-c6 rounded-8 text-14'>
                     {getPersonDisplayName(actant)}
                   </span>
                 ))}
@@ -702,13 +714,13 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
             .filter((f) => f.type === 'text' && f !== dateField && f !== descriptionField)
             .map((field) => (
               <div key={field.property} className='flex flex-col gap-2'>
-                <label className='text-sm text-c5 font-medium'>{field.label}</label>
+                <label className='text-14 text-c5 font-medium'>{field.label}</label>
                 <Input
                   value={String(getOmekaValue(itemDetails, field.property) || '')}
                   onChange={(e) => onFieldChange?.(field.property, e.target.value)}
                   placeholder={field.placeholder}
                   classNames={{
-                    inputWrapper: 'bg-c1 border border-c3 rounded-lg',
+                    inputWrapper: 'bg-c1 border border-c3 rounded-8',
                     input: 'text-c6',
                   }}
                 />
@@ -718,13 +730,13 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
           {/* === Section URL externe === */}
           {urlField && (
             <div className='flex flex-col gap-2'>
-              <label className='text-sm text-c5 font-medium'>{urlField.label}</label>
+              <label className='text-14 text-c5 font-medium'>{urlField.label}</label>
               <Input
                 value={String(fullUrl || '')}
                 onChange={(e) => onFieldChange?.(urlField.property, e.target.value)}
                 placeholder={urlField.placeholder || 'Lien externe'}
                 classNames={{
-                  inputWrapper: 'bg-c1 border border-c3 rounded-lg',
+                  inputWrapper: 'bg-c1 border border-c3 rounded-8',
                   input: 'text-c6',
                 }}
                 startContent={<MovieIcon size={14} className='text-c5' />}
@@ -756,22 +768,22 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
 
   // Mode affichage
   return (
-    <motion.div className='w-full flex flex-col gap-6' initial='hidden' animate='visible' variants={containerVariants}>
+    <motion.div className='w-full flex flex-col gap-25' initial='hidden' animate='visible' variants={containerVariants}>
       <motion.div
         variants={itemVariants}
-        className='cursor-pointer flex flex-col bg-c2 hover:bg-c3 p-6 rounded-lg gap-2.5 transition-all ease-in-out duration-200'
+        className='cursor-pointer flex flex-col bg-c2 hover:bg-c3 p-25 rounded-8 gap-10 transition-all ease-in-out duration-200'
         onClick={toggleExpansion}>
-        {date && <h3 className='text-base text-c5 font-medium'>{date}</h3>}
+        {date && <h3 className='text-16 text-c5 font-medium'>{date}</h3>}
         {description && (
-          <p
-            className={`text-base text-c4 font-normal transition-all ease-in-out duration-200 gap-2.5 ${expanded ? '' : 'line-clamp-4'}`}
-            style={{ lineHeight: '120%' }}>
-            {description}
-          </p>
+          <div
+            className={`text-16 text-c4 font-extralight transition-all ease-in-out duration-200 gap-10 ${expanded ? '' : 'line-clamp-4'}`}
+            style={{ lineHeight: '120%' }}
+            dangerouslySetInnerHTML={{ __html: description }}
+          />
         )}
-        {actants && actants.length > 0 && <p className='text-sm text-end text-c4 italic'>Ajouté par : {actants.map((a) => getPersonDisplayName(a)).join(', ')}</p>}
+        {actants && actants.length > 0 && <p className='text-14 text-end text-c4 italic'>Ajouté par : {actants.map((a) => getPersonDisplayName(a)).join(', ')}</p>}
         {description && (
-          <p className='text-base text-c5 font-medium transition-all ease-in-out duration-200'>
+          <p className='text-16 text-c5 font-semibold transition-all ease-in-out duration-200'>
             {expanded ? 'affichez moins' : '...affichez plus'}
           </p>
         )}
@@ -785,16 +797,16 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
 // ========================================
 
 export const SimpleOverviewSkeleton: React.FC = () => (
-  <div className='flex flex-col gap-5'>
-    <Skeleton className='rounded-xl lg:w-full lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px]' />
-    <div className='flex flex-col gap-5'>
-      <div className='flex flex-col gap-1.5'>
-        <Skeleton className='w-[100%] h-6 rounded-lg' />
-        <Skeleton className='w-[80%] h-6 rounded-lg' />
+  <div className='flex flex-col gap-20'>
+    <Skeleton className='rounded-14 lg:w-full lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px]' />
+    <div className='flex flex-col gap-20'>
+      <div className='flex flex-col gap-5'>
+        <Skeleton className='w-[100%] h-6 rounded-8' />
+        <Skeleton className='w-[80%] h-6 rounded-8' />
       </div>
       <div className='flex justify-between items-center'>
-        <Skeleton className='w-[50%] h-4 rounded-lg' />
-        <Skeleton className='w-[30%] h-4 rounded-lg' />
+        <Skeleton className='w-[50%] h-4 rounded-8' />
+        <Skeleton className='w-[30%] h-4 rounded-8' />
       </div>
     </div>
   </div>
@@ -802,15 +814,15 @@ export const SimpleOverviewSkeleton: React.FC = () => (
 
 
 export const SimpleDetailsSkeleton: React.FC = () => (
-  <div className='flex w-full p-5 bg-c3 rounded-xl'>
-    <div className='flex w-full flex-col gap-2.5'>
-      <Skeleton className='w-[35%] h-4 rounded-lg' />
-      <div className='flex flex-col gap-1.5'>
-        <Skeleton className='w-[100%] h-4 rounded-lg' />
-        <Skeleton className='w-[100%] h-4 rounded-lg' />
-        <Skeleton className='w-[100%] h-4 rounded-lg' />
+  <div className='flex w-full p-20 bg-c3 rounded-14'>
+    <div className='flex w-full flex-col gap-10'>
+      <Skeleton className='w-[35%] h-4 rounded-8' />
+      <div className='flex flex-col gap-5'>
+        <Skeleton className='w-[100%] h-4 rounded-8' />
+        <Skeleton className='w-[100%] h-4 rounded-8' />
+        <Skeleton className='w-[100%] h-4 rounded-8' />
       </div>
-      <Skeleton className='w-[20%] h-4 rounded-lg' />
+      <Skeleton className='w-[20%] h-4 rounded-8' />
     </div>
   </div>
 );
@@ -820,11 +832,11 @@ export const SimpleDetailsSkeleton: React.FC = () => (
 // ========================================
 
 export const UnloadedCard: React.FC = () => (
-  <div className='lg:w-[100%] lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px] flex flex-col items-center justify-center p-5 bg-c3 rounded-xl gap-5'>
+  <div className='lg:w-[100%] lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px] flex flex-col items-center justify-center p-20 bg-c3 rounded-14 gap-20'>
     <CameraIcon size={42} className='text-c4' />
-    <div className='w-[80%] flex flex-col justify-center items-center gap-2.5'>
-      <h2 className='text-c5 text-3xl font-medium'>Oups !</h2>
-      <p className='w-[400px] text-c5 text-base text-regular text-center'>Aucun média n'est lié à ce contenu. Veuillez vérifier plus tard ou explorer d'autres sections.</p>
+    <div className='w-[80%] flex flex-col justify-center items-center gap-10'>
+      <h2 className='text-c5 text-32 font-semibold'>Oups !</h2>
+      <p className='w-[400px] text-c5 text-16 text-regular text-center'>Aucun média n'est lié à ce contenu. Veuillez vérifier plus tard ou explorer d'autres sections.</p>
     </div>
   </div>
 );

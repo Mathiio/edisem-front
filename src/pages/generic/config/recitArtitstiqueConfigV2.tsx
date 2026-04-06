@@ -2,30 +2,24 @@ import { RESOURCE_TYPES } from '@/config/resourceConfig';
 import { SimplifiedDetailConfig } from '../simplifiedConfig';
 import { convertToGenericConfig } from '../simplifiedConfigAdapter';
 
-/**
- * Configuration simplifiée pour les expérimentations (actants)
- * Template 108 - Edisem (Expérimentations)
- */
-export const experimentationConfigSimplified: SimplifiedDetailConfig = {
-  resourceType: RESOURCE_TYPES.experimentation.type,
-  templateId: 108,
+export const recitArtitstiqueConfigSimplified: SimplifiedDetailConfig = {
+  resourceType: RESOURCE_TYPES.recit_artistique.type,
+  templateId: 103,
 
   fields: {
     title: { property: 'dcterms:title', type: 'title', zone: 'header' },
     date: { property: 'dcterms:date', type: 'date', zone: 'details' },
-    description: { property: 'dcterms:description', type: 'textarea', label: 'Intentions artistiques/théoriques', zone: 'details' },
-    abstract: { property: 'bibo:abstract', type: 'textarea', label: "Résumé de l'expérimentation", zone: 'details' },
-    percentage: { property: 'schema:ratingValue', type: 'slider', label: "État d'avancement", min: 0, max: 100, step: 5, zone: 'overview' },
-    status: { property: 'schema:status', type: 'status', label: 'Statut', zone: 'overview' },
-    material: { property: 'schema:artMedium', type: 'textarea', label: 'Type(s) de média / médium', zone: 'details' },
+    description: { property: 'dcterms:abstract', type: 'textarea', label: 'Synopsis', zone: 'details' },
+    genre: { property: 'schema:genre', type: 'textarea', label: 'Genre du récit', zone: 'details' },
+    domaine: { property: 'dcterms:subject', type: 'textarea', label: 'Domaines du récit', zone: 'details' },
+    theme: { property: 'storyline:hasTheme', type: 'textarea', label: 'Récits artistiques', zone: 'details' },
     contributors: {
       property: 'schema:agent',
       type: 'resource',
-      label: 'Artiste(s)',
+      label: 'Artistes principaux',
       resourceTemplateId: 72,
       multiSelect: true,
       zone: 'overview',
-      sourceProperties: ['schema:agent', 'cito:credits'],
     },
     keywords: {
       property: 'jdc:hasConcept',
@@ -35,10 +29,17 @@ export const experimentationConfigSimplified: SimplifiedDetailConfig = {
       multiSelect: true,
       zone: 'header',
     },
-    externalLink: { property: 'schema:url', type: 'url', label: 'Lien externe', placeholder: 'https://...', zone: 'details' },
+    externalLink: { property: 'schema:url', type: 'url', label: 'Site web associé', placeholder: 'https://...', zone: 'details' },
   },
 
   views: [
+    {
+      key: 'AnalyseCritique',
+      title: 'Analyses critiques',
+      property: 'dcterms:description',
+      renderType: 'items',
+      urlPattern: '/corpus/analyse-critique/:id',
+    },
     {
       key: 'ElementsNarratifs',
       title: 'Éléments narratifs',
@@ -58,24 +59,23 @@ export const experimentationConfigSimplified: SimplifiedDetailConfig = {
     {
       key: 'Outils',
       title: 'Outils',
-      property: 'theatre:credit',
+      property: 'schema:tool',
       renderType: 'items',
       urlPattern: '/corpus/outil/:id',
       resourceTemplateIds: [114, 129],
     },
     {
-      key: 'Feedbacks',
-      title: "Retours d'expérience",
-      property: 'schema:description',
-      renderType: 'items',
-      urlPattern: '/corpus/retour-experience/:id',
-      resourceTemplateId: 110,
+      key: 'Credits',
+      title: 'Crédits complets',
+      property: 'theatre:credit',
+      renderType: 'text',
     },
     {
-      key: 'Inspirations',
-      title: 'Inspirations / Généalogies artistiques',
-      property: 'dcterms:source',
-      renderType: 'text',
+      key: 'Entrevue',
+      title: 'Entrevue Arcanes',
+      property: 'schema:holdingArchive',
+      renderType: 'references',
+      resourceTemplateIds: [81, 99, 98, 83],
     },
     {
       key: 'ContentScient',
@@ -96,10 +96,10 @@ export const experimentationConfigSimplified: SimplifiedDetailConfig = {
   showKeywords: true,
   showRecommendations: true,
   showComments: true,
-  recommendationsTitle: 'Expérimentations similaires',
-  recommendationType: 'experimentation',
-  defaultView: 'ElementsNarratifs',
+  recommendationsTitle: 'Récits Artistiques similaires',
+  recommendationType: 'recit_artistique',
+  defaultView: 'AnalyseCritique',
   formEnabled: true,
 };
 
-export const experimentationConfig = convertToGenericConfig(experimentationConfigSimplified);
+export const recitArtitstiqueConfig = convertToGenericConfig(recitArtitstiqueConfigSimplified);

@@ -11,6 +11,7 @@
  * - Gérer le mode édition et la sauvegarde
  */
 
+import React from 'react';
 import { SmartRecommendationsStrategy } from './config';
 
 // ========================================
@@ -125,7 +126,7 @@ export interface SimplifiedFieldsMapping {
 // Types de rendu pour les vues
 // ========================================
 
-export type ViewRenderType = 'text' | 'items' | 'references' | 'categories';
+export type ViewRenderType = 'text' | 'items' | 'references' | 'categories' | 'citations' | 'microresumes' | 'custom';
 
 // ========================================
 // Configuration d'une sous-catégorie (pour renderType='categories')
@@ -190,6 +191,9 @@ export interface SimplifiedViewConfig {
 
   /** Template IDs multiples (pour les references avec bibliographies et mediagraphies) */
   resourceTemplateIds?: number[];
+
+  /** Fonction de rendu custom (pour renderType='custom') */
+  customRender?: (context: import('./config').RenderContentContext) => React.ReactNode;
 }
 
 // ========================================
@@ -232,6 +236,29 @@ export interface SimplifiedDetailConfig {
 
   /** Formulaire d'édition activé */
   formEnabled?: boolean;
+
+  // ---- Overrides custom (pour configs avancées comme les conférences) ----
+
+  /** Data fetcher custom — remplace le fetcher Omeka S par défaut */
+  customDataFetcher?: (id: string) => Promise<import('./config').FetchResult>;
+
+  /** Fetcher de recommandations custom */
+  customRecommendationsFetcher?: (ids: any[], fetchedData?: any) => Promise<any[]>;
+
+  /** Composant overview custom — remplace SimpleOverviewCard */
+  customOverviewComponent?: React.ComponentType<any>;
+  customOverviewSkeleton?: React.ComponentType<any>;
+
+  /** Composant details custom — remplace SimpleDetailsCard */
+  customDetailsComponent?: React.ComponentType<any>;
+  customDetailsSkeleton?: React.ComponentType<any>;
+
+  /** Mappers custom pour les props overview/details */
+  customMapOverviewProps?: (itemDetails: any, currentVideoTime: number) => any;
+  customMapDetailsProps?: (itemDetails: any) => any;
+
+  /** Mapper custom pour les recommandations */
+  customMapRecommendationProps?: (item: any) => any;
 }
 
 // ========================================

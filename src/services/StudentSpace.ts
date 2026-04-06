@@ -1,4 +1,3 @@
-
 /**
  * Service pour l'API de l'espace étudiant
  * Endpoints dédiés pour les ressources étudiantes (expérimentations, outils, feedbacks)
@@ -13,7 +12,23 @@ export interface StudentResourceCard {
   id: number | string;
   title: string;
   thumbnail: string | null;
-  type: 'experimentation_etudiant' | 'outil_etudiant' | 'retour_experience_etudiant';
+  type:
+    | 'experimentation_etudiant'
+    | 'outil_etudiant'
+    | 'retour_experience_etudiant'
+    | 'experimentation'
+    | 'retour_experience'
+    | 'outil'
+    | 'seminaire'
+    | 'recit_scientifique'
+    | 'recit_artistique'
+    | 'recit_techno_industriel'
+    | 'recit_citoyen'
+    | 'recit_mediatique'
+    | 'annotation'
+    | 'element_esthetique'
+    | 'element_narratif'
+    | 'bibliographie';
   actants: {
     id: number | string;
     title: string;
@@ -95,6 +110,25 @@ export async function getAllStudentResources(): Promise<AllStudentResources> {
     return data;
   } catch (error) {
     console.error('Error fetching student resources:', error);
+    throw error;
+  }
+}
+
+/**
+ * Récupère les ressources créées par un utilisateur spécifique
+ * Retourne un tableau plat filtré par owner_id côté backend
+ */
+export async function getUserResources(userId: number): Promise<StudentResourceCard[]> {
+  try {
+    const response = await fetch(`${API_BASE}&action=getUserResources&userId=${userId}&json=1`);
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de la récupération des ressources utilisateur');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching user resources:', error);
     throw error;
   }
 }
@@ -412,6 +446,15 @@ export async function getSameCourseExperimentations(experimentationId: number, l
 export const RESEARCH_TEMPLATE_ID = 102;
 
 /**
+ * Property IDs pour le template ResearchProject
+ */
+const RESEARCH_PROPERTIES = {
+  title: 1, // dcterms:title
+  creator: 2, // dcterms:creator
+  codeRepository: 551, // schema:codeRepository (stocke le JSON des filtres)
+} as const;
+
+/**
  * Type pour une recherche sauvegardée
  */
 export interface SavedResearch {
@@ -452,67 +495,123 @@ export async function saveResearch(title: string, filterGroups: any, imageDataUr
 
   const configJson = JSON.stringify(filterGroups);
 
-  try {
-    const response = await fetch(`${API_BASE}&action=saveResearch&json=1`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title,
-        config: configJson,
-      }),
-    });
+  // Construire l'objet pour l'API Omeka S
+  const itemData: Record<string, any> = {
+    'o:resource_template': { 'o:id': RESEARCH_TEMPLATE_ID },
+    'o:owner': { 'o:id': parseInt(omekaUserId, 10) },
+    'dcterms:title': [
+      {
+        type: 'literal',
+        property_id: RESEARCH_PROPERTIES.title,
+        '@value': title,
+        is_public: true,
+      },
+    ],
+    'dcterms:creator': [
+      {
+        type: 'resource',
+        property_id: RESEARCH_PROPERTIES.creator,
+        value_resource_id: parseInt(userId, 10),
+        is_public: true,
+      },
+    ],
+    'schema:codeRepository': [
+      {
+        type: 'literal',
+        property_id: RESEARCH_PROPERTIES.codeRepository,
+        '@value': configJson,
+        is_public: true,
+      },
+    ],
+  };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Erreur lors de la sauvegarde');
-    }
+  // Utiliser les credentials depuis les variables d'environnement
+  const API_KEY = import.meta.env.VITE_API_KEY;
+  const API_IDENT = 'NUO2yCjiugeH7XbqwUcKskhE8kXg0rUj';
+  const createUrl = `https://tests.arcanes.ca/omk/api/items?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
 
-    const result = await response.json();
-    const newItemId = result.id;
+  const response = await fetch(createUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(itemData),
+  });
 
-    // Upload de l'image comme média si fournie
-    if (imageDataUrl && newItemId) {
-      try {
-        const timestamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '');
-        const filename = `recherche_${timestamp}.png`;
-        const imageFile = dataURLtoFile(imageDataUrl, filename);
-
-        const formData = new FormData();
-        formData.append('file', imageFile);
-        formData.append('itemId', String(newItemId));
-
-        // Use the ApiProxy for media upload as StudentSpace doesn't have it
-        const PROXY_URL = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=ApiProxy';
-        const mediaResponse = await fetch(`${PROXY_URL}&action=uploadMedia&json=1`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (!mediaResponse.ok) {
-          console.error('Erreur upload média:', await mediaResponse.text());
-        }
-      } catch (err) {
-        console.error('Erreur upload média:', err);
-      }
-    }
-
-    return { success: true, id: newItemId };
-  } catch (error: any) {
-    console.error('saveResearch error:', error);
-    throw error;
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    console.error('Erreur création recherche:', errorData);
+    throw new Error(errorData['o:errors']?.join(', ') || 'Erreur lors de la sauvegarde de la recherche');
   }
+
+  const result = await response.json();
+  const newItemId = result['o:id'];
+
+  // Upload de l'image comme média si fournie
+  if (imageDataUrl && newItemId) {
+    try {
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '');
+      const filename = `recherche_${timestamp}.png`;
+      const imageFile = dataURLtoFile(imageDataUrl, filename);
+
+      const formData = new FormData();
+      formData.append(
+        'data',
+        JSON.stringify({
+          'o:ingester': 'upload',
+          'o:item': { 'o:id': newItemId },
+          file_index: '0',
+        }),
+      );
+      formData.append('file[0]', imageFile);
+
+      const mediaUrl = `https://tests.arcanes.ca/omk/api/media?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
+      const mediaResponse = await fetch(mediaUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!mediaResponse.ok) {
+        console.error('Erreur upload média:', await mediaResponse.text());
+      } else {
+        console.log('Image de recherche uploadée avec succès');
+      }
+    } catch (err) {
+      console.error('Erreur upload média:', err);
+    }
+  }
+
+  return { success: true, id: newItemId };
 }
 
 /**
  * Récupère les recherches sauvegardées de l'utilisateur connecté
  */
 export async function getUserSavedResearches(): Promise<SavedResearch[]> {
+  const omekaUserId = localStorage.getItem('omekaUserId');
+
+  if (!omekaUserId) {
+    return [];
+  }
+
+  const API_KEY = import.meta.env.VITE_API_KEY;
+  const API_IDENT = 'NUO2yCjiugeH7XbqwUcKskhE8kXg0rUj';
+  const url = `https://tests.arcanes.ca/omk/api/items?resource_template_id=${RESEARCH_TEMPLATE_ID}&owner_id=${omekaUserId}&key_identity=${API_IDENT}&key_credential=${API_KEY}`;
+
   try {
-    const response = await fetch(`${API_BASE}&action=getUserSavedResearches&json=1`);
+    const response = await fetch(url);
     if (!response.ok) {
+      console.error('Erreur récupération recherches:', response.statusText);
       return [];
     }
-    return await response.json();
+
+    const items = await response.json();
+
+    return items.map((item: any) => ({
+      id: item['o:id'],
+      title: item['o:title'] || 'Sans titre',
+      config: item['schema:codeRepository']?.[0]?.['@value'] || '[]',
+      created: item['o:created']?.['@value'] || '',
+      creatorId: item['dcterms:creator']?.[0]?.['value_resource_id'],
+    }));
   } catch (error) {
     console.error('Erreur récupération recherches:', error);
     return [];
@@ -523,23 +622,17 @@ export async function getUserSavedResearches(): Promise<SavedResearch[]> {
  * Supprime une recherche sauvegardée
  */
 export async function deleteResearch(id: number): Promise<{ success: boolean }> {
-  try {
-    const response = await fetch(`${API_BASE}&action=deleteResearch&id=${id}&json=1`, {
-      method: 'POST',
-    });
+  const API_KEY = import.meta.env.VITE_API_KEY;
+  const API_IDENT = 'NUO2yCjiugeH7XbqwUcKskhE8kXg0rUj';
+  const url = `https://tests.arcanes.ca/omk/api/items/${id}?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
 
-    if (!response.ok) {
-      throw new Error('Erreur lors de la suppression de la recherche');
-    }
+  const response = await fetch(url, { method: 'DELETE' });
 
-    const result = await response.json();
-    if (result.error) throw new Error(result.error);
-
-    return { success: true };
-  } catch (error: any) {
-    console.error('deleteResearch error:', error);
-    throw error;
+  if (!response.ok) {
+    throw new Error('Erreur lors de la suppression de la recherche');
   }
+
+  return { success: true };
 }
 
 // ========== ACTANT TYPES & FUNCTIONS ==========
