@@ -102,7 +102,7 @@ test.describe('Seminar – conference detail', () => {
 
     test.beforeEach(async ({ page }) => {
         await page.goto(`/corpus/seminaires/conference/${CONFERENCE_ID}`);
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('load');
     });
 
     test('shows a non-empty heading', async ({ page }) => {
