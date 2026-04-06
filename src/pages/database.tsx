@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Spinner, Pagination, useDisclosure, Input, SortDescriptor } from '@heroui/react';
-import { usegetDataByClass } from '../hooks/useFetchData';
+import { useGetDataByClass } from '../hooks/useFetchData';
 import GridComponent from '@/components/features/database/GridComponent';
 import { EditModal } from '@/components/features/database/EditModal';
 import { CreateModal } from '@/components/features/database/CreateModal';
 
 import { BackIcon, EditIcon, PlusIcon, SearchIcon } from '@/components/ui/icons';
-import { usegetAllProperties } from '@/hooks/useFetchData';
+import { useGetAllProperties } from '@/hooks/useFetchData';
 import { Layouts } from '@/components/layout/Layouts';
 
 // Reducer function to slice the result and append '...'
@@ -22,7 +22,7 @@ export const useLocalStorageProperties = () => {
   const [itemPropertiesData, setItemPropertiesData] = useState<any[] | null>(null);
   const [propertiesLoading, setPropertiesLoading] = useState(true);
 
-  const { data, loading } = usegetAllProperties(); // Assurez-vous que ce hook existe
+  const { data, loading } = useGetAllProperties(); // Assurez-vous que ce hook existe
 
   useEffect(() => {
     if (!loading && data) {
@@ -47,7 +47,7 @@ export const Database: React.FC = () => {
   const { itemPropertiesData, propertiesLoading } = useLocalStorageProperties();
 
   const initializePropertiesLoading = () => {
-    // Vide car usegetAllProperties est appelé au niveau du composant via le hook
+    // Vide car useGetAllProperties est appelé au niveau du composant via le hook
   };
 
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
@@ -82,7 +82,7 @@ export const Database: React.FC = () => {
   const [currentView, setCurrentView] = useState<'grid' | 'table' | 'element'>('grid');
   const [previousTableState, setPreviousTableState] = useState<any[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const { data: speakersData, loading: speakersLoading } = usegetDataByClass(selectedCardId, refreshTrigger);
+  const { data: speakersData, loading: speakersLoading } = useGetDataByClass(selectedCardId, refreshTrigger);
 
   const handleModalClose = () => {
     setRefreshTrigger((prev) => prev + 1);
@@ -114,7 +114,7 @@ export const Database: React.FC = () => {
 
   const filteredSpeakers = useMemo(() => {
     if (!speakersData) return [];
-    let filtered = speakersData.filter((item) =>
+    let filtered = speakersData.filter((item: any) =>
       columns.some((col) => {
         const value = getValueByPath(item, col.dataPath);
         return value && value.toString().toLowerCase().includes(searchQuery.toLowerCase());
