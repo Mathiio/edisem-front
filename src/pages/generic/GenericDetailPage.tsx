@@ -1244,6 +1244,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         'ContentScient',
         'ContentCultu',
         'Hypothese',
+        'Citations',
+        'MicroResumes',
       ]);
 
       if (ignoredKeys.has(key) || value === undefined || value === null) {
@@ -1311,6 +1313,62 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         }
       }
     });
+
+    // Créer les citations et micro-résumés AVANT la conférence pour pouvoir les lier dans le POST
+    const userIdForSub = localStorage.getItem('omekaUserId');
+    const newCitations = data.Citations;
+    const newMicroresumes = data.MicroResumes;
+
+    if (Array.isArray(newCitations) && newCitations.length > 0) {
+      const citationIds: number[] = [];
+      for (const cit of newCitations) {
+        if (!cit.citation || cit.citation.trim() === '') continue;
+        try {
+          const citData: Record<string, any> = {
+            'o:resource_template': { 'o:id': 80 },
+            ...(userIdForSub ? { 'o:owner': { 'o:id': parseInt(userIdForSub, 10) } } : {}),
+            'cito:hasCitedEntity': [{ type: 'literal', property_id: 269, '@value': cit.citation, is_public: true }],
+          };
+          if (cit.startTime) citData['schema:startTime'] = [{ type: 'numeric:integer', property_id: 1417, '@value': cit.startTime, is_public: true }];
+          if (cit.endTime) citData['schema:endTime'] = [{ type: 'numeric:integer', property_id: 735, '@value': cit.endTime, is_public: true }];
+          const citResponse = await fetch(`${API_BASE}items?key_identity=${API_IDENT}&key_credential=${API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(citData) });
+          if (citResponse.ok) {
+            const citResult = await citResponse.json();
+            citationIds.push(citResult['o:id']);
+            console.log('[createInOmekaS] Citation created:', citResult['o:id']);
+          }
+        } catch (err) { console.error('[createInOmekaS] Citation creation error:', err); }
+      }
+      if (citationIds.length > 0) {
+        itemData['schema:citation'] = citationIds.map((id) => ({ type: 'resource', property_id: 544, value_resource_id: id, is_public: true }));
+      }
+    }
+
+    if (Array.isArray(newMicroresumes) && newMicroresumes.length > 0) {
+      const mrIds: number[] = [];
+      for (const mr of newMicroresumes) {
+        if ((!mr.title || mr.title.trim() === '') && (!mr.description || mr.description.trim() === '')) continue;
+        try {
+          const mrData: Record<string, any> = {
+            'o:resource_template': { 'o:id': 125 },
+            ...(userIdForSub ? { 'o:owner': { 'o:id': parseInt(userIdForSub, 10) } } : {}),
+          };
+          if (mr.title) mrData['dcterms:title'] = [{ type: 'literal', property_id: 1, '@value': mr.title, is_public: true }];
+          if (mr.description) mrData['dcterms:description'] = [{ type: 'literal', property_id: 4, '@value': mr.description, is_public: true }];
+          if (mr.startTime) mrData['schema:startTime'] = [{ type: 'numeric:integer', property_id: 1417, '@value': mr.startTime, is_public: true }];
+          if (mr.endTime) mrData['schema:endTime'] = [{ type: 'numeric:integer', property_id: 735, '@value': mr.endTime, is_public: true }];
+          const mrResponse = await fetch(`${API_BASE}items?key_identity=${API_IDENT}&key_credential=${API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(mrData) });
+          if (mrResponse.ok) {
+            const mrResult = await mrResponse.json();
+            mrIds.push(mrResult['o:id']);
+            console.log('[createInOmekaS] MicroResume created:', mrResult['o:id']);
+          }
+        } catch (err) { console.error('[createInOmekaS] MicroResume creation error:', err); }
+      }
+      if (mrIds.length > 0) {
+        itemData['bibo:abstract'] = mrIds.map((id) => ({ type: 'resource', property_id: 86, value_resource_id: id, is_public: true }));
+      }
+    }
 
     // Nettoyer les propriétés avec property_id null (pas dans le template)
     Object.keys(itemData).forEach((key) => {
@@ -1733,7 +1791,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     // Check for EmptyState component structure: div with text-center, bg-c2, border-c3
     // This matches the EmptyState component structure exactly
     const className = typeof props?.className === 'string' ? props.className : '';
-    const hasEmptyStateStructure = className.includes('text-center') && className.includes('bg-c2') && className.includes('border-c3') && className.includes('rounded-12');
+    const hasEmptyStateStructure = className.includes('text-center') && className.includes('bg-c2') && className.includes('border-c3') && className.includes('rounded-[12px]');
 
     if (hasEmptyStateStructure) {
       // Extract all text from the element recursively
@@ -1919,7 +1977,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   // Bug 3 fix: Si mode édition mais données pas encore chargées, afficher skeleton
   if (isEditing && !itemDetails && loading) {
     return (
-      <Layouts className='grid grid-cols-10 col-span-10 gap-50 overflow-visible z-0'>
+      <Layouts className='grid grid-cols-10 col-span-10 gap-[50px] overflow-visible z-0'>
         <div className='col-span-10 overflow-visible'>
           <PageBanner title={mode === 'create' ? 'Mode création' : 'Mode édition'} icon={<EditIcon />} description={getRessourceLabel(config.type || 'Ressource')} edition />
         </div>
@@ -1927,7 +1985,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         {tabs && activeTabId && onTabChange && onTabClose && <ResourceFormTabs tabs={tabs} activeTabId={activeTabId} onTabChange={onTabChange} onTabClose={onTabClose} />}
         
         {/* Left column skeleton - matching loaded state structure */}
-        <motion.div className='col-span-10 flex flex-col gap-4 h-fit items-center justify-center py-20' variants={fadeIn}>
+        <motion.div className='col-span-10 flex flex-col gap-4 h-fit items-center justify-center py-[20px]' variants={fadeIn}>
           <Spinner color="current" className="text-c6" />
           <p className="text-c6">Chargement en cours...</p>
         </motion.div>
@@ -1938,7 +1996,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
   return (
     <>
-      <Layouts className='grid grid-cols-10 col-span-10 gap-50 overflow-visible z-0'>
+      <Layouts className='grid grid-cols-10 col-span-10 gap-[50px] overflow-visible z-0'>
         {/* Edit Mode Banner */}
         {isEditing && (
           <div className='col-span-10 overflow-visible'>
@@ -1952,7 +2010,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         )}
 
         {/* Colonne principale */}
-        <motion.div ref={firstDivRef} className={`${leftColumnSpan} flex flex-col gap-25 h-fit`} variants={fadeIn}>
+        <motion.div ref={firstDivRef} className={`${leftColumnSpan} flex flex-col gap-[25px] h-fit`} variants={fadeIn}>
           {/* Header avec breadcrumbs et boutons d'édition */}
           <div className='flex items-center justify-between'>
             <DynamicBreadcrumbs itemTitle={itemDetails?.titre || itemDetails?.title || itemDetails?.['o:title'] || itemDetails?.name} underline='hover' />
@@ -1962,21 +2020,21 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
           {itemDetails &&
             config.showKeywords &&
             (loadingKeywords ? (
-              <div className='flex items-center justify-center py-6 bg-c2 rounded-12 border-2 border-c3'>
+              <div className='flex items-center justify-center py-6 bg-c2 rounded-[12px] border-2 border-c3'>
                 <Spinner size='md' />
                 <span className='ml-3 text-c5'>Chargement des mots-clés...</span>
               </div>
             ) : (
               (sortedKeywords?.length > 0 || isEditing) && (
                 <div className='flex flex-col gap-2'>
-                  {isEditing && <label className='text-14 text-c5 font-medium'>Mots-clés</label>}
-                  <div className='flex items-center gap-10 overflow-hidden'>
+                  {isEditing && <label className='text-[14px] text-c5 font-medium'>Mots-clés</label>}
+                  <div className='flex items-center gap-[10px] overflow-hidden'>
                     <div className='flex-1 min-w-0 overflow-hidden'>
                       {isEditing ? (
                         /* Mode édition: afficher les keywords comme des chips avec bouton de suppression */
                         <div className='flex flex-wrap gap-2 items-center'>
                           {sortedKeywords?.map((keyword: any) => (
-                            <div key={keyword.id || keyword.title} className='flex items-center gap-2 px-3 py-1.5 h-[40px] bg-c2 border border-c3 text-c6 rounded-8 text-14'>
+                            <div key={keyword.id || keyword.title} className='flex items-center gap-2 px-3 py-1.5 h-[40px] bg-c2 border border-c3 text-c6 rounded-[8px] text-[14px]'>
                               <span>{keyword.title}</span>
                               {/* Bouton de suppression */}
                               <button
@@ -2014,7 +2072,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                       <button
                         type='button'
                         onClick={() => handleLinkExisting('keywords')}
-                        className='px-4 py-2 border-2 border-dashed border-c4 rounded-8 text-c5 text-14 hover:border-action hover:bg-c2 transition-all duration-200'>
+                        className='px-4 py-2 border-2 border-dashed border-c4 rounded-[8px] text-c5 text-[14px] hover:border-action hover:bg-c2 transition-all duration-200'>
                         Ajouter un mot clé
                       </button>
                     )}
@@ -2025,7 +2083,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
           {/* Mode édition/création: Section unifiée */}
           {isEditing ? (
-            <div className='flex flex-col gap-25'>
+            <div className='flex flex-col gap-[25px]'>
               {/* Section Médias */}
               <OverviewComponent
                 {...config.mapOverviewProps({ ...itemDetails, ...formData }, currentVideoTime)}
@@ -2055,29 +2113,29 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
               />
 
               {/* Section Formulaire Unifié */}
-              <div className='bg-c2 rounded-12 p-25 flex flex-col gap-20'>
+              <div className='bg-c2 rounded-[12px] p-[25px] flex flex-col gap-[20px]'>
                 {/* Titre */}
                 <div className='flex flex-col gap-2'>
-                  <label className='text-14 text-c5 font-medium'>Titre</label>
+                  <label className='text-[14px] text-c5 font-medium'>Titre</label>
                   <input
                     type='text'
                     value={formData.title || ''}
                     onChange={(e) => setValue('title', e.target.value)}
                     placeholder='Titre de la ressource'
-                    className='bg-c1 border border-c3 rounded-8 px-15 py-10 text-c6 text-16 focus:outline-none focus:border-action'
+                    className='bg-c1 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action'
                   />
                 </div>
 
                 {/* Description */}
                 {config.formFields?.find((f) => f.key === 'description') && (
                   <div className='flex flex-col gap-2'>
-                    <label className='text-14 text-c5 font-medium'>Description</label>
+                    <label className='text-[14px] text-c5 font-medium'>Description</label>
                     <textarea
                       value={formData.description || ''}
                       onChange={(e) => setValue('description', e.target.value)}
                       placeholder='Décrivez votre ressource...'
                       rows={4}
-                      className='bg-c1 border border-c3 rounded-8 px-15 py-10 text-c6 text-16 focus:outline-none focus:border-action resize-none'
+                      className='bg-c1 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action resize-none'
                     />
                   </div>
                 )}
@@ -2085,12 +2143,12 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                 {/* Date */}
                 {config.formFields?.find((f) => f.key === 'date') && (
                   <div className='flex flex-col gap-2'>
-                    <label className='text-14 text-c5 font-medium'>Date</label>
+                    <label className='text-[14px] text-c5 font-medium'>Date</label>
                     <input
                       type='date'
                       value={formData.date || ''}
                       onChange={(e) => setValue('date', e.target.value)}
-                      className='bg-c1 border border-c3 rounded-8 px-15 py-10 text-c6 text-16 focus:outline-none focus:border-action'
+                      className='bg-c1 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action'
                     />
                   </div>
                 )}
@@ -2099,8 +2157,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                 {config.formFields?.find((f) => f.key === 'percentage') && (
                   <div className='flex flex-col gap-2'>
                     <div className='flex justify-between items-center'>
-                      <label className='text-14 text-c5 font-medium'>Avancement</label>
-                      <span className='text-14 text-c6 font-semibold'>{formData.percentage || 0}%</span>
+                      <label className='text-[14px] text-c5 font-medium'>Avancement</label>
+                      <span className='text-[14px] text-c6 font-semibold'>{formData.percentage || 0}%</span>
                     </div>
                     <input
                       type='range'
@@ -2117,13 +2175,13 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                 {/* Statut */}
                 {config.formFields?.find((f) => f.key === 'status') && (
                   <div className='flex flex-col gap-2'>
-                    <label className='text-14 text-c5 font-medium'>Statut</label>
+                    <label className='text-[14px] text-c5 font-medium'>Statut</label>
                     <input
                       type='text'
                       value={formData.status || ''}
                       onChange={(e) => setValue('status', e.target.value)}
                       placeholder='En cours, Terminé...'
-                      className='bg-c1 border border-c3 rounded-8 px-15 py-10 text-c6 text-16 focus:outline-none focus:border-action'
+                      className='bg-c1 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action'
                     />
                   </div>
                 )}
@@ -2131,50 +2189,50 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                 {/* Champs spécifiques aux outils */}
                 {config.formFields?.find((f) => f.key === 'category') && (
                   <div className='flex flex-col gap-2'>
-                    <label className='text-14 text-c5 font-medium'>Type d'outil</label>
+                    <label className='text-[14px] text-c5 font-medium'>Type d'outil</label>
                     <input
                       type='text'
                       value={formData.category || ''}
                       onChange={(e) => setValue('category', e.target.value)}
                       placeholder='Logiciel, Bibliothèque, Framework...'
-                      className='bg-c1 border border-c3 rounded-8 px-15 py-10 text-c6 text-16 focus:outline-none focus:border-action'
+                      className='bg-c1 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action'
                     />
                   </div>
                 )}
 
                 {config.formFields?.find((f) => f.key === 'purpose') && (
                   <div className='flex flex-col gap-2'>
-                    <label className='text-14 text-c5 font-medium'>Fonction</label>
+                    <label className='text-[14px] text-c5 font-medium'>Fonction</label>
                     <textarea
                       value={formData.purpose || ''}
                       onChange={(e) => setValue('purpose', e.target.value)}
                       placeholder="Objectif principal de l'outil..."
                       rows={2}
-                      className='bg-c1 border border-c3 rounded-8 px-15 py-10 text-c6 text-16 focus:outline-none focus:border-action resize-none'
+                      className='bg-c1 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action resize-none'
                     />
                   </div>
                 )}
 
                 {/* Lien externe */}
                 <div className='flex flex-col gap-2'>
-                  <label className='text-14 text-c5 font-medium'>Lien externe</label>
+                  <label className='text-[14px] text-c5 font-medium'>Lien externe</label>
                   <input
                     type='url'
                     value={formData.fullUrl || formData.url || formData.homepage || ''}
                     onChange={(e) => setValue('fullUrl', e.target.value)}
                     placeholder='https://...'
-                    className='bg-c1 border border-c3 rounded-8 px-15 py-10 text-c6 text-16 focus:outline-none focus:border-action'
+                    className='bg-c1 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action'
                   />
                 </div>
 
                 {/* Contributeurs */}
                 <div className='flex flex-col gap-2'>
-                  <label className='text-14 text-c5 font-medium'>Contributeurs</label>
+                  <label className='text-[14px] text-c5 font-medium'>Contributeurs</label>
                   <div className='flex flex-wrap gap-2 items-center'>
                     {(formData.personnes || itemDetails?.personnes || itemDetails?.actants || []).map((person: any, index: number) => (
-                      <div key={person.id || index} className='flex items-center gap-2 px-6 h-[60px] bg-c3 rounded-8'>
+                      <div key={person.id || index} className='flex items-center gap-2 px-6 h-[60px] bg-c3 rounded-[8px]'>
                         {getPersonPicture(person) && <img src={getPersonPicture(person) ?? ''} alt='Avatar' className='w-6 h-6 rounded-full object-cover rounded-[4px]' />}
-                        <span className='text-c6 text-14'>{getPersonDisplayName(person)}</span>
+                        <span className='text-c6 text-[14px]'>{getPersonDisplayName(person)}</span>
                         {/* Bouton de suppression */}
                         <button
                           type='button'
@@ -2192,7 +2250,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                     <button
                       type='button'
                       onClick={() => handleLinkExisting('personnes')}
-                      className='px-4 py-2 border-2 border-dashed border-c4 h-[56px] rounded-8 text-c5 text-14 hover:border-action hover:bg-c2 transition-all duration-200'>
+                      className='px-4 py-2 border-2 border-dashed border-c4 h-[56px] rounded-[8px] text-c5 text-[14px] hover:border-action hover:bg-c2 transition-all duration-200'>
                       Ajouter un contributeur
                     </button>
                   </div>
@@ -2231,47 +2289,47 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         {shouldShowRightColumn ? (
           <motion.div
             style={{ height: equalHeight || 'auto' }}
-            className='col-span-10 lg:col-span-4 flex flex-col gap-50 overflow-hidden'
+            className='col-span-10 lg:col-span-4 flex flex-col gap-[50px] overflow-hidden'
             initial={{ opacity: 0, x: 30 }}
             animate={
               isExitingRightColumn ? { opacity: 0, x: 60, transition: { duration: 0.35, ease: 'easeIn' } } : { opacity: 1, x: 0, transition: { duration: 0.4, ease: 'easeOut' } }
             }>
             {loadingViews ? (
-              <div className='flex w-full flex-col gap-20 flex-grow'>
+              <div className='flex w-full flex-col gap-[20px] flex-grow'>
                 {/* Header skeleton */}
                 <div className='flex items-center justify-between w-full'>
-                  <div className='w-2/5 h-12 bg-c2 rounded-8 animate-pulse' />
-                  <div className='w-1/5 h-12 bg-c2 rounded-8 animate-pulse' />
+                  <div className='w-2/5 h-12 bg-c2 rounded-[8px] animate-pulse' />
+                  <div className='w-1/5 h-12 bg-c2 rounded-[8px] animate-pulse' />
                 </div>
                 {/* Content skeleton */}
-                <div className='flex flex-col gap-15'>
-                  <div className='w-full h-28 bg-c2 rounded-12 animate-pulse' />
-                  <div className='w-full h-28 bg-c2 rounded-12 animate-pulse' />
-                  <div className='w-full h-28 bg-c2 rounded-12 animate-pulse' />
-                  <div className='w-full h-28 bg-c2 rounded-12 animate-pulse' />
-                  <div className='w-full h-28 bg-c2 rounded-12 animate-pulse' />
-                  <div className='w-full h-28 bg-c2 rounded-12 animate-pulse' />
+                <div className='flex flex-col gap-[15px]'>
+                  <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
+                  <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
+                  <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
+                  <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
+                  <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
+                  <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
                 </div>
               </div>
             ) : (
-            <div className='flex w-full flex-col gap-20 flex-grow min-h-0 overflow-hidden'>
+            <div className='flex w-full flex-col gap-[20px] flex-grow min-h-0 overflow-hidden'>
               {/* Header avec titre et dropdown */}
               <div className='flex items-center justify-between w-full'>
-                <h2 className='text-24 font-medium text-c6'>{selectedOption?.title}</h2>
+                <h2 className='text-[24px] font-medium text-c6'>{selectedOption?.title}</h2>
 
                 {/* Forcing dropdown visibility as requested by user - even if availableViews.length === 1 or 0 (though 0 is unlikely if config is correct) */}
                 <div className='relative'>
                   <Dropdown>
                     <DropdownTrigger className='p-0'>
                       <div
-                        className='hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 flex flex-row rounded-8 border-2 border-c3 items-center justify-center px-15 py-10 text-16 gap-10 text-c6 transition-all ease-in-out duration-200'
+                        className='hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 flex flex-row rounded-[8px] border-2 border-c3 items-center justify-center px-[15px] py-[10px] text-[16px] gap-[10px] text-c6 transition-all ease-in-out duration-200'
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-                        <span className='text-16 font-normal text-c6'>Autres choix</span>
+                        <span className='text-[16px] font-normal text-c6'>Autres choix</span>
                         <ArrowIcon size={12} className='rotate-90 text-c6' />
                       </div>
                     </DropdownTrigger>
 
-                    <DropdownMenu aria-label='View options' className='p-10 bg-c2 rounded-12'>
+                    <DropdownMenu aria-label='View options' className='p-[10px] bg-c2 rounded-[12px]'>
                       {/* Use config.viewOptions directly if availableViews is empty (fallback) */}
                       {(availableViews.length > 0 ? availableViews : config.viewOptions).map((option) => {
                         const isAvailable = availableViews.some((v) => v.key === option.key);
@@ -2285,11 +2343,11 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                             onClick={() => handleOptionSelect(option.key)}
                             isDisabled={isLoading}>
                             <div
-                              className={`flex items-center w-full px-15 py-10 rounded-8 transition-all ease-in-out duration-200 ${
+                              className={`flex items-center w-full px-[15px] py-[10px] rounded-[8px] transition-all ease-in-out duration-200 ${
                                 isLoading ? 'text-c4 cursor-not-allowed' : selected === option.key ? 'bg-action text-selected font-medium' : 'text-c6 hover:bg-c3'
                               }`}>
                               {isLoading && <Spinner size='sm' className='mr-2' />}
-                              <span className='text-16'>{option.title}</span>
+                              <span className='text-[16px]'>{option.title}</span>
                             </div>
                           </DropdownItem>
                         );
@@ -2305,8 +2363,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                 {viewHasContent(selectedOption) ? (
                   renderedContent
                 ) : (
-                  <div className='flex flex-col items-center justify-center w-full h-full py-20 text-center bg-c2 rounded-12 border border-dashed border-c3'>
-                    <p className='text-c5 text-16'>Aucun contenu renseigné pour {selectedOption?.title?.toLowerCase() || 'cette section'}.</p>
+                  <div className='flex flex-col items-center justify-center w-full h-full py-[20px] text-center bg-c2 rounded-[12px] border border-dashed border-c3'>
+                    <p className='text-c5 text-[16px]'>Aucun contenu renseigné pour {selectedOption?.title?.toLowerCase() || 'cette section'}.</p>
                   </div>
                 )}
               </div>
@@ -2318,17 +2376,17 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         {/* Recommendations */}
         {config.showRecommendations && (
           loadingRecommendations ? (
-            <motion.div className='col-span-10 h-full lg:col-span-6 flex flex-col gap-50 flex-grow' variants={fadeIn}>
-              <div className='flex flex-col gap-20'>
-                <h2 className='text-24 font-medium text-c6'>{config.recommendationsTitle || 'Recommandations'}</h2>
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-20'>
+            <motion.div className='col-span-10 h-full lg:col-span-6 flex flex-col gap-[50px] flex-grow' variants={fadeIn}>
+              <div className='flex flex-col gap-[20px]'>
+                <h2 className='text-[24px] font-medium text-c6'>{config.recommendationsTitle || 'Recommandations'}</h2>
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-[20px]'>
                   <ResourceCardSkeleton />
                   <ResourceCardSkeleton />
                 </div>
               </div>
             </motion.div>
           ) : recommendations.length > 0 ? (
-            <motion.div className='col-span-10 h-full lg:col-span-6 flex flex-col gap-50 flex-grow' variants={fadeIn}>
+            <motion.div className='col-span-10 h-full lg:col-span-6 flex flex-col gap-[50px] flex-grow' variants={fadeIn}>
               <FullCarrousel
                 title={config.recommendationsTitle || 'Recommandations'}
                 perPage={2}
@@ -2350,7 +2408,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
         {/* Comments */}
         {config.showComments && (
-          <motion.div className={`${shouldShowRightColumn ? 'col-span-4 lg:col-span-4' : 'col-span-10'} h-full flex flex-col gap-50 flex-grow`} variants={fadeIn}>
+          <motion.div className={`${shouldShowRightColumn ? 'col-span-4 lg:col-span-4' : 'col-span-10'} h-full flex flex-col gap-[50px] flex-grow`} variants={fadeIn}>
             <CommentSection LinkedResourceId={Number(id)} />
           </motion.div>
         )}
@@ -2385,7 +2443,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
             <>
               <ModalHeader className='flex flex-col gap-1'>
                 <div className='flex items-center gap-2'>
-                  <div className='p-1 rounded-10 bg-red-500/20'>
+                  <div className='p-1 rounded-[10px] bg-red-500/20'>
                     <TrashIcon size={20} className='text-[#FF0000]' />
                   </div>
                   <span className='text-c6'>Confirmer la suppression</span>
@@ -2399,10 +2457,10 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                 </div>
               </ModalBody>
               <ModalFooter>
-                <Button variant='light' onPress={onClose} className='text-c5 hover:text-c6 p-4 rounded-6'>
+                <Button variant='light' onPress={onClose} className='text-c5 hover:text-c6 p-4 rounded-[6px]'>
                   Annuler
                 </Button>
-                <Button onPress={handleConfirmDelete} className='bg-danger/100 hover:bg-danger/90 text-white p-4 rounded-6'>
+                <Button onPress={handleConfirmDelete} className='bg-danger/100 hover:bg-danger/90 text-white p-4 rounded-[6px]'>
                   Supprimer
                 </Button>
               </ModalFooter>

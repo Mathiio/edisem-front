@@ -33,11 +33,15 @@ export const conferenceConfigV2Simplified: SimplifiedDetailConfig = {
       key: 'MicroResumes',
       title: 'Micro-résumés',
       renderType: 'microresumes',
+      resourceTemplateId: 125,
+      editable: true,
     },
     {
       key: 'Citations',
       title: 'Citations',
       renderType: 'citations',
+      resourceTemplateId: 80,
+      editable: true,
     },
     {
       key: 'Bibliographie',

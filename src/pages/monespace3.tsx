@@ -165,36 +165,36 @@ const BentoSection: React.FC<{
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className='flex flex-col  p-20 rounded-16 border-2 border-c3 hover:border-c4/30 transition-all duration-300'>
+      className='flex flex-col  p-[20px] rounded-[16px] border-2 border-c3 hover:border-c4/30 transition-all duration-300'>
       {/* Section header */}
       <div className='flex flex-row items-center justify-between gap-[20px]'>
-        <div className='flex items-center gap-4'>
-          <div className='p-6 rounded-16 flex items-center justify-center border-2 border-c3 ' style={{ backgroundColor: `${section.color}15` }}>
+        <div className='flex items-center gap-[10px]'>
+          <div className='p-[8px] rounded-[10px] flex items-center justify-center border-2 border-c3 ' style={{ backgroundColor: `${section.color}15` }}>
             <Icon size={20} style={{ color: section.color }} />
           </div>
           <div className='flex flex-col gap-2'>
-            <h3 className='text-24 text-c6 font-semibold'>{section.title}</h3>
-            <p className='text-c4 text-12'>{section.description}</p>
+            <h3 className='text-[24px] text-c6 font-semibold'>{section.title}</h3>
+            <p className='text-c4 text-[12px]'>{section.description}</p>
           </div>
         </div>
-        <div className='flex items-center gap-8'>
-          <span className='text-24 font-semibold text-c6'>{resources.length}</span>
+        <div className='flex items-center gap-[8px]'>
+          <span className='text-[24px] font-semibold text-c6'>{resources.length}</span>
           {canCreate && categoryConfigs.length > 0 && (
             <Dropdown>
               <DropdownTrigger>
-                <button className='p-6 rounded-8 bg-c2 border-2 border-c3 hover:bg-c3 transition-all duration-200'>
+                <button className='p-[6px] rounded-[8px] bg-c2 border-2 border-c3 hover:bg-c3 transition-all duration-200'>
                   <PlusIcon size={14} className='text-c5 rotate-90' />
                 </button>
               </DropdownTrigger>
               <DropdownMenu
                 aria-label='Créer'
-                className='bg-c2 rounded-16 border-2 border-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] p-4 min-w-[200px]'
+                className='bg-c2 rounded-[16px] border-2 border-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] p-[4px] min-w-[200px]'
                 onAction={(key: Key) => {
                   const config = categoryConfigs.find((c) => String(c.config.templateId) === String(key));
                   if (config) onCreateResource(config.route);
                 }}>
                 {categoryConfigs.map(({ config, icon: CIcon }) => (
-                  <DropdownItem key={String(config.templateId)} className='hover:bg-c3 text-c6 px-3 py-2 rounded-8' startContent={<CIcon size={14} className='text-c5' />}>
+                  <DropdownItem key={String(config.templateId)} className='hover:bg-c3 text-c6 px-3 py-2 rounded-[8px]' startContent={<CIcon size={14} className='text-c5' />}>
                     {config.resourceType}
                   </DropdownItem>
                 ))}
@@ -206,7 +206,7 @@ const BentoSection: React.FC<{
 
       {/* Resources */}
       {loading ? (
-        <div className='grid grid-cols-4 gap-15'>
+        <div className='grid grid-cols-4 gap-[15px]'>
           {Array.from({ length: 4 }).map((_, i) => (
             <StudentCardSkeleton key={i} />
           ))}
@@ -215,7 +215,7 @@ const BentoSection: React.FC<{
         <></>
       ) : (
         <>
-          <div className='grid grid-cols-4 gap-15 mt-[20px]'>
+          <div className='grid grid-cols-4 gap-[15px] mt-[20px]'>
             {displayResources.map((item, index) => (
               <motion.div key={`${section.key}-${item.type}-${item.id}`} initial='hidden' animate='visible' variants={fadeIn} custom={index}>
                 <StudentCard
@@ -236,7 +236,7 @@ const BentoSection: React.FC<{
             ))}
           </div>
           {resources.length > 4 && (
-            <button onClick={onToggle} className='flex items-center gap-6 self-center text-c5 hover:text-c6 text-14 transition-colors pt-6'>
+            <button onClick={onToggle} className='flex items-center gap-[6px] self-center text-c5 hover:text-c6 text-[14px] transition-colors pt-[6px]'>
               {expanded ? 'Voir moins' : `Voir tout (${resources.length})`}
               <ArrowIcon size={12} className={`transition-transform ${expanded ? 'rotate-[-90deg]' : 'rotate-90'}`} />
             </button>
@@ -398,26 +398,30 @@ export const MonEspace3: React.FC = () => {
   const totalResources = allResources.length;
 
   return (
-    <Layouts className='col-span-10 flex flex-col gap-40 z-0 overflow-visible'>
+    <Layouts className='col-span-10 flex flex-col gap-[40px] z-0 overflow-visible'>
       {/* ===== HERO / PROFILE ===== */}
-      <div className='flex flex-col gap-25 pt-60'>
+      <div className='flex flex-col gap-[25px] pt-[60px]'>
         <div className='flex items-start justify-between'>
-          <div className='flex items-center gap-20'>
-            <div className='w-75 h-75 rounded-xl bg-gradient-to-br from-c3 to-c2 flex items-center justify-center border-2 border-c3'>
-              <UserIcon size={32} className='text-c5' />
+          <div className='flex items-center gap-[20px]'>
+            <div className='w-[75px] h-[75px] rounded-xl bg-gradient-to-br from-c3 to-c2 flex items-center justify-center border-2 border-c3 overflow-hidden'>
+              {userData?.picture ? (
+                <img src={userData.picture} alt={fullName} className='w-full h-full object-cover' />
+              ) : (
+                <UserIcon size={32} className='text-c5' />
+              )}
             </div>
-            <div className='flex flex-col gap-4'>
-              <h1 className='text-32 text-c6 font-semibold'>{fullName}</h1>
-              <div className='flex items-center gap-10'>
-                <span className='text-c4 text-14'>{userTypeLabel}</span>
+            <div className='flex flex-col gap-[4px]'>
+              <h1 className='text-[32px] text-c6 font-semibold'>{fullName}</h1>
+              <div className='flex items-center gap-[10px]'>
+                <span className='text-c4 text-[14px]'>{userTypeLabel}</span>
                 <span className='text-c3'>|</span>
-                <span className='text-c4 text-14'>
+                <span className='text-c4 text-[14px]'>
                   {totalResources} ressource{totalResources !== 1 ? 's' : ''}
                 </span>
                 {courses.length > 0 && (
                   <>
                     <span className='text-c3'>|</span>
-                    <span className='text-c4 text-14'>{courses.length} cours</span>
+                    <span className='text-c4 text-[14px]'>{courses.length} cours</span>
                   </>
                 )}
               </div>
@@ -425,7 +429,7 @@ export const MonEspace3: React.FC = () => {
           </div>
 
           {/* Course selector + Global create */}
-          <div className='flex items-end justify-end gap-10'>
+          <div className='flex items-end justify-end gap-[10px]'>
             {canCreate && (isActant || courses.length > 1) && (
               <Select
                 label='Destination'
@@ -459,14 +463,14 @@ export const MonEspace3: React.FC = () => {
             {canCreate && (
               <Dropdown>
                 <DropdownTrigger>
-                  <div className='h-[48px] hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 flex flex-row rounded-8 border-2 border-c3 items-center  px-15 py-2 text-14 gap-4 text-c6 transition-all duration-200'>
+                  <div className='h-[48px] hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 flex flex-row rounded-[8px] border-2 border-c3 items-center  px-[15px] py-2 text-[14px] gap-[8px] text-c6 transition-all duration-200'>
                     <PlusIcon className='text-c6 rotate-90' size={14} />
                     Créer une ressource
                   </div>
                 </DropdownTrigger>
                 <DropdownMenu
                   aria-label='Créer'
-                  className='bg-c2 rounded-20 border-2 border-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] p-4 min-w-[220px]'
+                  className='bg-c2 rounded-[12px] border-2 border-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] p-[8px] min-w-[220px]'
                   onAction={(key: Key) => {
                     const config = createableConfigs.find((c) => String(c.config.templateId) === String(key));
                     if (config) handleCreateResource(config.route);
@@ -474,7 +478,7 @@ export const MonEspace3: React.FC = () => {
                   {createableConfigs.map(({ config, icon: Icon }) => (
                     <DropdownItem
                       key={String(config.templateId)}
-                      className='hover:bg-c3 text-c6 px-3 py-2 rounded-8 transition-all duration-200'
+                      className='hover:bg-c3 text-c6 px-3 py-2 rounded-[8px] transition-all duration-200'
                       startContent={<Icon size={16} className='text-c5' />}>
                       {config.resourceType}
                     </DropdownItem>
@@ -487,22 +491,22 @@ export const MonEspace3: React.FC = () => {
 
         {/* Warning */}
         {!isActant && !loadingCourses && courses.length === 0 && (
-          <div className='flex items-center gap-10 bg-warning/10 border-2 border-warning/30 rounded-10 px-15 py-10 self-start'>
+          <div className='flex items-center gap-[10px] bg-warning/10 border-2 border-warning/30 rounded-[10px] px-[15px] py-[10px] self-start'>
             <WarningIcon size={18} className='text-warning' />
-            <span className='text-c5 text-14'>Inscription à un cours requise pour créer des ressources.</span>
+            <span className='text-c5 text-[14px]'>Inscription à un cours requise pour créer des ressources.</span>
           </div>
         )}
 
         {/* Quick stats bar */}
-        <div className='flex gap-4'>
+        <div className='flex gap-[8px] flex-wrap'>
           {bentoSections.map((section) => {
             const Icon = section.icon;
             const count = allResources.filter(section.filter).length;
             return (
-              <div key={section.key} className='flex items-center gap-4 px-15 py-4 rounded-10 border-2 border-c3 bg-c1'>
+              <div key={section.key} className='flex items-center gap-[6px] px-[15px] py-[8px] rounded-[10px] border-2 border-c3 bg-c1'>
                 <Icon size={16} style={{ color: section.color }} />
-                <span className='text-14 text-c5'>{section.title.replace('Mes ', '')}</span>
-                <span className='text-14 font-semibold text-c6'>{count}</span>
+                <span className='text-[14px] text-c5'>{section.title.replace('Mes ', '')}</span>
+                <span className='text-[14px] font-semibold text-c6'>{count}</span>
               </div>
             );
           })}
@@ -511,12 +515,12 @@ export const MonEspace3: React.FC = () => {
 
       {/* ===== RECENT ACTIVITY ===== */}
       {!loading && allResources.length > 0 && (
-        <div className='flex flex-col gap-15'>
-          <h2 className='text-24 text-c6 font-semibold flex items-center gap-4'>
+        <div className='flex flex-col gap-[15px]'>
+          <h2 className='text-[24px] text-c6 font-semibold flex items-center gap-[10px]'>
             <CalendarIcon size={18} className='text-c4' />
             Dernières modifications
           </h2>
-          <div className='grid grid-cols-4 gap-15'>
+          <div className='grid grid-cols-4 gap-[15px]'>
             {allResources.slice(0, 4).map((item, index) => (
               <motion.div key={`recent-${item.type}-${item.id}`} initial='hidden' animate='visible' variants={fadeIn} custom={index}>
                 <StudentCard
@@ -540,8 +544,8 @@ export const MonEspace3: React.FC = () => {
       )}
 
       {/* ===== BENTO SECTIONS ===== */}
-      <div className='flex flex-col gap-20'>
-        <h2 className='text-24 text-c6 font-semibold flex items-center gap-4'>
+      <div className='flex flex-col gap-[20px]'>
+        <h2 className='text-[24px] text-c6 font-semibold flex items-center gap-[10px]'>
           <CalendarIcon size={18} className='text-c4' />
           Mes ressources
         </h2>
@@ -570,7 +574,7 @@ export const MonEspace3: React.FC = () => {
         <ModalContent>
           <ModalHeader className='flex flex-col gap-1'>
             <div className='flex items-center gap-2'>
-              <div className='p-1 rounded-10 bg-[#FF0000]/20'>
+              <div className='p-1 rounded-[10px] bg-[#FF0000]/20'>
                 <TrashIcon size={20} className='text-[#FF0000]' />
               </div>
               <span className='text-c6'>Confirmer la suppression</span>
@@ -580,7 +584,7 @@ export const MonEspace3: React.FC = () => {
             <p className='text-c5'>
               Supprimer <span className='text-c6 font-semibold'>"{itemToDelete?.title}"</span> ?
             </p>
-            <p className='text-c4 text-14'>Cette action est irréversible.</p>
+            <p className='text-c4 text-[14px]'>Cette action est irréversible.</p>
           </ModalBody>
           <ModalFooter>
             <Button variant='light' onPress={() => setDeleteModalOpen(false)} className='text-c5 hover:text-c6 min-h'>

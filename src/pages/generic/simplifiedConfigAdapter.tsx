@@ -71,6 +71,159 @@ const MicroresumesView: React.FC<{ itemId: string | number; onTimeChange?: (time
 };
 import { AddResourceCard } from '@/components/features/forms/AddResourceCard';
 import { GenericDetailPage } from './GenericDetailPage';
+
+// ========================================
+// Helpers pour timecodes
+// ========================================
+
+const formatTimecode = (seconds: number): string => {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+};
+
+const parseTimecode = (str: string): number => {
+  const parts = str.split(':').map(Number).filter((n) => !isNaN(n));
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  return parts[0] || 0;
+};
+
+// ========================================
+// Inline form: Ajouter des citations
+// ========================================
+
+const InlineCitationForm: React.FC<{
+  items: any[];
+  onChange: (items: any[]) => void;
+}> = ({ items, onChange }) => {
+  const add = () => onChange([...items, { citation: '', startTime: 0, endTime: 0 }]);
+  const update = (i: number, field: string, value: any) => {
+    const updated = [...items];
+    updated[i] = { ...updated[i], [field]: value };
+    onChange(updated);
+  };
+  const remove = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+
+  return (
+    <div className='flex flex-col gap-[10px]'>
+      {items.map((item, i) => (
+        <div key={i} className='flex flex-col gap-[8px] p-[12px] bg-c2 rounded-[10px] border border-c3'>
+          <textarea
+            value={item.citation}
+            onChange={(e) => update(i, 'citation', e.target.value)}
+            placeholder='Contenu de la citation...'
+            className='bg-c1 border border-c3 rounded-[8px] px-[12px] py-[8px] text-c6 text-[14px] resize-none focus:outline-none focus:border-action'
+            rows={3}
+          />
+          <div className='flex gap-[8px] items-center'>
+            <div className='flex flex-col gap-[2px]'>
+              <label className='text-[12px] text-c4'>Début</label>
+              <input
+                type='text'
+                value={formatTimecode(item.startTime || 0)}
+                onChange={(e) => update(i, 'startTime', parseTimecode(e.target.value))}
+                placeholder='00:00:00'
+                className='bg-c1 border border-c3 rounded-[8px] px-[12px] py-[8px] text-c6 text-[14px] w-[110px] focus:outline-none focus:border-action'
+              />
+            </div>
+            <div className='flex flex-col gap-[2px]'>
+              <label className='text-[12px] text-c4'>Fin</label>
+              <input
+                type='text'
+                value={formatTimecode(item.endTime || 0)}
+                onChange={(e) => update(i, 'endTime', parseTimecode(e.target.value))}
+                placeholder='00:00:00'
+                className='bg-c1 border border-c3 rounded-[8px] px-[12px] py-[8px] text-c6 text-[14px] w-[110px] focus:outline-none focus:border-action'
+              />
+            </div>
+            <button onClick={() => remove(i)} className='ml-auto mt-auto p-[6px] text-c4 hover:text-red-500 transition-colors'>
+              <CrossIcon size={14} />
+            </button>
+          </div>
+        </div>
+      ))}
+      <button
+        onClick={add}
+        className='flex items-center gap-[6px] px-[12px] py-[10px] border-2 border-dashed border-c4 rounded-[8px] text-c5 text-[14px] hover:border-action hover:bg-c2 transition-all duration-200'>
+        <PlusIcon size={14} />
+        Ajouter une citation
+      </button>
+    </div>
+  );
+};
+
+// ========================================
+// Inline form: Ajouter des micro-résumés
+// ========================================
+
+const InlineMicroresumeForm: React.FC<{
+  items: any[];
+  onChange: (items: any[]) => void;
+}> = ({ items, onChange }) => {
+  const add = () => onChange([...items, { title: '', description: '', startTime: 0, endTime: 0 }]);
+  const update = (i: number, field: string, value: any) => {
+    const updated = [...items];
+    updated[i] = { ...updated[i], [field]: value };
+    onChange(updated);
+  };
+  const remove = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+
+  return (
+    <div className='flex flex-col gap-[10px]'>
+      {items.map((item, i) => (
+        <div key={i} className='flex flex-col gap-[8px] p-[12px] bg-c2 rounded-[10px] border border-c3'>
+          <input
+            type='text'
+            value={item.title}
+            onChange={(e) => update(i, 'title', e.target.value)}
+            placeholder='Titre du micro-résumé'
+            className='bg-c1 border border-c3 rounded-[8px] px-[12px] py-[8px] text-c6 text-[14px] focus:outline-none focus:border-action'
+          />
+          <textarea
+            value={item.description}
+            onChange={(e) => update(i, 'description', e.target.value)}
+            placeholder='Description...'
+            className='bg-c1 border border-c3 rounded-[8px] px-[12px] py-[8px] text-c6 text-[14px] resize-none focus:outline-none focus:border-action'
+            rows={3}
+          />
+          <div className='flex gap-[8px] items-center'>
+            <div className='flex flex-col gap-[2px]'>
+              <label className='text-[12px] text-c4'>Début</label>
+              <input
+                type='text'
+                value={formatTimecode(item.startTime || 0)}
+                onChange={(e) => update(i, 'startTime', parseTimecode(e.target.value))}
+                placeholder='00:00:00'
+                className='bg-c1 border border-c3 rounded-[8px] px-[12px] py-[8px] text-c6 text-[14px] w-[110px] focus:outline-none focus:border-action'
+              />
+            </div>
+            <div className='flex flex-col gap-[2px]'>
+              <label className='text-[12px] text-c4'>Fin</label>
+              <input
+                type='text'
+                value={formatTimecode(item.endTime || 0)}
+                onChange={(e) => update(i, 'endTime', parseTimecode(e.target.value))}
+                placeholder='00:00:00'
+                className='bg-c1 border border-c3 rounded-[8px] px-[12px] py-[8px] text-c6 text-[14px] w-[110px] focus:outline-none focus:border-action'
+              />
+            </div>
+            <button onClick={() => remove(i)} className='ml-auto mt-auto p-[6px] text-c4 hover:text-red-500 transition-colors'>
+              <CrossIcon size={14} />
+            </button>
+          </div>
+        </div>
+      ))}
+      <button
+        onClick={add}
+        className='flex items-center gap-[6px] px-[12px] py-[10px] border-2 border-dashed border-c4 rounded-[8px] text-c5 text-[14px] hover:border-action hover:bg-c2 transition-all duration-200'>
+        <PlusIcon size={14} />
+        Ajouter un micro-résumé
+      </button>
+    </div>
+  );
+};
 import { getResourceUrl, getResourceConfigByTemplateId } from '@/config/resourceConfig';
 import AutoResizingField from '@/components/features/database/AutoResizingTextarea';
 
@@ -1016,7 +1169,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
     resourceTemplateId: view.resourceTemplateId,
     resourceTemplateIds: view.resourceTemplateIds,
     renderContent: (context) => {
-      const { itemDetails, loadingViews, isEditing, onLinkExisting, onCreateNew, onRemoveItem, onItemsChange, onEditResource, updatedResources, onTimeChange } = context;
+      const { itemDetails, loadingViews, isEditing, onLinkExisting, onCreateNew, onRemoveItem, onItemsChange, onEditResource, updatedResources, onTimeChange, formData } = context;
       switch (view.renderType) {
         case 'items': {
           let resourceIds = getResourceIds(itemDetails, view.property || '');
@@ -1098,12 +1251,12 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                 <AutoResizingField
                   textareaProps={{
                     className:
-                      'w-full min-h-[150px] !bg-c1 hover:!bg-c1 border-2 border-c3 rounded-12 text-c6 !text-16 resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0 data-[focus=true]:outline-none',
+                      'w-full min-h-[150px] !bg-c1 hover:!bg-c1 border-2 border-c3 rounded-[12px] text-c6 !text-[16px] resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0 data-[focus=true]:outline-none',
                     classNames: {
-                      inputWrapper: 'bg-c1 rounded-12 text-c6 text-16 resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0',
-                      input: 'text-c6 !text-16 resize-y !outline-none data-[focus=true]:outline-none',
-                      innerWrapper: 'px-20 py-20 data-[focus=true]:border-0 data-[focus=true]:outline-none !focus-visible:outline-hidden',
-                      base: 'bg-c1 rounded-12 text-c6 text-16 resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0 data-[focus=true]:outline-none',
+                      inputWrapper: 'bg-c1 rounded-[12px] text-c6 text-[16px] resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0',
+                      input: 'text-c6 !text-[16px] resize-y !outline-none data-[focus=true]:outline-none',
+                      innerWrapper: 'px-[20px] py-[20px] data-[focus=true]:border-0 data-[focus=true]:outline-none !focus-visible:outline-hidden',
+                      base: 'bg-c1 rounded-[12px] text-c6 text-[16px] resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0 data-[focus=true]:outline-none',
                     },
                   }}
                   value={text || ''}
@@ -1207,7 +1360,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
           const showCategoryTitle = view.categories.length > 1;
 
           return (
-            <div className='flex flex-col gap-25'>
+            <div className='flex flex-col gap-[25px]'>
               {view.categories.map((category) => {
                 if (!canEdit) {
                   const categoryHasContent = category.subcategories.some((sub) => {
@@ -1218,9 +1371,9 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                 }
 
                 return (
-                  <div key={category.key} className='flex flex-col gap-15'>
-                    {showCategoryTitle && <h2 className='text-20 font-semibold text-c6'>{category.title}</h2>}
-                    <div className='flex flex-col gap-20'>
+                  <div key={category.key} className='flex flex-col gap-[15px]'>
+                    {showCategoryTitle && <h2 className='text-[20px] font-semibold text-c6'>{category.title}</h2>}
+                    <div className='flex flex-col gap-[20px]'>
                       {category.subcategories.map((subcategory) => {
                         const allValues = getAllOmekaValues(itemDetails, subcategory.property);
 
@@ -1236,20 +1389,20 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                           const displayValues = editValues.length > 0 ? editValues : [''];
 
                           return (
-                            <div key={subcategory.key} className='flex flex-col gap-10'>
-                              <h3 className='text-c6 font-semibold text-16'>{subcategory.label}</h3>
+                            <div key={subcategory.key} className='flex flex-col gap-[10px]'>
+                              <h3 className='text-c6 font-semibold text-[16px]'>{subcategory.label}</h3>
 
                               {displayValues.map((value, index) => (
-                                <div key={index} className='flex gap-8 items-start'>
+                                <div key={index} className='flex gap-[8px] items-start'>
                                   <AutoResizingField
                                     textareaProps={{
                                       className:
-                                        'w-full min-h-[80px] !bg-c1 hover:!bg-c1 border-2 border-c3 rounded-12 text-c6 !text-14 resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0 data-[focus=true]:outline-none',
+                                        'w-full min-h-[80px] !bg-c1 hover:!bg-c1 border-2 border-c3 rounded-[12px] text-c6 !text-[14px] resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0 data-[focus=true]:outline-none',
                                       classNames: {
-                                        inputWrapper: 'bg-c1 rounded-12 text-c6 text-14 resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0',
-                                        input: 'text-c6 !text-14 resize-y !outline-none data-[focus=true]:outline-none',
-                                        innerWrapper: 'px-15 py-15 data-[focus=true]:border-0 data-[focus=true]:outline-none !focus-visible:outline-hidden',
-                                        base: 'bg-c1 rounded-12 text-c6 text-14 resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0 data-[focus=true]:outline-none',
+                                        inputWrapper: 'bg-c1 rounded-[12px] text-c6 text-[14px] resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0',
+                                        input: 'text-c6 !text-[14px] resize-y !outline-none data-[focus=true]:outline-none',
+                                        innerWrapper: 'px-[15px] py-[15px] data-[focus=true]:border-0 data-[focus=true]:outline-none !focus-visible:outline-hidden',
+                                        base: 'bg-c1 rounded-[12px] text-c6 text-[14px] resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0 data-[focus=true]:outline-none',
                                       },
                                     }}
                                     value={value}
@@ -1298,18 +1451,18 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                         const isUri = isUriProperty(itemDetails, subcategory.property);
 
                         return (
-                          <div key={subcategory.key} className='flex flex-col gap-10'>
-                            <h3 className='text-c6 font-semibold text-16'>{subcategory.label}</h3>
+                          <div key={subcategory.key} className='flex flex-col gap-[10px]'>
+                            <h3 className='text-c6 font-semibold text-[16px]'>{subcategory.label}</h3>
                             {allValues.map(
                               (val, i) =>
                                 val.trim() !== '' && (
-                                  <div key={i} className='bg-c1 rounded-8 p-25 border-2 border-c3'>
+                                  <div key={i} className='bg-c1 rounded-[8px] p-[25px] border-2 border-c3'>
                                     {isUri ? (
-                                      <a href={val} target='_blank' rel='noopener noreferrer' className='text-action text-14 leading-[125%] hover:underline break-all'>
+                                      <a href={val} target='_blank' rel='noopener noreferrer' className='text-action text-[14px] leading-[125%] hover:underline break-all'>
                                         {val}
                                       </a>
                                     ) : (
-                                      <p className='text-c5 text-14 leading-[125%]'>{val}</p>
+                                      <p className='text-c5 text-[14px] leading-[125%]'>{val}</p>
                                     )}
                                   </div>
                                 ),
@@ -1327,14 +1480,30 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
 
         case 'citations': {
           const itemId = itemDetails?.['o:id'] || itemDetails?.id;
-          if (!itemId) return null;
-          return <CitationsView itemId={itemId} onTimeChange={onTimeChange} />;
+          const canEditCitations = isEditing && view.editable !== false;
+          const newCitations = (formData?.[view.key] as any[]) || [];
+          return (
+            <div className='flex flex-col gap-[15px]'>
+              {itemId && <CitationsView itemId={itemId} onTimeChange={onTimeChange} />}
+              {canEditCitations && onItemsChange && (
+                <InlineCitationForm items={newCitations} onChange={(items) => onItemsChange(view.key, items)} />
+              )}
+            </div>
+          );
         }
 
         case 'microresumes': {
           const itemId = itemDetails?.['o:id'] || itemDetails?.id;
-          if (!itemId) return null;
-          return <MicroresumesView itemId={itemId} onTimeChange={onTimeChange} />;
+          const canEditMicroresumes = isEditing && view.editable !== false;
+          const newMicroresumes = (formData?.[view.key] as any[]) || [];
+          return (
+            <div className='flex flex-col gap-[15px]'>
+              {itemId && <MicroresumesView itemId={itemId} onTimeChange={onTimeChange} />}
+              {canEditMicroresumes && onItemsChange && (
+                <InlineMicroresumeForm items={newMicroresumes} onChange={(items) => onItemsChange(view.key, items)} />
+              )}
+            </div>
+          );
         }
 
         case 'custom': {
