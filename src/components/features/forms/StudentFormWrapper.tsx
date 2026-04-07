@@ -6,7 +6,7 @@ import { GenericDetailPageConfig } from '@/pages/generic/config';
 
 // Import de toutes les configs pour le registre dynamique
 import { toolStudentConfig } from '@/pages/generic/config/toolStudentConfig';
-import { feedbackStudentConfig } from '@/pages/generic/config/feedbackStudentConfig';
+import { feedbackStudentConfig, feedbackStudentConfigSimplified } from '@/pages/generic/config/feedbackStudentConfig';
 import { experimentationStudentConfig } from '@/pages/generic/config/experimentationStudentConfig';
 import { bibliographyStudentConfig } from '@/pages/generic/config/bibliographyStudentConfig';
 import { toolConfig } from '@/pages/generic/config/toolConfig';
