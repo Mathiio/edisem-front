@@ -1924,17 +1924,22 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
   // Filter views to only show those with content
   const availableViews = useMemo(() => {
-    if (!itemDetails || loading) {
+    if (!config.viewOptions || config.viewOptions.length === 0) {
       return [];
     }
 
-    if (!config.viewOptions || config.viewOptions.length === 0) {
+    // In create mode, show all editable views (no itemDetails to check)
+    if (mode === 'create') {
+      return config.viewOptions.filter((viewOption) => viewOption.editable !== false);
+    }
+
+    if (!itemDetails || loading) {
       return [];
     }
 
     // Filter views to only include those with content (or all editable in edit mode)
     return config.viewOptions.filter((viewOption) => viewHasContent(viewOption));
-  }, [itemDetails, loading, config.viewOptions, isEditing]);
+  }, [itemDetails, loading, config.viewOptions, isEditing, mode]);
 
   // Ensure selected view is available, if not select the first available view
   useEffect(() => {
