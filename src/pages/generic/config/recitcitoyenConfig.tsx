@@ -38,6 +38,7 @@ export const recitCitoyenConfigSimplified: SimplifiedDetailConfig = {
       title: 'Analyses critiques',
       property: 'dcterms:description',
       renderType: 'items',
+      resourceTemplateId: 101,
       urlPattern: '/corpus/analyse-critique/:id',
     },
     {

@@ -38,6 +38,7 @@ export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
       property: 'dcterms:description',
       renderType: 'items',
       urlPattern: '/corpus/analyse-critique/:id',
+      resourceTemplateId: 101,
     },
     {
       key: 'figureNarrative',
