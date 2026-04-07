@@ -35,7 +35,7 @@ import { analyseCritiqueConfigSimplified } from '@/pages/generic/config/analyseC
 import { elementEsthetiqueConfigSimplified } from '@/pages/generic/config/elementEsthetiqueConfig';
 import { elementNarratifConfigSimplified } from '@/pages/generic/config/elementNarratifConfig';
 import { bibliographyStudentConfigSimplified } from '@/pages/generic/config/bibliographyStudentConfig';
-import { RESOURCE_TYPES } from '@/config/resourceConfig';
+import { RESOURCE_TYPES, getRessourceLabel } from '@/config/resourceConfig';
 import { useAuth } from '@/hooks/useAuth';
 import type { Key } from 'react';
 import { Button } from '@/theme/components/button';
@@ -187,7 +187,7 @@ const BentoSection: React.FC<{
                 }}>
                 {categoryConfigs.map(({ config, icon: CIcon }) => (
                   <DropdownItem key={String(config.templateId)} className='hover:bg-c3 text-c6 px-3 py-2 rounded-[8px]' startContent={<CIcon size={14} className='text-c5' />}>
-                    {config.resourceType}
+                    {getRessourceLabel(config.resourceType)}
                   </DropdownItem>
                 ))}
               </DropdownMenu>
@@ -468,7 +468,7 @@ export const MonEspace3: React.FC = () => {
                       key={String(config.templateId)}
                       className='hover:bg-c3 text-c6 px-3 py-2 rounded-[8px] transition-all duration-200'
                       startContent={<Icon size={16} className='text-c5' />}>
-                      {config.resourceType}
+                      {getRessourceLabel(config.resourceType)}
                     </DropdownItem>
                   ))}
                 </DropdownMenu>
