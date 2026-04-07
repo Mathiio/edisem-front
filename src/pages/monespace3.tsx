@@ -42,23 +42,24 @@ import { Button } from '@/theme/components/button';
 
 const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=StudentSpace';
 
+// role: 'student' = étudiants uniquement, 'actant' = actants uniquement, 'any' = les deux
 const createableConfigs = [
-  { config: experimentationStudentConfigSimplified, route: '/add-resource/experimentation', icon: ExperimentationIcon, category: 'experimentation' },
-  { config: experimentationConfigSimplified, route: '/add-resource/experimentation-chercheur', icon: ExperimentationIcon, category: 'experimentation' },
-  { config: toolStudentConfigSimplified, route: '/add-resource/outil', icon: UniversityIcon, category: 'outil' },
-  { config: toolConfigSimplified, route: '/add-resource/outil-chercheur', icon: UniversityIcon, category: 'outil' },
-  { config: feedbackStudentConfigSimplified, route: '/add-resource/retour-experience', icon: BookIcon, category: 'feedback' },
-  { config: feedbackConfigSimplified, route: '/add-resource/retour-experience-chercheur', icon: BookIcon, category: 'feedback' },
-  { config: conferenceConfigSimplified, route: '/add-resource/conference', icon: SeminaireIcon, category: 'conference' },
-  { config: recitScientifiqueConfigSimplified, route: '/add-resource/recit-scientifique', icon: PratiqueNarrativeIcon, category: 'recit' },
-  { config: recitArtitstiqueConfigSimplified, route: '/add-resource/recit-artistique', icon: PratiqueNarrativeIcon, category: 'recit' },
-  { config: recitTechnoConfigSimplified, route: '/add-resource/recit-techno', icon: PratiqueNarrativeIcon, category: 'recit' },
-  { config: recitCitoyenConfigSimplified, route: '/add-resource/recit-citoyen', icon: PratiqueNarrativeIcon, category: 'recit' },
-  { config: recitMediatiqueConfigSimplified, route: '/add-resource/recit-mediatique', icon: PratiqueNarrativeIcon, category: 'recit' },
-  { config: analyseCritiqueConfigSimplified, route: '/add-resource/analyse-critique', icon: CollectionIcon, category: 'analyse' },
-  { config: elementEsthetiqueConfigSimplified, route: '/add-resource/element-esthetique', icon: CollectionIcon, category: 'element' },
-  { config: elementNarratifConfigSimplified, route: '/add-resource/element-narratif', icon: CollectionIcon, category: 'element' },
-  { config: bibliographyStudentConfigSimplified, route: '/add-resource/bibliographie', icon: BookIcon, category: 'bibliographie' },
+  { config: experimentationStudentConfigSimplified, route: '/add-resource/experimentation', icon: ExperimentationIcon, category: 'experimentation', role: 'student' as const },
+  { config: experimentationConfigSimplified, route: '/add-resource/experimentation-chercheur', icon: ExperimentationIcon, category: 'experimentation', role: 'actant' as const },
+  { config: toolStudentConfigSimplified, route: '/add-resource/outil', icon: UniversityIcon, category: 'outil', role: 'student' as const },
+  { config: toolConfigSimplified, route: '/add-resource/outil-chercheur', icon: UniversityIcon, category: 'outil', role: 'actant' as const },
+  { config: feedbackStudentConfigSimplified, route: '/add-resource/retour-experience', icon: BookIcon, category: 'feedback', role: 'student' as const },
+  { config: feedbackConfigSimplified, route: '/add-resource/retour-experience-chercheur', icon: BookIcon, category: 'feedback', role: 'actant' as const },
+  { config: conferenceConfigSimplified, route: '/add-resource/conference', icon: SeminaireIcon, category: 'conference', role: 'actant' as const },
+  { config: recitScientifiqueConfigSimplified, route: '/add-resource/recit-scientifique', icon: PratiqueNarrativeIcon, category: 'recit', role: 'actant' as const },
+  { config: recitArtitstiqueConfigSimplified, route: '/add-resource/recit-artistique', icon: PratiqueNarrativeIcon, category: 'recit', role: 'actant' as const },
+  { config: recitTechnoConfigSimplified, route: '/add-resource/recit-techno', icon: PratiqueNarrativeIcon, category: 'recit', role: 'actant' as const },
+  { config: recitCitoyenConfigSimplified, route: '/add-resource/recit-citoyen', icon: PratiqueNarrativeIcon, category: 'recit', role: 'actant' as const },
+  { config: recitMediatiqueConfigSimplified, route: '/add-resource/recit-mediatique', icon: PratiqueNarrativeIcon, category: 'recit', role: 'actant' as const },
+  { config: analyseCritiqueConfigSimplified, route: '/add-resource/analyse-critique', icon: CollectionIcon, category: 'analyse', role: 'actant' as const },
+  { config: elementEsthetiqueConfigSimplified, route: '/add-resource/element-esthetique', icon: CollectionIcon, category: 'element', role: 'actant' as const },
+  { config: elementNarratifConfigSimplified, route: '/add-resource/element-narratif', icon: CollectionIcon, category: 'element', role: 'actant' as const },
+  { config: bibliographyStudentConfigSimplified, route: '/add-resource/bibliographie', icon: BookIcon, category: 'bibliographie', role: 'any' as const },
 ];
 
 // Bento sections definition
@@ -170,12 +171,11 @@ const BentoSection: React.FC<{
           </div>
         </div>
         <div className='flex items-center gap-[8px]'>
-          <span className='text-[24px] font-semibold text-c6'>{resources.length}</span>
           {canCreate && categoryConfigs.length > 0 && (
             <Dropdown>
               <DropdownTrigger>
-                <button className='p-[6px] rounded-[8px] bg-c2 border-2 border-c3 hover:bg-c3 transition-all duration-200'>
-                  <PlusIcon size={14} className='text-c5 rotate-90' />
+                <button className='flex flex-row items-center gap-2 cursor-pointer text-white px-3 py-2 rounded-[8px] bg-c2 border-2 border-c3 hover:bg-c3 transition-all duration-200'>
+                  Créer <PlusIcon size={14} className='text-c5 rotate-90' />
                 </button>
               </DropdownTrigger>
               <DropdownMenu
@@ -261,6 +261,12 @@ export const MonEspace3: React.FC = () => {
   }, [isActant]);
 
   const canCreate = useMemo(() => isActant || courses.length > 0, [isActant, courses.length]);
+
+  // Filtrer les configs créables selon le rôle (étudiant ou actant)
+  const filteredCreateableConfigs = useMemo(
+    () => createableConfigs.filter((c) => c.role === 'any' || (isActant ? c.role === 'actant' : c.role === 'student')),
+    [isActant],
+  );
 
   const fullName = useMemo(() => {
     if (userData?.firstname && userData?.lastname) return `${userData.firstname} ${userData.lastname}`;
@@ -460,10 +466,10 @@ export const MonEspace3: React.FC = () => {
                   aria-label='Créer'
                   className='bg-c2 rounded-[12px] border-2 border-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] p-[8px] min-w-[220px]'
                   onAction={(key: Key) => {
-                    const config = createableConfigs.find((c) => String(c.config.templateId) === String(key));
+                    const config = filteredCreateableConfigs.find((c) => String(c.config.templateId) === String(key));
                     if (config) handleCreateResource(config.route);
                   }}>
-                  {createableConfigs.map(({ config, icon: Icon }) => (
+                  {filteredCreateableConfigs.map(({ config, icon: Icon }) => (
                     <DropdownItem
                       key={String(config.templateId)}
                       className='hover:bg-c3 text-c6 px-3 py-2 rounded-[8px] transition-all duration-200'
@@ -548,7 +554,7 @@ export const MonEspace3: React.FC = () => {
             onEdit={handleEdit}
             onDelete={handleDeleteClick}
             canCreate={canCreate}
-            createConfigs={createableConfigs}
+            createConfigs={filteredCreateableConfigs}
             onCreateResource={handleCreateResource}
           />
         ))}
