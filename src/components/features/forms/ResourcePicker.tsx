@@ -93,18 +93,30 @@ interface TemplateData {
 }
 
 // Helper function to load resources from multiple template IDs
+// Groups templates with the same label into a single tab
 const loadResourcesByMultipleTemplateIds = async (templateIds: number[]): Promise<TemplateData[]> => {
   try {
-    console.log('[ResourcePicker] Chargement multiple templates:', templateIds);
-    const results = await Promise.all(
+    const rawResults = await Promise.all(
       templateIds.map(async (templateId) => {
         const { resources, templateLabel } = await loadResourcesByTemplateId(templateId);
         return { templateId, templateLabel, resources };
       }),
     );
 
+    // Group by label to avoid duplicate tabs (e.g. Bibliographie 81 + 99)
+    const grouped = new Map<string, TemplateData>();
+    for (const r of rawResults) {
+      const existing = grouped.get(r.templateLabel);
+      if (existing) {
+        existing.resources = [...existing.resources, ...r.resources];
+      } else {
+        grouped.set(r.templateLabel, { templateId: r.templateId, templateLabel: r.templateLabel, resources: r.resources });
+      }
+    }
+
+    const results = [...grouped.values()];
     const total = results.reduce((sum, t) => sum + t.resources.length, 0);
-    console.log('[ResourcePicker] Total ressources chargées:', total);
+    console.log('[ResourcePicker] Total ressources chargées:', total, '(' + results.length + ' onglets)');
     return results;
   } catch (err) {
     console.error('[ResourcePicker] Erreur chargement ressources multiples:', err);
