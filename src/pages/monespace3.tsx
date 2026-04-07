@@ -22,16 +22,16 @@ import { useNavigate } from 'react-router-dom';
 import { experimentationStudentConfigSimplified } from '@/pages/generic/config/experimentationStudentConfig';
 import { feedbackStudentConfigSimplified } from '@/pages/generic/config/feedbackStudentConfig';
 import { toolStudentConfigSimplified } from '@/pages/generic/config/toolStudentConfig';
-import { conferenceConfigV2Simplified } from '@/pages/generic/config/conferenceConfigV2';
-import { recitArtitstiqueConfigSimplified } from '@/pages/generic/config/recitArtitstiqueConfigV2';
-import { recitScientifiqueConfigSimplified } from '@/pages/generic/config/recitScientifiqueConfigV2';
-import { recitTechnoConfigSimplified } from '@/pages/generic/config/recitTechnoConfigV2';
-import { recitCitoyenConfigSimplified } from '@/pages/generic/config/recitcitoyenConfigV2';
-import { recitMediatiqueConfigSimplified } from '@/pages/generic/config/recitmediatiqueConfigV2';
+import { conferenceConfigSimplified } from '@/pages/generic/config/conferenceConfig';
+import { recitArtitstiqueConfigSimplified } from '@/pages/generic/config/recitArtitstiqueConfig';
+import { recitScientifiqueConfigSimplified } from '@/pages/generic/config/recitScientifiqueConfig';
+import { recitTechnoConfigSimplified } from '@/pages/generic/config/recitTechnoConfig';
+import { recitCitoyenConfigSimplified } from '@/pages/generic/config/recitcitoyenConfig';
+import { recitMediatiqueConfigSimplified } from '@/pages/generic/config/recitmediatiqueConfig';
 import { experimentationConfigSimplified } from '@/pages/generic/config/experimentationConfig';
 import { feedbackConfigSimplified } from '@/pages/generic/config/feedbackConfig';
-import { toolConfigSimplified } from '@/pages/generic/config/toolConfigV2';
-import { analyseCritiqueConfigSimplified } from '@/pages/generic/config/analyseCritiqueConfigV2';
+import { toolConfigSimplified } from '@/pages/generic/config/toolConfig';
+import { analyseCritiqueConfigSimplified } from '@/pages/generic/config/analyseCritiqueConfig';
 import { elementEsthetiqueConfigSimplified } from '@/pages/generic/config/elementEsthetiqueConfig';
 import { elementNarratifConfigSimplified } from '@/pages/generic/config/elementNarratifConfig';
 import { bibliographyStudentConfigSimplified } from '@/pages/generic/config/bibliographyStudentConfig';
@@ -49,7 +49,7 @@ const createableConfigs = [
   { config: toolConfigSimplified, route: '/add-resource/outil-chercheur', icon: UniversityIcon, category: 'outil' },
   { config: feedbackStudentConfigSimplified, route: '/add-resource/retour-experience', icon: BookIcon, category: 'feedback' },
   { config: feedbackConfigSimplified, route: '/add-resource/retour-experience-chercheur', icon: BookIcon, category: 'feedback' },
-  { config: conferenceConfigV2Simplified, route: '/add-resource/conference', icon: SeminaireIcon, category: 'conference' },
+  { config: conferenceConfigSimplified, route: '/add-resource/conference', icon: SeminaireIcon, category: 'conference' },
   { config: recitScientifiqueConfigSimplified, route: '/add-resource/recit-scientifique', icon: PratiqueNarrativeIcon, category: 'recit' },
   { config: recitArtitstiqueConfigSimplified, route: '/add-resource/recit-artistique', icon: PratiqueNarrativeIcon, category: 'recit' },
   { config: recitTechnoConfigSimplified, route: '/add-resource/recit-techno', icon: PratiqueNarrativeIcon, category: 'recit' },
@@ -168,11 +168,11 @@ const BentoSection: React.FC<{
       className='flex flex-col  p-[20px] rounded-[16px] border-2 border-c3 hover:border-c4/30 transition-all duration-300'>
       {/* Section header */}
       <div className='flex flex-row items-center justify-between gap-[20px]'>
-        <div className='flex items-center gap-[10px]'>
+        <div className='flex items-center gap-5'>
           <div className='p-[8px] rounded-[10px] flex items-center justify-center border-2 border-c3 ' style={{ backgroundColor: `${section.color}15` }}>
             <Icon size={20} style={{ color: section.color }} />
           </div>
-          <div className='flex flex-col gap-2'>
+          <div className='flex flex-col'>
             <h3 className='text-[24px] text-c6 font-semibold'>{section.title}</h3>
             <p className='text-c4 text-[12px]'>{section.description}</p>
           </div>
@@ -404,11 +404,7 @@ export const MonEspace3: React.FC = () => {
         <div className='flex items-start justify-between'>
           <div className='flex items-center gap-[20px]'>
             <div className='w-[75px] h-[75px] rounded-xl bg-gradient-to-br from-c3 to-c2 flex items-center justify-center border-2 border-c3 overflow-hidden'>
-              {userData?.picture ? (
-                <img src={userData.picture} alt={fullName} className='w-full h-full object-cover' />
-              ) : (
-                <UserIcon size={32} className='text-c5' />
-              )}
+              {userData?.picture ? <img src={userData.picture} alt={fullName} className='w-full h-full object-cover' /> : <UserIcon size={32} className='text-c5' />}
             </div>
             <div className='flex flex-col gap-[4px]'>
               <h1 className='text-[32px] text-c6 font-semibold'>{fullName}</h1>
@@ -503,7 +499,7 @@ export const MonEspace3: React.FC = () => {
             const Icon = section.icon;
             const count = allResources.filter(section.filter).length;
             return (
-              <div key={section.key} className='flex items-center gap-[6px] px-[15px] py-[8px] rounded-[10px] border-2 border-c3 bg-c1'>
+              <div key={section.key} className='flex items-center gap-3 px-[15px] py-[8px] rounded-[10px] border-2 border-c3 bg-c1'>
                 <Icon size={16} style={{ color: section.color }} />
                 <span className='text-[14px] text-c5'>{section.title.replace('Mes ', '')}</span>
                 <span className='text-[14px] font-semibold text-c6'>{count}</span>

@@ -14,7 +14,6 @@ import { Splide, SplideTrack, SplideSlide } from '@splidejs/react-splide';
 import { CameraIcon, UserIcon, ShareIcon, MovieIcon, ArrowIcon, PlusIcon, CrossIcon } from '@/components/ui/icons';
 import MediaViewer from '@/components/features/conference/MediaViewer';
 import { MediaDropzone, MediaFile } from '@/components/features/forms/MediaDropzone';
-import { AnnotationDropdown } from '@/components/features/conference/AnnotationDropdown';
 import { ResourceSelectionModal } from '@/components/features/forms/ResourceSelectionModal';
 import { InternalFieldConfig, getOverviewFields, getDetailsFields, getHeaderFields } from './simplifiedConfig';
 import { getOmekaValue, getResourceIds } from './simplifiedConfigAdapter';
@@ -363,7 +362,7 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
                 {Array.isArray(personnes) && personnes.length > 1 && (
                   <Dropdown>
                     <DropdownTrigger className='p-0'>
-                      <Button size='md' className='text-[16px] h-full min-h-[36px] px-[10px] py-[5px] rounded-[8px] text-c6 gap-2 border-2 border-c6 bg-c1 hover:bg-c2'>
+                      <Button size='sm' className='text-[14px] h-auto min-h-0 min-w-0 px-3 py-1.5 rounded-[8px] text-c6 gap-1 border-2 border-c6 bg-c1 hover:bg-c2'>
                         <h3 className='text-c6 font-medium text-[14px]'>+ {personnes.length - 1}</h3>
                       </Button>
                     </DropdownTrigger>
@@ -409,9 +408,6 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
                     className='text-[16px] h-auto px-[10px] py-[5px] rounded-[8px] text-c6 gap-2 bg-c2 hover:bg-c3'>
                     Voir plus
                   </Button>
-                )}
-                {itemDetails?.id && (
-                  <AnnotationDropdown id={itemDetails.id} content='Contenu' image={medias?.[0] || ''} actant={getPersonDisplayName(personnes?.[0])} type={resourceType} />
                 )}
               </div>
             </div>

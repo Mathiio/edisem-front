@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Skeleton } from '@heroui/react';
 import { FileIcon } from '@/components/ui/icons';
-import { AnnotationDropdown } from './AnnotationDropdown';
 import { motion, Variants } from 'framer-motion';
 
 const fadeIn: Variants = {
@@ -60,7 +59,6 @@ export const CitationCard: React.FC<CitationCardProps> = ({ id, startTime, endTi
             <h3 className='text-c6 text-base font-medium'>{actant}</h3>
           </div>
 
-          <AnnotationDropdown id={id} content={citation} actant={actant} type='Citation' />
         </div>
 
         <div className='text-base text-c4 font-normal transition-all ease-in-out duration-200'>

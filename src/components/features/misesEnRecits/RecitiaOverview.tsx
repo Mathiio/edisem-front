@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { CameraIcon, UserIcon, ShareIcon, MovieIcon, ArrowIcon, SettingsIcon } from '@/components/ui/icons';
 import { motion, Variants } from 'framer-motion';
 import { addToast, Skeleton, Button, cn, DropdownMenu, Dropdown, DropdownItem, DropdownTrigger } from '@heroui/react';
-import { AnnotationDropdown } from '../conference/AnnotationDropdown';
 import { Splide, SplideTrack, SplideSlide } from '@splidejs/react-splide';
 import MediaViewer from '../conference/MediaViewer';
 import { getYouTubeThumbnailUrl } from '@/lib/utils';
@@ -214,7 +213,6 @@ export const RecitiaOverviewCard: React.FC<RecitiaOverviewProps> = ({ id, title,
                   Crédits complets
                 </Button>
               )}
-              <AnnotationDropdown id={id} content='Exemple de contenu obligatoire' image='https://example.com/image.jpg' actant='Jean Dupont' type='Œuvre' />
             </div>
           )}
         </div>
@@ -348,8 +346,7 @@ export const RecitiaOverviewCard: React.FC<RecitiaOverviewProps> = ({ id, title,
                     Crédits complets
                   </Button>
                 )}
-                <AnnotationDropdown id={id} content='Exemple de contenu obligatoire' image='https://example.com/image.jpg' actant='Jean Dupont' type='Œuvre' />
-              </div>
+                </div>
             )}
           </div>
         </div>

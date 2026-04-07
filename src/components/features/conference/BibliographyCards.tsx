@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AnnotationDropdown } from './AnnotationDropdown';
 import { FileIcon } from '@/components/ui/icons';
 import { Bibliography } from '@/types/ui';
 
@@ -201,9 +200,6 @@ export const BibliographyCard: React.FC<Bibliography & { uniqueKey?: number }> =
           </div>
         </div>
       </Link>
-      <div className='flex flex-col h-full p-6'>
-        <AnnotationDropdown id={props.id} content={formatBibliography(props)} image={thumbnail} type='Bibliographie' />
-      </div>
     </div>
   );
 };

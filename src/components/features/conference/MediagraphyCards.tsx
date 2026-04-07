@@ -197,7 +197,6 @@ const mediagraphyTemplates: { [key: string]: (item: Mediagraphy) => React.ReactN
 };
 
 import ReactDOMServer from 'react-dom/server';
-import { AnnotationDropdown } from './AnnotationDropdown';
 import { Mediagraphy } from '@/types/ui';
 
 const ensureEndsWithPeriod = (content: React.ReactNode): React.ReactNode => {
@@ -274,31 +273,6 @@ export const MediagraphyCard: React.FC<Mediagraphy> = ({
           )}
         </div>
       </Link>
-      <div className='flex flex-col h-full p-6'>
-        <AnnotationDropdown
-          id={id}
-          content={ensureEndsWithPeriod(
-            template({
-              id,
-              title,
-              creator,
-              format,
-              director,
-              date,
-              publisher,
-              uri,
-              class: mediaType,
-              medium,
-              isPartOf,
-              resource_template_id,
-              location,
-              place,
-            }),
-          )}
-          image={thumbnail ? thumbnail : getIcon(mediaType)}
-          type='Medias'
-        />
-      </div>
     </div>
   );
 };

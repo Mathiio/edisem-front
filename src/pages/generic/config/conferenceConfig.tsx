@@ -2,7 +2,7 @@ import { RESOURCE_TYPES } from '@/config/resourceConfig';
 import { SimplifiedDetailConfig } from '../simplifiedConfig';
 import { convertToGenericConfig } from '../simplifiedConfigAdapter';
 
-export const conferenceConfigV2Simplified: SimplifiedDetailConfig = {
+export const conferenceConfigSimplified: SimplifiedDetailConfig = {
   resourceType: RESOURCE_TYPES.seminaire.type,
   templateId: 71,
 
@@ -67,4 +67,4 @@ export const conferenceConfigV2Simplified: SimplifiedDetailConfig = {
   formEnabled: true,
 };
 
-export const conferenceConfigV2 = convertToGenericConfig(conferenceConfigV2Simplified);
+export const conferenceConfig = convertToGenericConfig(conferenceConfigSimplified);

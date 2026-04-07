@@ -34,7 +34,6 @@ import SearchHistory from '@/components/features/datavisualisation/SearchHistory
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { EditModal } from '@/components/features/database/EditModal';
 import { useLocalStorageProperties } from '@/hooks/useLocalStorageProperties';
-import { AnnotationDropdown } from '@/components/features/conference/AnnotationDropdown';
 import { Layouts } from '@/components/layout/Layouts';
 import { BGPattern } from '@/components/ui/bg-pattern';
 
@@ -1766,14 +1765,6 @@ const Visualisation = () => {
           itemPropertiesData={itemPropertiesData}
           propertiesLoading={propertiesLoading}
           justView={!isEditMode}
-        />
-        <AnnotationDropdown
-          id={Number(annoteObject.id)}
-          content={annoteObject.content}
-          type={annoteObject.type}
-          mode={viewAnnotationMode ? 'annotate' : 'view'}
-          isOpen={isOpenAnnote}
-          onClose={() => onCloseAnnote()}
         />
       </div>
     </Layouts>

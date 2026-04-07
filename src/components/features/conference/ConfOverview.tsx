@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { CameraIcon, UserIcon, ShareIcon, MovieIcon } from '@/components/ui/icons';
 import { motion, Variants } from 'framer-motion';
 import { addToast, Link, Button, cn, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/react';
-import { AnnotationDropdown } from './AnnotationDropdown';
 import { Conference } from '@/types/ui';
 
 const itemVariants: Variants = {
@@ -243,7 +242,6 @@ export const ConfOverviewCard: React.FC<ConfOverviewProps> = ({ conf, currentTim
                     {buttonText}
                   </Button>
                 )}
-              <AnnotationDropdown id={Number(conf.id)} content='Exemple de contenu obligatoire' image='https://example.com/image.jpg' actant='Jean Dupont' type='Conférence' />
             </div>
           </div>
         </div>

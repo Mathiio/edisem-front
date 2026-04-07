@@ -4,7 +4,6 @@ import { CameraIcon, UserIcon, ShareIcon, ArrowIcon, PlusIcon, CrossIcon, Upload
 import { isValidYouTubeUrl } from '@/lib/utils';
 import { motion, Variants } from 'framer-motion';
 import { addToast, Link, Button, cn, DropdownMenu, Dropdown, DropdownItem, DropdownTrigger } from '@heroui/react';
-import { AnnotationDropdown } from '../conference/AnnotationDropdown';
 import { Splide, SplideTrack, SplideSlide } from '@splidejs/react-splide';
 import MediaViewer from '../conference/MediaViewer';
 import { MediaFile } from '@/components/features/forms/MediaDropzone';
@@ -652,7 +651,6 @@ export const ExpOverviewCard: React.FC<ExpOverviewProps> = ({
                   </Button>
                 )}
 
-                <AnnotationDropdown id={id} content='Exemple de contenu obligatoire' image='https://example.com/image.jpg' actant='Jean Dupont' type='Conférence' />
               </div>
             </div>
           </div>
