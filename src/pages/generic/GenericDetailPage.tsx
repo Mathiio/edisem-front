@@ -1521,8 +1521,9 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   // Handle creating a new resource (opens new tab)
   const handleCreateNew = (viewKey: string) => {
     const viewOption = config.viewOptions.find((v) => v.key === viewKey);
+    const templateId = viewOption?.resourceTemplateId || viewOption?.resourceTemplateIds?.[0];
     if (onCreateNewResource) {
-      onCreateNewResource(viewKey, viewOption?.resourceTemplateId);
+      onCreateNewResource(viewKey, templateId);
     }
   };
 

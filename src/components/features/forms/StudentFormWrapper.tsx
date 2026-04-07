@@ -4,11 +4,23 @@ import { ResourceTabInfo } from './ResourceFormTabs';
 import { GenericDetailPage } from '@/pages/generic/GenericDetailPage';
 import { GenericDetailPageConfig } from '@/pages/generic/config';
 
-// Import des configs étudiantes
+// Import de toutes les configs pour le registre dynamique
 import { toolStudentConfig } from '@/pages/generic/config/toolStudentConfig';
-import { feedbackStudentConfig, feedbackStudentConfigSimplified } from '@/pages/generic/config/feedbackStudentConfig';
+import { feedbackStudentConfig } from '@/pages/generic/config/feedbackStudentConfig';
 import { experimentationStudentConfig } from '@/pages/generic/config/experimentationStudentConfig';
 import { bibliographyStudentConfig } from '@/pages/generic/config/bibliographyStudentConfig';
+import { toolConfig } from '@/pages/generic/config/toolConfig';
+import { feedbackConfig } from '@/pages/generic/config/feedbackConfig';
+import { experimentationConfig } from '@/pages/generic/config/experimentationConfig';
+import { conferenceConfig } from '@/pages/generic/config/conferenceConfig';
+import { analyseCritiqueConfig } from '@/pages/generic/config/analyseCritiqueConfig';
+import { elementEsthetiqueConfig } from '@/pages/generic/config/elementEsthetiqueConfig';
+import { elementNarratifConfig } from '@/pages/generic/config/elementNarratifConfig';
+import { recitScientifiqueConfig } from '@/pages/generic/config/recitScientifiqueConfig';
+import { recitArtitstiqueConfig } from '@/pages/generic/config/recitArtitstiqueConfig';
+import { recitTechnoConfig } from '@/pages/generic/config/recitTechnoConfig';
+import { recitCitoyenConfig } from '@/pages/generic/config/recitcitoyenConfig';
+import { recitMediatiqueConfig } from '@/pages/generic/config/recitmediatiqueConfig';
 import { createHandleSave } from '@/pages/generic/simplifiedConfigAdapter';
 import { getRessourceLabel } from '@/config/resourceConfig';
 import { AlertModal } from '@/components/ui/AlertModal';
@@ -22,29 +34,65 @@ interface InternalTab extends ResourceTabInfo {
   itemId?: string;
   parentTabId?: string;
   linkedField?: string;
-  hasBeenActivated?: boolean; // Track if tab was ever made active
+  hasBeenActivated?: boolean;
 }
 
 /**
- * Mapping viewKey → config pour créer le bon type de ressource
+ * Registre automatique : templateId → GenericDetailPageConfig
+ * Toutes les configs sont enregistrées ici. Quand une vue a un resourceTemplateId,
+ * on retrouve la config correspondante automatiquement.
+ * Pour ajouter un nouveau type : il suffit de l'importer et de l'ajouter à ALL_CONFIGS.
  */
-const VIEW_KEY_CONFIG_MAP: Record<string, { config: GenericDetailPageConfig }> = {
-  // Depuis experimentationStudentConfig (views)
+const ALL_CONFIGS: GenericDetailPageConfig[] = [
+  toolStudentConfig,
+  feedbackStudentConfig,
+  experimentationStudentConfig,
+  bibliographyStudentConfig,
+  toolConfig,
+  feedbackConfig,
+  experimentationConfig,
+  conferenceConfig,
+  analyseCritiqueConfig,
+  elementEsthetiqueConfig,
+  elementNarratifConfig,
+  recitScientifiqueConfig,
+  recitArtitstiqueConfig,
+  recitTechnoConfig,
+  recitCitoyenConfig,
+  recitMediatiqueConfig,
+];
+
+const TEMPLATE_ID_TO_CONFIG: Record<number, GenericDetailPageConfig> = {};
+for (const config of ALL_CONFIGS) {
+  if (config.resourceTemplateId) {
+    TEMPLATE_ID_TO_CONFIG[config.resourceTemplateId] = config;
+  }
+}
+
+/**
+ * Trouve la config pour un viewKey et/ou templateId.
+ * 1. Si templateId est fourni, cherche dans le registre par templateId
+ * 2. Sinon, fallback sur le mapping statique legacy
+ */
+const LEGACY_VIEW_KEY_MAP: Record<string, { config: GenericDetailPageConfig }> = {
   'theatre:credit': { config: toolStudentConfig },
   'schema:description': { config: feedbackStudentConfig },
   'dcterms:references': { config: bibliographyStudentConfig },
   'dcterms:bibliographicCitation': { config: bibliographyStudentConfig },
-
-  // Depuis feedbackStudentConfig (views)
   outils: { config: toolStudentConfig },
   'schema:tool': { config: toolStudentConfig },
-
-  // Depuis toolStudentConfig (views)
   projets: { config: experimentationStudentConfig },
   'dcterms:isPartOf': { config: experimentationStudentConfig },
 };
 
-const getConfigForViewKey = (viewKey: string) => VIEW_KEY_CONFIG_MAP[viewKey];
+const getConfigForViewKey = (viewKey: string, templateId?: number): { config: GenericDetailPageConfig } | undefined => {
+  // 1. Chercher par templateId (le plus fiable)
+  if (templateId && TEMPLATE_ID_TO_CONFIG[templateId]) {
+    return { config: TEMPLATE_ID_TO_CONFIG[templateId] };
+  }
+  // 2. Fallback legacy par viewKey
+  return LEGACY_VIEW_KEY_MAP[viewKey];
+};
 
 interface StudentFormWrapperProps {
   initialConfig: GenericDetailPageConfig;
@@ -77,10 +125,10 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
   const generateTabId = () => `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
   const handleCreateNewResource = useCallback(
-    (viewKey: string, _templateId?: number) => {
-      const mapping = getConfigForViewKey(viewKey);
+    (viewKey: string, templateId?: number) => {
+      const mapping = getConfigForViewKey(viewKey, templateId);
       if (!mapping) {
-        console.warn(`No config found for viewKey: ${viewKey}`);
+        console.warn(`No config found for viewKey: ${viewKey}, templateId: ${templateId}`);
         return;
       }
 
@@ -105,7 +153,7 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
     (viewKey: string, resourceId: string | number) => {
       const mapping = getConfigForViewKey(viewKey);
       if (!mapping) {
-        console.warn(`No config found for viewKey: ${viewKey}`);
+        console.warn(`No config found for viewKey: ${viewKey} (edit mode)`);
         return;
       }
 
