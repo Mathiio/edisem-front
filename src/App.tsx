@@ -2,14 +2,12 @@ import { useThemeMode } from '@/hooks/useThemeMode';
 import { Route, Routes } from 'react-router-dom';
 import { Intervenant } from '@/pages/intervenant';
 import { Home } from '@/pages/home';
-import { Database } from '@/pages/database';
 import { Edition } from '@/pages/corpus/confsByEdition';
 import { LoginPage } from '@/pages/login';
 import { CahierRecherche } from '@/pages/cahierRecherche';
 import { withAuth } from '@/pages/withAuth';
 import Visualisation from '@/pages/visualisation';
 import { ToastProvider } from '@heroui/react';
-import { HeroUIProvider } from '@heroui/react';
 import { Intervenants } from '@/pages/intervenants';
 import { Colloques } from '@/pages/corpus/Colloques';
 import { PratiquesNarratives } from '@/pages/corpus/pratiquesNarratives';
@@ -44,6 +42,7 @@ import { bibliographyStudentConfig } from './pages/generic/config/bibliographySt
 import { MonEspace } from './pages/monespace';
 
 import { MonEspace3 } from './pages/monespace3';
+import { CreerPage } from '@/pages/creer';
 import TestOmekaEdit from './pages/test-omeka-edit';
 import { StudentManagement } from './pages/admin/StudentManagement';
 import { CourseManagement } from './pages/admin/CourseManagement';
@@ -63,7 +62,6 @@ export const useNavbarReadyContext = () => {
   return context;
 };
 
-const ProtectedDatabase = withAuth(Database, { requiredRole: 'actant' });
 const ProtectedStudentManagement = withAuth(StudentManagement, { requiredRole: 'actant' });
 const ProtectedCourseManagement = withAuth(CourseManagement, { requiredRole: 'actant' });
 const ProtectedActantManagement = withAuth(ActantManagement, { requiredRole: 'actant' });
@@ -94,7 +92,7 @@ function App() {
   const isLoading = !navbarReady || !minTimeElapsed;
 
   return (
-    <HeroUIProvider>
+    <>
       <ToastProvider
         placement='bottom-center'
         toastProps={{
@@ -111,7 +109,7 @@ function App() {
             {/* Base routes */}
             <Route index path='/' Component={Home} />
             <Route path='/login' Component={LoginPage} />
-            <Route path='/database' Component={ProtectedDatabase} />
+            <Route path='/creer' Component={CreerPage} />
             <Route path='/intervenants' Component={Intervenants} />
             <Route path='/visualisation' Component={Visualisation} />
             <Route path='/recherche/' Component={CahierRecherche} />
@@ -209,7 +207,7 @@ function App() {
           </Routes>
         </NavigationTrailProvider>
       </NavbarReadyContext.Provider>
-    </HeroUIProvider>
+    </>
   );
 }
 
