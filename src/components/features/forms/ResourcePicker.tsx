@@ -3,6 +3,7 @@ import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input
 import { SearchIcon, SortIcon, ThumbnailIcon, UserIcon } from '@/components/ui/icons';
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/react';
 import { useGetDataByClass } from '@/hooks/useFetchData';
+import { getResourceConfigByTemplateId } from '@/config/resourceConfig';
 
 export interface ResourcePickerProps {
   isOpen: boolean;
@@ -29,6 +30,11 @@ const API_BASE = '/omk/api/';
 
 // Charger les infos d'un template pour avoir son label
 const loadTemplateInfo = async (templateId: number): Promise<string> => {
+  // 1. Chercher dans le registre local (instantané, pas de fetch)
+  const localConfig = getResourceConfigByTemplateId(templateId);
+  if (localConfig) return localConfig.label;
+
+  // 2. Fallback : charger depuis l'API Omeka S
   try {
     const response = await fetch(`${API_BASE}resource_templates/${templateId}`);
     if (!response.ok) return `Template ${templateId}`;
