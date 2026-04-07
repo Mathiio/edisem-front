@@ -125,14 +125,6 @@ const bentoSections = [
     description: 'Éléments esthétiques et narratifs',
     filter: (r: StudentResourceCard) => (r.type || '').includes('element_'),
   },
-  {
-    key: 'bibliographie',
-    title: 'Mes bibliographies',
-    icon: BookIcon,
-    color: '#B8D4E3',
-    description: 'Références bibliographiques',
-    filter: (r: StudentResourceCard) => (r.type || '') === 'bibliographie',
-  },
 ];
 
 const fadeIn: Variants = {
