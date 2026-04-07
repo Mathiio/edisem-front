@@ -1932,8 +1932,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     }
 
     // Filter views to only include those with content (or all editable in edit mode)
-    return config.viewOptions; // .filter((viewOption) => viewHasContent(viewOption));
-  }, [itemDetails, loading, config.viewOptions]); // Removed viewData and isEditing from deps as they are no longer used
+    return config.viewOptions.filter((viewOption) => viewHasContent(viewOption));
+  }, [itemDetails, loading, config.viewOptions, isEditing]);
 
   // Ensure selected view is available, if not select the first available view
   useEffect(() => {
