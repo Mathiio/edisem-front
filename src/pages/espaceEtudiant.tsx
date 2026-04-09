@@ -45,7 +45,7 @@ export const EspaceEtudiant: React.FC = () => {
   // État pour les ressources enseignantes
   const [teacherResources, setTeacherResources] = useState<AllStudentResources | null>(null);
   const [loadingTeacher, setLoadingTeacher] = useState(true);
-  const [teacherFilter, setTeacherFilter] = useState<'all' | 'experimentation' | 'outil' | 'retour_experience'>('all');
+  const [teacherFilter, setTeacherFilter] = useState<'all' | 'experimentation' | 'outil' | 'retour_experience'>('experimentation');
 
   // Charger les cours et leurs ressources
   useEffect(() => {
@@ -117,7 +117,7 @@ export const EspaceEtudiant: React.FC = () => {
   // Obtenir les ressources filtrées d'un cours
   const getFilteredResourcesForCourse = (courseId: number, resources: AllStudentResources | null): StudentResourceCard[] => {
     if (!resources) return [];
-    const filter = filters[courseId] || 'all';
+    const filter = filters[courseId] || 'experimentation';
 
     if (filter === 'all') {
       return [...resources.experimentations, ...resources.tools, ...resources.feedbacks].sort((a, b) => new Date(b.created || 0).getTime() - new Date(a.created || 0).getTime());
@@ -191,7 +191,7 @@ export const EspaceEtudiant: React.FC = () => {
 
             {/* Filtres par type */}
             <div className='flex gap-4'>
-              {(['all', 'experimentation', 'outil', 'retour_experience'] as const).map((type) => {
+              {(['experimentation', 'outil', 'retour_experience', 'all'] as const).map((type) => {
                 const isActive = teacherFilter === type;
                 const Icon = type !== 'all' ? resourceTypeConfig[type].icon : null;
                 const count = (() => {
@@ -228,7 +228,7 @@ export const EspaceEtudiant: React.FC = () => {
                   id={String(item.id)}
                   title={item.title}
                   thumbnail={item.thumbnail || undefined}
-                  actants={item.actants?.map((a) => ({
+                  actants={item.actants?.sort((a, b) => a.title.localeCompare(b.title)).map((a) => ({
                     id: String(a.id),
                     title: a.title,
                     picture: a.picture || undefined,
@@ -263,7 +263,7 @@ export const EspaceEtudiant: React.FC = () => {
       ) : (
         <div className='flex flex-col gap-12'>
           {coursesWithResources.map((course) => {
-            const currentFilter = filters[course.id] || 'all';
+            const currentFilter = filters[course.id] || 'experimentation';
             const filteredResources = getFilteredResourcesForCourse(course.id, course.resources);
             const hasResources = filteredResources.length > 0;
 
@@ -283,7 +283,7 @@ export const EspaceEtudiant: React.FC = () => {
 
                   {/* Filtres par type pour ce cours */}
                   <div className='flex gap-4 '>
-                    {(['all', 'experimentation', 'outil', 'retour_experience'] as const).map((type) => {
+                    {(['experimentation', 'outil', 'retour_experience', 'all'] as const).map((type) => {
                       const isActive = currentFilter === type;
                       const Icon = type !== 'all' ? resourceTypeConfig[type].icon : null;
                       const count = (() => {
@@ -327,7 +327,7 @@ export const EspaceEtudiant: React.FC = () => {
                           id={String(item.id)}
                           title={item.title}
                           thumbnail={item.thumbnail || undefined}
-                          actants={item.actants?.map((a) => ({
+                          actants={item.actants?.sort((a, b) => a.title.localeCompare(b.title)).map((a) => ({
                             id: String(a.id),
                             title: a.title,
                             picture: a.picture || undefined,

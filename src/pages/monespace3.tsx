@@ -65,30 +65,6 @@ const createableConfigs = [
 // Bento sections definition
 const bentoSections = [
   {
-    key: 'recit',
-    title: 'Mes récits',
-    icon: PratiqueNarrativeIcon,
-    color: '#AFC8FF',
-    description: '5 domaines : Scientifique, Artistique, Techno, Citoyen, Médiatique',
-    filter: (r: StudentResourceCard) => (r.type || '').includes('recit'),
-  },
-  {
-    key: 'experimentation',
-    title: 'Mes expérimentations',
-    icon: ExperimentationIcon,
-    color: '#A9E2DA',
-    description: 'Expérimentations et hypothèses de recherche',
-    filter: (r: StudentResourceCard) => (r.type || '').includes('experimentation'),
-  },
-  {
-    key: 'outil',
-    title: 'Mes outils',
-    icon: UniversityIcon,
-    color: '#FFF1B8',
-    description: 'Outils et méthodes utilisés',
-    filter: (r: StudentResourceCard) => (r.type || '').includes('outil'),
-  },
-  {
     key: 'conference',
     title: 'Mes conférences',
     icon: SeminaireIcon,
@@ -98,6 +74,30 @@ const bentoSections = [
       const type = r.type || '';
       return type.includes('seminaire') || type.includes('conference') || type.includes('colloque');
     },
+  },
+  {
+    key: 'recit',
+    title: 'Mes récits',
+    icon: PratiqueNarrativeIcon,
+    color: '#AFC8FF',
+    description: '5 domaines : Scientifique, Artistique, Techno, Citoyen, Médiatique',
+    filter: (r: StudentResourceCard) => (r.type || '').includes('recit'),
+  },
+  {
+    key: 'analyse',
+    title: 'Mes analyses critiques',
+    icon: CollectionIcon,
+    color: '#D4A5FF',
+    description: 'Annotations et analyses critiques',
+    filter: (r: StudentResourceCard) => (r.type || '') === 'annotation',
+  },
+  {
+    key: 'experimentation',
+    title: 'Mes expérimentations',
+    icon: ExperimentationIcon,
+    color: '#A9E2DA',
+    description: 'Expérimentations et hypothèses de recherche',
+    filter: (r: StudentResourceCard) => (r.type || '').includes('experimentation'),
   },
   {
     key: 'feedback',
@@ -111,13 +111,14 @@ const bentoSections = [
     },
   },
   {
-    key: 'analyse',
-    title: 'Mes analyses critiques',
-    icon: CollectionIcon,
-    color: '#D4A5FF',
-    description: 'Annotations et analyses critiques',
-    filter: (r: StudentResourceCard) => (r.type || '') === 'annotation',
+    key: 'outil',
+    title: 'Mes outils',
+    icon: UniversityIcon,
+    color: '#FFF1B8',
+    description: 'Outils et méthodes utilisés',
+    filter: (r: StudentResourceCard) => (r.type || '').includes('outil'),
   },
+
   {
     key: 'element',
     title: 'Mes éléments',
@@ -219,7 +220,7 @@ const BentoSection: React.FC<{
                     title: a.title,
                     picture: a.picture ? (a.picture.startsWith('http') ? a.picture : `https://tests.arcanes.ca/omk${a.picture}`) : undefined,
                   }))}
-                  type={(item.type as string) === 'experimentation' ? 'experimentationStudents' : item.type}
+                  type={item.type}
                   showActions
                   onEdit={onEdit}
                   onDelete={onDelete}
@@ -263,10 +264,7 @@ export const MonEspace3: React.FC = () => {
   const canCreate = useMemo(() => isActant || courses.length > 0, [isActant, courses.length]);
 
   // Filtrer les configs créables selon le rôle (étudiant ou actant)
-  const filteredCreateableConfigs = useMemo(
-    () => createableConfigs.filter((c) => c.role === 'any' || (isActant ? c.role === 'actant' : c.role === 'student')),
-    [isActant],
-  );
+  const filteredCreateableConfigs = useMemo(() => createableConfigs.filter((c) => c.role === 'any' || isActant || c.role === 'student'), [isActant]);
 
   const fullName = useMemo(() => {
     if (userData?.firstname && userData?.lastname) return `${userData.firstname} ${userData.lastname}`;
@@ -526,7 +524,7 @@ export const MonEspace3: React.FC = () => {
                     title: a.title,
                     picture: a.picture ? (a.picture.startsWith('http') ? a.picture : `https://tests.arcanes.ca/omk${a.picture}`) : undefined,
                   }))}
-                  type={(item.type as string) === 'experimentation' ? 'experimentationStudents' : item.type}
+                  type={item.type}
                   showActions
                   onEdit={handleEdit}
                   onDelete={handleDeleteClick}

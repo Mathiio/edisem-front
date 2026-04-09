@@ -299,7 +299,7 @@ const Visualisation = () => {
 
   const { isOpen: isOpenEdit, onOpen: onOpenEdit, onClose: onCloseEdit } = useDisclosure();
   const { isOpen: isOpenDrawer, onOpenChange: onOpenChangeDrawer } = useDisclosure();
-  const { isOpen: isOpenAnnote, onOpen: onOpenAnnote, onClose: onCloseAnnote } = useDisclosure();
+  const { isOpen: _isOpenAnnote, onOpen: onOpenAnnote, onClose: _onCloseAnnote } = useDisclosure();
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [isLinkMode, setIsLinkMode] = useState(false);
@@ -324,7 +324,7 @@ const Visualisation = () => {
   const simulationNodesRef = useRef<any[]>([]);
 
 
-  const [annoteObject, setAnnoteObject] = useState({
+  const [_annoteObject, setAnnoteObject] = useState({
     id: '',
     content: '',
     type: '',

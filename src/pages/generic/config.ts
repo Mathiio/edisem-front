@@ -129,6 +129,9 @@ export interface GenericDetailPageConfig {
   formEnabled?: boolean;
   resourceTemplateId?: number; // Omeka S resource template ID for creation
   formFields?: FormFieldConfig[];
+
+  // Mapping viewKey → propriété Omeka S (généré automatiquement depuis les vues)
+  viewKeyToProperty?: Record<string, string>;
 }
 
 // ============================================

@@ -58,18 +58,20 @@ export const MicroresumeCard: React.FC<MicroresumeCardProps> = ({ title, descrip
   const displayText = expanded ? description : description.slice(0, CHARACTER_LIMIT);
 
   return (
-    <div className='w-full flex flex-row justify-start border-2 p-6 border-c3 rounded-xl items-start gap-2.5 transition-transform-colors-opacity'>
-      <div className='flex flex-col gap-6'>
+    <div className='w-full flex flex-row justify-start border-2 p-6 border-c3 rounded-xl items-start gap-2.5 transition-transform-colors-opacity overflow-hidden'>
+      <div className='flex flex-col gap-6 min-w-0 w-full'>
         <div className='w-full flex justify-between items-center gap-2.5'>
-          <div className='flex flex-row gap-2.5'>
-            <Button onClick={handleClick} className='px-2.5 py-1.5 h-auto text-base rounded-md text-c6 hover:text-c6 bg-c2 hover:bg-c3 transition-all ease-in-out duration-200'>
+          <div className='flex flex-col gap-2'>
+            <Button
+              onClick={handleClick}
+              className='self-start px-2.5 py-1.5 h-auto text-base rounded-md text-c6 hover:text-c6 bg-c2 hover:bg-c3 transition-all ease-in-out duration-200 whitespace-nowrap'>
               {formatTime(startTime) + ' - ' + formatTime(endTime)}
             </Button>
-            <h3 className='text-c6 text-base font-medium'>{title}</h3>
+            {title && <h3 className='text-c6 text-base font-medium break-words'>{title}</h3>}
           </div>
         </div>
 
-        <div className='text-base text-c4 font-normal transition-all ease-in-out duration-200'>
+        <div className='text-sm text-c4 font-normal transition-all ease-in-out duration-200 break-words overflow-hidden'>
           {displayText}
           {shouldTruncate && (
             <div className='mt-2 w-full flex justify-start'>

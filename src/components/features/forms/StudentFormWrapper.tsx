@@ -398,7 +398,7 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
         }
 
         return (
-          <div key={tab.id} style={{ display: isActive ? 'contents' : 'none' }}>
+          <div key={tab.id} style={isActive ? {} : { visibility: 'hidden', height: 0, overflow: 'hidden', position: 'absolute', pointerEvents: 'none' }}>
             <GenericDetailPage
               config={tab.config}
               initialMode={tab.mode}

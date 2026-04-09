@@ -116,7 +116,7 @@ type ExpOverviewProps = {
 };
 
 export const ExpOverviewCard: React.FC<ExpOverviewProps> = ({
-  id,
+  id: _id,
   title = '',
   personnes = [],
   medias = [],

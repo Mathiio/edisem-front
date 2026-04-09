@@ -227,6 +227,14 @@ const InlineMicroresumeForm: React.FC<{
 import { getResourceUrl, getResourceConfigByTemplateId } from '@/config/resourceConfig';
 import AutoResizingField from '@/components/features/database/AutoResizingTextarea';
 
+const getResourceFallbackTitle = (id: number | string, templateId?: number | string): string => {
+  if (templateId) {
+    const config = getResourceConfigByTemplateId(templateId);
+    if (config) return `${config.label} #${id}`;
+  }
+  return `Item #${id}`;
+};
+
 // ========================================
 // API Constants
 // ========================================
@@ -464,16 +472,17 @@ export const loadResourceInfo = async (resourceId: number): Promise<ResourceInfo
       }
     }
 
+    const templateId = item['o:resource_template']?.['o:id'];
     return {
       id: resourceId,
-      title: item['o:title'] || `Item #${resourceId}`,
+      title: item['o:title'] || getResourceFallbackTitle(resourceId, templateId),
       resourceClass: item['o:resource_class']?.['o:label'],
-      templateId: item['o:resource_template']?.['o:id'],
+      templateId,
       thumbnailUrl,
     };
   } catch (err) {
     console.error(`Erreur chargement ressource ${resourceId}:`, err);
-    return { id: resourceId, title: `Item #${resourceId}` };
+    return { id: resourceId, title: getResourceFallbackTitle(resourceId) };
   }
 };
 
@@ -491,13 +500,16 @@ export const loadResourcesByTemplate = async (templateId: number, maxResults = 1
     }
 
     const items = await response.json();
-    return items.map((item: any) => ({
-      id: item['o:id'],
-      title: item['o:title'] || `Item #${item['o:id']}`,
-      resourceClass: item['o:resource_class']?.['o:label'],
-      thumbnailUrl: item['thumbnail_display_urls']?.square,
-      templateId: item['o:resource_template']?.['o:id'],
-    }));
+    return items.map((item: any) => {
+      const templateId = item['o:resource_template']?.['o:id'];
+      return {
+        id: item['o:id'],
+        title: item['o:title'] || getResourceFallbackTitle(item['o:id'], templateId),
+        resourceClass: item['o:resource_class']?.['o:label'],
+        thumbnailUrl: item['thumbnail_display_urls']?.square,
+        templateId,
+      };
+    });
   } catch (err) {
     console.error('Erreur chargement ressources:', err);
     return [];
@@ -728,7 +740,7 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
 
             resourceCache[resourceId] = {
               id: resourceId,
-              title: resourceData['o:title'] || `${firstname} ${lastname}`.trim() || `Item #${resourceId}`,
+              title: resourceData['o:title'] || `${firstname} ${lastname}`.trim() || getResourceFallbackTitle(resourceId, templateId),
               name: resourceData['o:title'] || `${firstname} ${lastname}`.trim(),
               firstname,
               lastname,
@@ -841,7 +853,7 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
 
               resourceCache[resourceId] = {
                 id: resourceId,
-                title: resourceData['o:title'] || `Item #${resourceId}`,
+                title: resourceData['o:title'] || getResourceFallbackTitle(resourceId, templateId),
                 thumbnail: thumbnailUrl,
                 thumbnailUrl,
                 class: templateId,
@@ -887,6 +899,16 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
         if (data['schema:review']) {
           const reviewIds = getResourceIds(data, 'schema:review');
           enrichedData.reviews = reviewIds.map((id) => resourceCache[id]).filter(Boolean);
+        }
+
+        if (data['schema:documentation']) {
+          const docIds = getResourceIds(data, 'schema:documentation');
+          enrichedData.documentations = docIds.map((id) => resourceCache[id]).filter(Boolean);
+        }
+
+        if (data['schema:associatedMedia']) {
+          const mediaIds = getResourceIds(data, 'schema:associatedMedia');
+          enrichedData.associatedMediaRefs = mediaIds.map((id) => resourceCache[id]).filter(Boolean);
         }
 
         onProgress({
@@ -1094,7 +1116,7 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
 
               resourceCache[resourceId] = {
                 id: resourceId,
-                title: resourceData['o:title'] || `Item #${resourceId}`,
+                title: resourceData['o:title'] || getResourceFallbackTitle(resourceId, templateId),
                 thumbnail: thumbnailUrl,
                 thumbnailUrl,
                 class: templateId,
@@ -1143,6 +1165,16 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
         enrichedData.reviews = reviewIds.map((id) => resourceCache[id]).filter(Boolean);
       }
 
+      if (data['schema:documentation']) {
+        const docIds = getResourceIds(data, 'schema:documentation');
+        enrichedData.documentations = docIds.map((id) => resourceCache[id]).filter(Boolean);
+      }
+
+      if (data['schema:associatedMedia']) {
+        const mediaIds = getResourceIds(data, 'schema:associatedMedia');
+        enrichedData.associatedMediaRefs = mediaIds.map((id) => resourceCache[id]).filter(Boolean);
+      }
+
       return {
         itemDetails: enrichedData,
         keywords,
@@ -1185,7 +1217,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
               const id = item['o:id'] || item.id;
               if (id && !resourceCache[id]) {
                 resourceCache[id] = {
-                  title: item['dcterms:title']?.[0]?.['@value'] || item['o:title'] || item.title || `Item #${id}`,
+                  title: item['dcterms:title']?.[0]?.['@value'] || item['o:title'] || item.title || getResourceFallbackTitle(id, item['o:resource_template']?.['o:id'] || item.resource_template_id),
                   thumbnailUrl: item['thumbnail_display_urls']?.square || item.thumbnail,
                 };
               }
@@ -1197,9 +1229,11 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
             // Check for updates first
             const update = updatedResources?.[id];
 
+            const cachedTemplateId = cached?.resource_template_id || cached?.template || cached?.class;
+            const cachedTitle = cached?.title?.startsWith('Item #') ? undefined : cached?.title;
             return {
               id,
-              title: update?.title || cached?.title || `Item #${id}`,
+              title: update?.title || cachedTitle || getResourceFallbackTitle(id, cachedTemplateId),
               thumbnail: update?.thumbnail || cached?.thumbnailUrl,
               url: cached?.url,
             };
@@ -1280,25 +1314,33 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
             'dcterms:references': 'references',
             'dcterms:source': 'sources',
             'schema:review': 'reviews',
+            'schema:documentation': 'documentations',
+            'schema:associatedMedia': 'associatedMediaRefs',
           };
 
           const enrichedProperty = enrichedPropertyMap[view.property || ''];
-          let refs = enrichedProperty ? itemDetails?.[enrichedProperty] : null;
 
-          if (!refs || refs.length === 0) {
-            refs = itemDetails?.[view.property || ''] || [];
+          // Données enrichies pour l'affichage (avec titre, auteur, etc.)
+          let enrichedRefs = enrichedProperty ? itemDetails?.[enrichedProperty] : null;
+          if (!enrichedRefs || enrichedRefs.length === 0) {
+            enrichedRefs = itemDetails?.[view.property || ''] || [];
           }
 
-          if (isEditing && itemDetails[view.key] && Array.isArray(itemDetails[view.key])) {
-            const formDataItems = itemDetails[view.key];
-            const existingIds = refs.map((r: any) => r.id || r['o:id']);
-            const newRefs = formDataItems.filter((item: any) => {
-              const itemId = item.id || item['o:id'];
-              return itemId && !existingIds.includes(itemId);
+          let refs: any[];
+          if (isEditing && formData?.[view.key] && Array.isArray(formData[view.key])) {
+            // formData[view.key] fait autorité sur les IDs (reflète ajouts et suppressions)
+            const formIds = new Set(formData[view.key].map((item: any) => String(item.id || item['o:id'] || item.value_resource_id)));
+            // Filtrer les items enrichis par les IDs dans formData (gère suppressions)
+            const kept = enrichedRefs.filter((r: any) => formIds.has(String(r.id || r['o:id'])));
+            // Ajouter les nouveaux items de formData qui ne sont pas dans les enrichis
+            const enrichedIds = new Set(enrichedRefs.map((r: any) => String(r.id || r['o:id'])));
+            const added = formData[view.key].filter((item: any) => {
+              const itemId = String(item.id || item['o:id'] || item.value_resource_id);
+              return !enrichedIds.has(itemId);
             });
-            if (newRefs.length > 0) {
-              refs = [...refs, ...newRefs];
-            }
+            refs = [...kept, ...added];
+          } else {
+            refs = enrichedRefs;
           }
 
           const mediagraphies = refs.filter((ref: any) => ref?.type === 'mediagraphie' || ref?.mediagraphyType);
@@ -1316,18 +1358,59 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
             return null;
           }
 
+          const renderRefItem = (ref: any, index: number) => {
+            if (!canEdit || !onRemoveItem) return null;
+            const refId = ref.id || ref['o:id'];
+            if (!refId) return null;
+            return (
+              <button
+                key={`remove-${refId}-${index}`}
+                onClick={() => onRemoveItem(view.key, refId)}
+                className='ml-2 p-1 text-c5 hover:text-danger/80 rounded transition-all inline-flex items-center'
+                title='Retirer'>
+                <CrossIcon size={14} />
+              </button>
+            );
+          };
+
           return (
             <div className='space-y-6'>
               {mediagraphies.length > 0 && (
                 <div>
                   <h3 className='text-lg text-c5 font-semibold mb-4'>Médias</h3>
-                  <Mediagraphies items={mediagraphies} loading={loadingViews ?? false} notitle />
+                  {canEdit ? (
+                    <div className='flex flex-col gap-2'>
+                      {mediagraphies.map((ref: any, i: number) => (
+                        <div key={ref.id || ref['o:id'] || i} className='flex items-center justify-between group'>
+                          <div className='flex-1 min-w-0'>
+                            <Mediagraphies items={[ref]} loading={false} notitle />
+                          </div>
+                          {renderRefItem(ref, i)}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <Mediagraphies items={mediagraphies} loading={loadingViews ?? false} notitle />
+                  )}
                 </div>
               )}
               {bibliographies.length > 0 && (
                 <div>
                   <h3 className='text-lg text-c5 font-semibold mb-4'>Bibliographies</h3>
-                  <Bibliographies sections={[{ title: 'Bibliographies', bibliographies }]} loading={loadingViews ?? false} notitle />
+                  {canEdit ? (
+                    <div className='flex flex-col gap-2'>
+                      {bibliographies.map((ref: any, i: number) => (
+                        <div key={ref.id || ref['o:id'] || i} className='flex items-center justify-between group'>
+                          <div className='flex-1 min-w-0'>
+                            <Bibliographies sections={[{ title: '', bibliographies: [ref] }]} loading={false} notitle />
+                          </div>
+                          {renderRefItem(ref, i)}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <Bibliographies sections={[{ title: 'Bibliographies', bibliographies }]} loading={loadingViews ?? false} notitle />
+                  )}
                 </div>
               )}
               {canEdit && onLinkExisting && (
@@ -1651,6 +1734,14 @@ export const convertToGenericConfig = (config: SimplifiedDetailConfig): GenericD
     formEnabled: config.formEnabled ?? false,
     resourceTemplateId: config.templateId,
     formFields,
+
+    // Mapping viewKey → propriété Omeka S (généré depuis les vues)
+    viewKeyToProperty: config.views?.reduce((map, view) => {
+      if (view.key && view.property) {
+        map[view.key] = view.property;
+      }
+      return map;
+    }, {} as Record<string, string>),
   };
 };
 
@@ -1808,10 +1899,11 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
             } else {
               delete updatedItem[omekaProperty];
             }
-          } else if (value[0].id || value[0]['o:id']) {
+          } else if (value[0].id || value[0]['o:id'] || value[0].value_resource_id) {
             // Tableau de ressources liées (personnes, projets, etc.)
-            const resourceIds = value.map((item: any) => item.id || item['o:id']);
-            updatedItem[omekaProperty] = resourceIds.map((resourceId: number) => ({
+            // Supporte les formats: {id}, {o:id}, {value_resource_id} (format Omeka brut)
+            const resourceIds = value.map((item: any) => item.id || item['o:id'] || item.value_resource_id);
+            updatedItem[omekaProperty] = resourceIds.filter(Boolean).map((resourceId: number) => ({
               type: 'resource',
               property_id: propertyId,
               value_resource_id: resourceId,

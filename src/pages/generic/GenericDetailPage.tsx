@@ -18,7 +18,15 @@ import { generateSmartRecommendations } from './helpers';
 import { ResourcePicker } from '@/components/features/forms/ResourcePicker';
 import { ResourceFormTabs, ResourceTabInfo } from '@/components/features/forms/ResourceFormTabs';
 import { getTemplatePropertiesMap } from '@/services/Items';
-import { getRessourceLabel } from '@/config/resourceConfig';
+import { getRessourceLabel, getResourceConfigByTemplateId } from '@/config/resourceConfig';
+
+const getResourceFallbackTitle = (id: number | string, templateId?: number | string): string => {
+  if (templateId) {
+    const config = getResourceConfigByTemplateId(templateId);
+    if (config) return `${config.label} #${id}`;
+  }
+  return `Item #${id}`;
+};
 import { useFormState } from '@/hooks/useFormState';
 import { MediaFile } from '@/components/features/forms/MediaDropzone';
 
@@ -179,10 +187,12 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         }
 
         const currentItems = formData[link.linkedField] || [];
+        const linkedViewOption = config.viewOptions.find((v) => v.key === link.linkedField);
+        const linkedTemplateId = linkedViewOption?.resourceTemplateId || linkedViewOption?.resourceTemplateIds?.[0];
         const newItem = {
           id: link.resourceId,
           'o:id': link.resourceId,
-          title: link.resourceTitle || `Item #${link.resourceId}`,
+          title: link.resourceTitle || getResourceFallbackTitle(link.resourceId, linkedTemplateId),
         };
         // Avoid duplicates
         const alreadyLinked = currentItems.some((item: any) => item.id === link.resourceId || item['o:id'] === link.resourceId);
@@ -198,9 +208,16 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       // Notify parent that links were processed
       if (hasProcessedNew && onPendingLinksProcessed) {
         onPendingLinksProcessed();
+        // Auto-save en mode edit pour persister les liens immediatement
+        if (mode === 'edit' && id) {
+          shouldAutoSaveRef.current = true;
+        }
       }
     }
-  }, [pendingLinks, formData, setValue, onPendingLinksProcessed]);
+  }, [pendingLinks, formData, setValue, onPendingLinksProcessed, mode, id]);
+
+  // Ref pour auto-save apres traitement des pendingLinks
+  const shouldAutoSaveRef = useRef(false);
 
   // Get changed fields (for save)
   const getChangedFields = useCallback(() => {
@@ -448,7 +465,18 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   useEffect(() => {
     if (itemDetails && mode === 'edit') {
       // Extraire les valeurs depuis itemDetails en utilisant le dataPath de chaque formField
-      const extractedData: Record<string, any> = { ...itemDetails };
+      // Exclure les clés enrichies (display-only) pour ne pas polluer formData
+      // avec des données partielles du chargement progressif
+      const displayOnlyKeys = new Set([
+        'bibliographicCitations', 'references', 'sources', 'reviews', 'documentations',
+        'resourceCache', 'associatedMedia', 'associatedMediaRefs', 'citations', 'microresumes',
+      ]);
+      const extractedData: Record<string, any> = {};
+      for (const [key, value] of Object.entries(itemDetails)) {
+        if (!displayOnlyKeys.has(key)) {
+          extractedData[key] = value;
+        }
+      }
 
       // Pour chaque formField, extraire la valeur depuis itemDetails
       config.formFields?.forEach((field) => {
@@ -598,15 +626,20 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     try {
       const changedData = getChangedFields();
       
-      // Fusionner avec les valeurs des vues (schema:description, theatre:credit)
+      // Fusionner avec les valeurs des vues dynamiquement via viewKeyToProperty
       // Ces valeurs ne sont pas détectées par getChangedFields car ce ne sont pas des champs dirty
-      // mais des mises à jour directes via setValue
-      Object.assign(changedData, {
-        'schema:description': formData['schema:description'],
-        'theatre:credit': formData['theatre:credit'],
-        'Feedback': formData['Feedback'], 
-        'Outils': formData['Outils'],
-      });
+      if (config.viewKeyToProperty) {
+        Object.entries(config.viewKeyToProperty).forEach(([viewKey, property]) => {
+          const viewData = formData[viewKey];
+          if (viewData !== undefined && viewData !== null) {
+            changedData[viewKey] = viewData;
+            // Aussi stocker sous la propriété Omeka S pour les champs texte
+            if (typeof viewData === 'string') {
+              changedData[property] = viewData;
+            }
+          }
+        });
+      }
 
       // Add media files to the data
       changedData.mediaFiles = mediaFiles;
@@ -678,6 +711,17 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     }
   };
 
+  // Auto-save apres traitement des pendingLinks (pour ne pas perdre les liens au refresh)
+  useEffect(() => {
+    if (shouldAutoSaveRef.current) {
+      shouldAutoSaveRef.current = false;
+      const timer = setTimeout(() => {
+        handleSave();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  });
+
   // Sauvegarde vers Omeka S API
   const saveToOmekaS = async (data: any) => {
     if (!id) throw new Error('No item ID');
@@ -695,6 +739,10 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     const updatedItem = { ...rawItem };
 
     // 3. Appliquer les modifications de ressources liées (keywords, etc.)
+    // Tracker les propriétés Omeka déjà écrites pour ne pas les écraser
+    // avec les clés enrichies (ex: 'references' écraserait 'dcterms:references')
+    const writtenOmekaProperties = new Set<string>();
+
     Object.entries(data).forEach(([key, value]) => {
       // Si c'est un tableau de ressources liées (objets avec id ou o:id ou value_resource_id)
       const firstItem = Array.isArray(value) && value.length > 0 ? (value as any[])[0] : null;
@@ -702,6 +750,11 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         // Chercher la propriété Omeka correspondante
         let omekaPropertyKey = findOmekaPropertyKey(updatedItem, key);
         let propertyId: number | null = null;
+
+        // Ne pas écraser une propriété Omeka déjà traitée (ex: 'references' après 'dcterms:references')
+        if (omekaPropertyKey && writtenOmekaProperties.has(omekaPropertyKey)) {
+          return;
+        }
 
         // Si la propriété existe dans l'item, récupérer le propertyId
         if (omekaPropertyKey && updatedItem[omekaPropertyKey] && Array.isArray(updatedItem[omekaPropertyKey])) {
@@ -726,6 +779,12 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
             'dcterms:bibliographicCitation': 'dcterms:bibliographicCitation',
           };
           const fallbackProp = keyToOmekaProp[key] || key; // Utiliser la clé directement si pas de mapping
+
+          // Vérifier aussi le writtenOmekaProperties pour le fallback
+          if (fallbackProp && writtenOmekaProperties.has(fallbackProp)) {
+            return;
+          }
+
           if (fallbackProp && templatePropMap[fallbackProp]) {
             omekaPropertyKey = fallbackProp;
             propertyId = templatePropMap[fallbackProp];
@@ -734,13 +793,13 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
         if (omekaPropertyKey && propertyId) {
           // Remplacer complètement les ressources liées (permet ajouts ET suppressions)
-          // Note: utiliser item.id || item['o:id'] car certaines ressources ont seulement 'o:id'
           updatedItem[omekaPropertyKey] = (value as any[]).map((item: any) => ({
             type: 'resource',
             property_id: propertyId,
             value_resource_id: item.id || item['o:id'] || item.value_resource_id,
             is_public: true,
-          }));
+          })).filter((item: any) => item.value_resource_id);
+          writtenOmekaProperties.add(omekaPropertyKey);
         }
       }
       // Si c'est une valeur texte simple
@@ -982,7 +1041,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
     // Définir o:owner avec l'ID utilisateur Omeka S (table user) si disponible
     // Cela permet d'attribuer la ressource au bon utilisateur au lieu de l'API
-    if (omekaUserId) {
+    if (omekaUserId && parseInt(omekaUserId, 10) > 0) {
       itemData['o:owner'] = { 'o:id': parseInt(omekaUserId, 10) };
     }
 
@@ -1152,81 +1211,50 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       }
     }
 
-    // Mapper les feedbacks (schema:description = 1606)
-    // Vérifier à la fois la clé 'Feedback' (ancien) et 'schema:description' (nouveau config)
-    const feedbacks = data['schema:description'] || data.Feedback;
-    if (feedbacks && Array.isArray(feedbacks) && feedbacks.length > 0) {
-      const propertyId = getPropertyId('schema:description', propMap);
-      if (propertyId) {
-        itemData['schema:description'] = feedbacks.map((fb: any) => ({
-          type: 'resource',
-          property_id: propertyId,
-          value_resource_id: fb.id || fb['o:id'],
-          is_public: true,
-        }));
-      }
-    }
+    // Mapper dynamiquement les vues (items/references/text) via viewKeyToProperty
+    if (config.viewKeyToProperty) {
+      Object.entries(config.viewKeyToProperty).forEach(([viewKey, property]) => {
+        // Chercher les données sous la clé viewKey ou directement sous la propriété
+        const viewData = data[viewKey] || data[property];
+        if (!viewData || itemData[property]) {
+          console.log(`[createInOmekaS:viewMap] SKIP ${viewKey} → ${property}: viewData=${!!viewData}, alreadySet=${!!itemData[property]}`);
+          return;
+        }
 
-    // Mapper les outils (theatre:credit = 2145)
-    // Vérifier à la fois la clé 'Outils' (ancien) et 'theatre:credit' (nouveau config)
-    const outils = data['theatre:credit'] || data.Outils;
-    if (outils && Array.isArray(outils) && outils.length > 0) {
-      const propertyId = getPropertyId('theatre:credit', propMap);
-      if (propertyId) {
-        itemData['theatre:credit'] = outils.map((tool: any) => ({
-          type: 'resource',
-          property_id: propertyId,
-          value_resource_id: tool.id || tool['o:id'],
-          is_public: true,
-        }));
-      }
-    }
+        const propertyId = getPropertyId(property, propMap);
+        if (!propertyId) {
+          console.log(`[createInOmekaS:viewMap] SKIP ${viewKey} → ${property}: propertyId not found`);
+          return;
+        }
+        console.log(`[createInOmekaS:viewMap] OK ${viewKey} → ${property} (id=${propertyId}), items=${Array.isArray(viewData) ? viewData.length : typeof viewData}`);
 
-    // Mapper les contenus scientifiques (dcterms:references = 36)
-    if (data.ContentScient && Array.isArray(data.ContentScient) && data.ContentScient.length > 0) {
-      const propertyId = getPropertyId('dcterms:references', propMap);
-      if (propertyId) {
-        itemData['dcterms:references'] = data.ContentScient.map((content: any) => ({
-          type: 'resource',
-          property_id: propertyId,
-          value_resource_id: content.id || content['o:id'],
-          is_public: true,
-        }));
-      }
-    }
-
-    // Mapper les contenus culturels (dcterms:bibliographicCitation = 48)
-    if (data.ContentCultu && Array.isArray(data.ContentCultu) && data.ContentCultu.length > 0) {
-      const propertyId = getPropertyId('dcterms:bibliographicCitation', propMap);
-      if (propertyId) {
-        itemData['dcterms:bibliographicCitation'] = data.ContentCultu.map((content: any) => ({
-          type: 'resource',
-          property_id: propertyId,
-          value_resource_id: content.id || content['o:id'],
-          is_public: true,
-        }));
-      }
-    }
-
-    // Mapper l'hypothèse/abstract (bibo:abstract = 86)
-    if (data.Hypothese && typeof data.Hypothese === 'string' && data.Hypothese.trim() !== '') {
-      const propertyId = getPropertyId('bibo:abstract', propMap);
-      if (propertyId) {
-        itemData['bibo:abstract'] = [
-          {
-            type: 'literal',
+        if (Array.isArray(viewData) && viewData.length > 0) {
+          // Ressources liées (supporte formats: {id}, {o:id}, {value_resource_id})
+          itemData[property] = viewData.map((item: any) => ({
+            type: 'resource',
             property_id: propertyId,
-            '@value': data.Hypothese,
+            value_resource_id: item.id || item['o:id'] || item.value_resource_id,
             is_public: true,
-          },
-        ];
-      }
+          })).filter((item: any) => item.value_resource_id);
+        } else if (typeof viewData === 'string' && viewData.trim() !== '') {
+          // Champ texte
+          itemData[property] = [
+            {
+              type: 'literal',
+              property_id: propertyId,
+              '@value': viewData,
+              is_public: true,
+            },
+          ];
+        }
+      });
     }
 
     // Mapper TOUTES les autres propriétés dynamiquement (categories, projets, etc.)
     // Cela capture les propriétés qui ne sont pas dans formFields mais sont dans les vues
     Object.entries(data).forEach(([key, value]) => {
       // Ignorer les clés déjà traitées ou système
+      const viewKeys = new Set(Object.keys(config.viewKeyToProperty || {}));
       const ignoredKeys = new Set([
         'mediaFiles',
         'mediaToDelete',
@@ -1239,13 +1267,9 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         'personnes',
         'actants',
         'keywords',
-        'Feedback',
-        'Outils',
-        'ContentScient',
-        'ContentCultu',
-        'Hypothese',
         'Citations',
         'MicroResumes',
+        ...viewKeys,
       ]);
 
       if (ignoredKeys.has(key) || value === undefined || value === null) {
@@ -1282,14 +1306,14 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                 is_public: true,
               }));
             }
-          } else if (value[0].id || value[0]['o:id']) {
-            // Tableau de ressources liées
+          } else if (value[0].id || value[0]['o:id'] || value[0].value_resource_id) {
+            // Tableau de ressources liées (supporte formats mixtes)
             itemData[key] = value.map((item: any) => ({
               type: 'resource',
               property_id: propertyId,
-              value_resource_id: item.id || item['o:id'],
+              value_resource_id: item.id || item['o:id'] || item.value_resource_id,
               is_public: true,
-            }));
+            })).filter((item: any) => item.value_resource_id);
           }
         }
       }
@@ -1307,9 +1331,9 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
           itemData[mappedProperty] = value.map((item: any) => ({
             type: 'resource',
             property_id: propertyId,
-            value_resource_id: item.id || item['o:id'],
+            value_resource_id: item.id || item['o:id'] || item.value_resource_id,
             is_public: true,
-          }));
+          })).filter((item: any) => item.value_resource_id);
         }
       }
     });
@@ -1551,7 +1575,10 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     if (itemId !== null) {
       // Update the formData to remove the item
       const currentItems = formData[viewKey] || itemDetails?.[viewKey] || [];
-      const updatedItems = currentItems.filter((item: any) => item.id !== itemId);
+      const updatedItems = currentItems.filter((item: any) => {
+        const id = item.id || item['o:id'] || item.value_resource_id;
+        return id !== itemId && String(id) !== String(itemId);
+      });
       setValue(viewKey, updatedItems);
       
       addToast({
@@ -1655,7 +1682,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       // Formater les résultats comme dans test-omeka-edit.tsx
       const formattedResults = items.map((item: any) => ({
         id: item['o:id'],
-        title: item['o:title'] || `Item #${item['o:id']}`,
+        title: item['o:title'] || getResourceFallbackTitle(item['o:id'], item['o:resource_template']?.['o:id']),
         resourceClass: item['o:resource_class']?.['o:label'],
         thumbnailUrl: item['thumbnail_display_urls']?.square,
       }));

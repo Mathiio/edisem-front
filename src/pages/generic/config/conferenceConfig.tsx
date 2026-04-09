@@ -55,7 +55,7 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
       title: 'Médias',
       property: 'schema:associatedMedia',
       renderType: 'references',
-      resourceTemplateIds: [99, 98],
+      resourceTemplateIds: [99, 98, 83],
     },
   ],
 

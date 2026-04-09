@@ -35,7 +35,7 @@ type RecitiaOverviewProps = {
   type?: string;
 };
 
-export const RecitiaOverviewCard: React.FC<RecitiaOverviewProps> = ({ id, title, personnes, medias, fullUrl, buttonText, credits, type }) => {
+export const RecitiaOverviewCard: React.FC<RecitiaOverviewProps> = ({ id: _id, title, personnes, medias, fullUrl, buttonText, credits, type }) => {
   const [currentMediaIndex, setCurrentMediaIndex] = useState<number>(0);
 
   const navigate = useNavigate();
