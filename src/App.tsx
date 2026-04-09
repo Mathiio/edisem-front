@@ -177,6 +177,7 @@ function App() {
             <Route path='/corpus/element-narratif/:id' element={<ConfigurableDetailPage config={elementNarratifConfig} />} />
             <Route path='/corpus/analyse-critique/:id' element={<ConfigurableDetailPage config={analyseCritiqueConfig} />} />
             <Route path='/corpus/outil/:id' element={<ConfigurableDetailPage config={toolConfig} />} />
+            <Route path='/corpus/bibliographie/:id' element={<ConfigurableDetailPage config={bibliographyStudentConfig} />} />
             <Route path='/corpus/recit-scientifique/:id' element={<ConfigurableDetailPage config={recitScientifiqueConfig} />} />
             <Route path='/corpus/recit-mediatique/:id' element={<ConfigurableDetailPage config={recitMediatiqueConfig} />} />
             <Route path='/corpus/recit-citoyen/:id' element={<ConfigurableDetailPage config={recitCitoyenConfig} />} />

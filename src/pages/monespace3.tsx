@@ -127,6 +127,14 @@ const bentoSections = [
     description: 'Éléments esthétiques et narratifs',
     filter: (r: StudentResourceCard) => (r.type || '').includes('element_'),
   },
+  {
+    key: 'bibliographie',
+    title: 'Mes bibliographies',
+    icon: BookIcon,
+    color: '#B8D4FF',
+    description: 'Références bibliographiques',
+    filter: (r: StudentResourceCard) => (r.type || '') === 'bibliographie',
+  },
 ];
 
 const fadeIn: Variants = {
@@ -150,7 +158,8 @@ const BentoSection: React.FC<{
   canCreate: boolean;
   createConfigs: typeof createableConfigs;
   onCreateResource: (route: string) => void;
-}> = ({ section, resources, loading, expanded, onToggle, onEdit, onDelete, canCreate, createConfigs, onCreateResource }) => {
+  onCardClick?: (id: string, type?: string) => void;
+}> = ({ section, resources, loading, expanded, onToggle, onEdit, onDelete, canCreate, createConfigs, onCreateResource, onCardClick }) => {
   const Icon = section.icon;
   const displayResources = expanded ? resources : resources.slice(0, 4);
   const categoryConfigs = createConfigs.filter((c) => c.category === section.key);
@@ -224,6 +233,7 @@ const BentoSection: React.FC<{
                   showActions
                   onEdit={onEdit}
                   onDelete={onDelete}
+                  onCardClick={onCardClick}
                 />
               </motion.div>
             ))}
@@ -554,6 +564,7 @@ export const MonEspace3: React.FC = () => {
             canCreate={canCreate}
             createConfigs={filteredCreateableConfigs}
             onCreateResource={handleCreateResource}
+            onCardClick={section.key === 'bibliographie' ? handleEdit : undefined}
           />
         ))}
       </div>

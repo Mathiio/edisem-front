@@ -68,6 +68,8 @@ interface GenericDetailPageProps {
   onTabChange?: (tabId: string) => void;
   onTabClose?: (tabId: string) => void;
   updatedResources?: Record<string, { title?: string; thumbnail?: string }>; // Ressources mises à jour dans les onglets enfants
+  saveLabel?: string; // Libellé personnalisé pour le bouton de sauvegarde
+  resourceTree?: { root: string; children: { title: string; isActive: boolean }[] }; // Arbre de composition
 }
 
 /**
@@ -100,6 +102,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   onTabChange,
   onTabClose,
   updatedResources,
+  saveLabel,
+  resourceTree,
 }) => {
   const { id: paramId } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -2007,6 +2011,31 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     return [...allKeywords].sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
   }, [keywords, isEditing, formData.keywords]);
 
+  // Résumé automatique des ressources liées pour EditSaveBar (tab racine)
+  const autoResourceTree = useMemo(() => {
+    if (!isEditing || !config.type) return undefined;
+    const rootLabel = getRessourceLabel(config.type);
+    if (!rootLabel) return undefined;
+
+    const pluralize = (title: string, count: number): string => {
+      if (count <= 1) return `${count} ${title}`;
+      if (/[sx]$/i.test(title)) return `${count} ${title}`;
+      return `${count} ${title}s`;
+    };
+
+    const children = config.viewOptions
+      .filter((v) => v.editable !== false)
+      .flatMap((v) => {
+        const count = v.getItemCount ? v.getItemCount(itemDetails, formData) : 0;
+        if (count === 0) return [];
+        const displayTitle = v.viewKind === 'text' ? v.title : pluralize(v.title, count);
+        return [{ title: displayTitle, isActive: false }];
+      });
+
+    if (children.length === 0) return undefined;
+    return { root: rootLabel, children };
+  }, [isEditing, config.type, config.viewOptions, itemDetails, formData]);
+
   // Bug 3 fix: Si mode édition mais données pas encore chargées, afficher skeleton
   if (isEditing && !itemDetails && loading) {
     return (
@@ -2511,6 +2540,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         isSubmitting={isSubmitting}
         isDirty={isDirty}
         mode={mode}
+        saveLabel={saveLabel}
+        resourceTree={resourceTree ?? autoResourceTree}
       />
     </>
   );

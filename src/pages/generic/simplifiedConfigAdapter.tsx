@@ -917,6 +917,20 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
         });
       }
 
+      // Fetch microresumes & citations si la config en a (getResourceDetails est déjà appelé
+      // par les composants de vue, le cache HTTP évite un double appel réseau)
+      const hasMicroresumesView = config.views?.some((v) => v.renderType === 'microresumes');
+      const hasCitationsView = config.views?.some((v) => v.renderType === 'citations');
+      if (hasMicroresumesView || hasCitationsView) {
+        try {
+          const details = await getResourceDetails(id);
+          if (hasMicroresumesView && details?.microResumes) enrichedData.microResumes = details.microResumes;
+          if (hasCitationsView && details?.citations) enrichedData.citations = details.citations;
+        } catch (_) {
+          // Non-bloquant
+        }
+      }
+
       return {
         itemDetails: enrichedData,
         keywords,
@@ -1193,6 +1207,67 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
 // ========================================
 
 const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
+  const getItemCount = (itemDetails: any, formData: any): number => {
+    // formData est prioritaire (edit mode)
+    if (Array.isArray(formData?.[view.key])) return formData[view.key].length;
+
+    switch (view.renderType) {
+      case 'items': {
+        if (Array.isArray(itemDetails?.[view.key])) return itemDetails[view.key].length;
+        return getResourceIds(itemDetails, view.property || '').length;
+      }
+      case 'references': {
+        const enrichedPropertyMap: Record<string, string> = {
+          'dcterms:bibliographicCitation': 'bibliographicCitations',
+          'dcterms:references': 'references',
+          'dcterms:source': 'sources',
+          'schema:review': 'reviews',
+          'schema:documentation': 'documentations',
+          'schema:associatedMedia': 'associatedMediaRefs',
+        };
+        const enrichedProp = enrichedPropertyMap[view.property || ''];
+        const enrichedData = enrichedProp ? itemDetails?.[enrichedProp] : null;
+        if (Array.isArray(enrichedData)) return enrichedData.length;
+        return getResourceIds(itemDetails, view.property || '').length;
+      }
+      case 'microresumes':
+        return Array.isArray(itemDetails?.microResumes) ? itemDetails.microResumes.length : 0;
+      case 'citations':
+        return Array.isArray(itemDetails?.citations) ? itemDetails.citations.length : 0;
+      case 'categories': {
+        if (!view.categories) return 0;
+        const hasContent = view.categories.some((cat) =>
+          cat.subcategories.some((sub) => {
+            const raw = formData?.[sub.property] ?? itemDetails?.[sub.property];
+            if (!raw) return false;
+            if (typeof raw === 'string') return raw.trim() !== '';
+            if (Array.isArray(raw)) return raw.some((v: any) => {
+              if (typeof v === 'string') return v.trim() !== '';
+              if (v?.['@value']) return String(v['@value']).trim() !== '';
+              return !!v;
+            });
+            return true;
+          }),
+        );
+        return hasContent ? 1 : 0;
+      }
+      case 'text': {
+        const raw = formData?.[view.property || view.key] ?? itemDetails?.[view.property || view.key];
+        if (!raw) return 0;
+        if (typeof raw === 'string') return raw.trim() !== '' ? 1 : 0;
+        if (Array.isArray(raw)) return raw.length > 0 ? 1 : 0;
+        return 0;
+      }
+      default:
+        return 0;
+    }
+  };
+
+  const viewKind: 'resources' | 'text' =
+    view.renderType === 'items' || view.renderType === 'references' || view.renderType === 'microresumes' || view.renderType === 'citations'
+      ? 'resources'
+      : 'text';
+
   return {
     key: view.key,
     title: view.title,
@@ -1200,6 +1275,8 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
     resourceLabel: view.title,
     resourceTemplateId: view.resourceTemplateId,
     resourceTemplateIds: view.resourceTemplateIds,
+    viewKind,
+    getItemCount,
     renderContent: (context) => {
       const { itemDetails, loadingViews, isEditing, onLinkExisting, onCreateNew, onRemoveItem, onItemsChange, onEditResource, updatedResources, onTimeChange, formData } = context;
       switch (view.renderType) {
@@ -1398,16 +1475,16 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                 <div>
                   <h3 className='text-lg text-c5 font-semibold mb-4'>Bibliographies</h3>
                   {canEdit ? (
-                    <div className='flex flex-col gap-2'>
-                      {bibliographies.map((ref: any, i: number) => (
-                        <div key={ref.id || ref['o:id'] || i} className='flex items-center justify-between group'>
-                          <div className='flex-1 min-w-0'>
-                            <Bibliographies sections={[{ title: '', bibliographies: [ref] }]} loading={false} notitle />
-                          </div>
-                          {renderRefItem(ref, i)}
-                        </div>
-                      ))}
-                    </div>
+                    <ItemsList
+                      items={bibliographies.map((ref: any) => ({
+                        id: ref.id || ref['o:id'] || ref['value_resource_id'],
+                        title: ref.title || ref['o:title'] || ref['dcterms:title']?.[0]?.['@value'] || 'Bibliographie',
+                        url: '#',
+                      }))}
+                      isEditing={canEdit}
+                      onEdit={(id) => onEditResource?.(view.key, id)}
+                      onRemoveItem={onRemoveItem ? (id) => onRemoveItem(view.key, id) : undefined}
+                    />
                   ) : (
                     <Bibliographies sections={[{ title: 'Bibliographies', bibliographies }]} loading={loadingViews ?? false} notitle />
                   )}

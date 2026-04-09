@@ -174,8 +174,9 @@ const bibliographyTemplates: { [key: number]: (item: Bibliography) => React.Reac
 };
 
 // Composant BibliographyCard optimisé
-export const BibliographyCard: React.FC<Bibliography & { uniqueKey?: number }> = (props) => {
-  const { thumbnail, url } = props;
+export const BibliographyCard: React.FC<Bibliography & { uniqueKey?: number; onEdit?: (id: number) => void }> = (props) => {
+  const { thumbnail, url, onEdit } = props;
+  const resolvedId = props.id || (props as any)['o:id'] || (props as any)['value_resource_id'];
   const [isHovered, setIsHovered] = useState(false);
 
   const formatBibliography = (item: Bibliography) => {
@@ -183,23 +184,33 @@ export const BibliographyCard: React.FC<Bibliography & { uniqueKey?: number }> =
     return template ? template(item) : item.title || 'Référence non formatée';
   };
 
+  const content = (
+    <div className={`flex  ${thumbnail ? 'flex-row' : 'flex-col'} gap-4 items-start`}>
+      {thumbnail && (
+        <div className='flex-shrink-0'>
+          <img src={thumbnail} alt='thumbnail' className='w-12 object-cover rounded-md' />
+        </div>
+      )}
+      <div className='w-full flex flex-col gap-2.5'>
+        <p className='text-c6 text-base'>{formatBibliography(props)}</p>
+      </div>
+    </div>
+  );
+
   return (
     <div
       className={`w-full flex flex-row justify-between border-2 rounded-xl items-center gap-6  transition-transform-colors-opacity ${isHovered ? 'border-c6' : 'border-c3'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
-      <Link className='w-full gap-6 p-6 flex flex-row justify-between' to={url ?? '#'} target='_blank'>
-        <div className={`flex  ${thumbnail ? 'flex-row' : 'flex-col'} gap-4 items-start`}>
-          {thumbnail && (
-            <div className='flex-shrink-0'>
-              <img src={thumbnail} alt='thumbnail' className='w-12 object-cover rounded-md' />
-            </div>
-          )}
-          <div className='w-full flex flex-col gap-2.5'>
-            <p className='text-c6 text-base'>{formatBibliography(props)}</p>
-          </div>
-        </div>
-      </Link>
+      {onEdit ? (
+        <button className='w-full gap-6 p-6 flex flex-row justify-between text-left cursor-pointer' onClick={() => resolvedId && onEdit(resolvedId)}>
+          {content}
+        </button>
+      ) : (
+        <Link className='w-full gap-6 p-6 flex flex-row justify-between' to={url ?? '#'} target='_blank'>
+          {content}
+        </Link>
+      )}
     </div>
   );
 };
@@ -230,6 +241,7 @@ interface BibliographiesProps {
   loading: boolean;
   type?: 'scientific' | 'cultural';
   notitle?: boolean;
+  onEdit?: (id: number) => void;
   // Configuration pour le système legacy
   legacyConfig?: {
     normalTitle: string;
@@ -238,7 +250,7 @@ interface BibliographiesProps {
   };
 }
 
-export const Bibliographies: React.FC<BibliographiesProps> = ({ sections = [], bibliographies = [], loading, legacyConfig, notitle = false }) => {
+export const Bibliographies: React.FC<BibliographiesProps> = ({ sections = [], bibliographies = [], loading, legacyConfig, notitle = false, onEdit }) => {
   // Déterminer quelle méthode utiliser
   const useLegacyMode = bibliographies.length > 0 && !sections.length;
 
@@ -277,7 +289,7 @@ export const Bibliographies: React.FC<BibliographiesProps> = ({ sections = [], b
                     {!notitle && <h2 className='text-base text-c5 font-medium'>{section.title}</h2>}
                     <div className='flex flex-col gap-2.5'>
                       {section.bibliographies.map((bibliography, index) => (
-                        <BibliographyCard key={`${sectionIndex}-${index}`} {...bibliography} uniqueKey={index} />
+                        <BibliographyCard key={`${sectionIndex}-${index}`} {...bibliography} uniqueKey={index} onEdit={onEdit} />
                       ))}
                     </div>
                   </div>

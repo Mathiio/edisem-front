@@ -12,10 +12,11 @@ interface ExpCardProps extends Omit<Conference, 'type'> {
   showActions?: boolean;
   onEdit?: (id: string, type?: string) => void;
   onDelete?: (id: string) => void;
+  onCardClick?: (id: string, type?: string) => void;
 }
 
 export const StudentCard: React.FC<ExpCardProps> = (props) => {
-  const { type = 'experimentation_etudiant', showActions = false, onEdit, onDelete, ...experimentation } = props;
+  const { type = 'experimentation_etudiant', showActions = false, onEdit, onDelete, onCardClick, ...experimentation } = props;
   const navigate = useNavigate();
 
   const handleEdit = () => {
@@ -75,6 +76,10 @@ export const StudentCard: React.FC<ExpCardProps> = (props) => {
   const FinalTypeIcon = getResourceIcon(finalType) || SeminaireIcon;
 
   const handleClick = () => {
+    if (onCardClick && experimentation.id) {
+      onCardClick(experimentation.id, type);
+      return;
+    }
     const url = getSafeResourceUrl(item);
     if (url && url !== '#') {
       navigate(url);

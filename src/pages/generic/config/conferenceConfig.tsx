@@ -49,6 +49,7 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
       property: 'dcterms:references',
       renderType: 'references',
       resourceTemplateIds: [81, 83],
+      editable: true,
     },
     {
       key: 'Medias',

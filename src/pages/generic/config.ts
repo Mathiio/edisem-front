@@ -85,6 +85,8 @@ export interface ViewOption {
   resourceTemplateId?: number; // Template ID pour créer une nouvelle ressource de ce type
   resourceTemplateIds?: number[]; // Template IDs multiples (pour references avec bibliographies et mediagraphies)
   editable?: boolean; // Si false, cette vue n'est pas éditable (default: true)
+  getItemCount?: (itemDetails: any, formData: any) => number; // Compte les items liés pour le résumé
+  viewKind?: 'resources' | 'text'; // 'resources' = liste liée avec count, 'text' = champs texte (default: 'resources')
 }
 
 /**

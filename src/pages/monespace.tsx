@@ -3,13 +3,14 @@ import { PageBanner } from '@/components/ui/PageBanner';
 import { motion, Variants } from 'framer-motion';
 import { StudentCard, StudentCardSkeleton } from '@/components/features/espaceEtudiant/StudentCard';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { getAllStudentResources, getStudentCourses, getCourses, type StudentResourceCard, type Course } from '@/services/StudentSpace';
+import { getUserResources, getStudentCourses, getCourses, type Course } from '@/services/StudentSpace';
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, addToast } from '@heroui/react';
-import { ExperimentationIcon, UniversityIcon, PlusIcon, WarningIcon } from '@/components/ui/icons';
+import { ExperimentationIcon, UniversityIcon, PlusIcon, WarningIcon, BookIcon } from '@/components/ui/icons';
 import { useNavigate } from 'react-router-dom';
 import { experimentationStudentConfigSimplified } from '@/pages/generic/config/experimentationStudentConfig';
 import { feedbackStudentConfigSimplified } from '@/pages/generic/config/feedbackStudentConfig';
 import { toolStudentConfigSimplified } from '@/pages/generic/config/toolStudentConfig';
+import { bibliographyStudentConfigSimplified } from '@/pages/generic/config/bibliographyStudentConfig';
 import { useAuth } from '@/hooks/useAuth';
 import type { Key } from 'react';
 import { AlertModal } from '@/components/ui/AlertModal';
@@ -33,6 +34,11 @@ const createableConfigs = [
     config: feedbackStudentConfigSimplified,
     route: '/add-resource/retour-experience',
     icon: UniversityIcon,
+  },
+  {
+    config: bibliographyStudentConfigSimplified,
+    route: '/add-resource/bibliographie',
+    icon: BookIcon,
   },
 ];
 
@@ -106,29 +112,11 @@ export const MonEspace: React.FC = () => {
   const fetchExperimentations = useCallback(async () => {
     try {
       setLoading(true);
-      const allResources = await getAllStudentResources();
-
-      // Récupérer l'ID de l'utilisateur connecté depuis le localStorage
       const userId = localStorage.getItem('userId');
-
-      // Combiner toutes les ressources (expérimentations, outils, feedbacks)
-      const allItems: StudentResourceCard[] = [...allResources.experimentations, ...allResources.tools, ...allResources.feedbacks];
-
-      // Filtrer les ressources où l'utilisateur fait partie des actants
-      const filteredResources = allItems.filter((resource) => {
-        if (!userId) return false;
-
-        // Vérifier si l'utilisateur est dans les actants de la ressource
-        return resource.actants?.some((actant) => {
-          // Comparer l'ID de l'actant avec l'ID de l'utilisateur
-          return String(actant.id) === String(userId);
-        });
-      });
-
-      // Trier par date de création (plus récent en premier)
-      filteredResources.sort((a, b) => new Date(b.created || 0).getTime() - new Date(a.created || 0).getTime());
-
-      setExperimentationsStudents(filteredResources);
+      if (!userId) return;
+      const resources = await getUserResources(parseInt(userId));
+      resources.sort((a, b) => new Date(b.created || 0).getTime() - new Date(a.created || 0).getTime());
+      setExperimentationsStudents(resources);
     } catch (error) {
       console.error('Error loading student resources:', error);
     } finally {
@@ -199,9 +187,12 @@ export const MonEspace: React.FC = () => {
   // Handler pour modifier une ressource - navigue vers la page de détail en mode édition
   const handleEdit = useCallback(
     (id: string, type?: string) => {
-      // Déterminer la route de base en fonction du type
+      if (type === 'bibliographie') {
+        navigate(`/corpus/bibliographie/${id}?mode=edit`);
+        return;
+      }
+
       let baseRoute = 'experimentation';
-      
       if (type) {
         if (type.includes('outil')) {
           baseRoute = 'outil';
@@ -209,7 +200,6 @@ export const MonEspace: React.FC = () => {
           baseRoute = 'retour-experience';
         }
       }
-      
       navigate(`/espace-etudiant/${baseRoute}/${id}?mode=edit`);
     },
     [navigate],
@@ -248,13 +238,12 @@ export const MonEspace: React.FC = () => {
         if (response.ok || response.status === 500) {
           result = { success: true };
         } else {
-          throw new Error("Réponse invalide du serveur");
+          throw new Error('Réponse invalide du serveur');
         }
       }
 
-      const isDoctrineFalseError = result.error && 
-                                   result.error.includes('Doctrine\\ORM\\ORMInvalidArgumentException') && 
-                                   result.error.includes('Binding entities to query parameters');
+      const isDoctrineFalseError =
+        result.error && result.error.includes('Doctrine\\ORM\\ORMInvalidArgumentException') && result.error.includes('Binding entities to query parameters');
 
       if (result.success || result.id || isDoctrineFalseError) {
         addToast({
@@ -328,8 +317,7 @@ export const MonEspace: React.FC = () => {
             }}
             isLoading={loadingCourses}
             isRequired={isActant}
-            className='max-w-xs'
-          >
+            className='max-w-xs'>
             {(() => {
               const options = [
                 // Option Ressources enseignantes pour les actants
@@ -362,8 +350,7 @@ export const MonEspace: React.FC = () => {
         {canCreate && (
           <Dropdown
             classNames={{
-              content:
-                'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3 min-w-[200px]',
+              content: 'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3 min-w-[200px]',
             }}>
             <DropdownTrigger>
               <div className={dropdownButtonClass}>
@@ -414,6 +401,7 @@ export const MonEspace: React.FC = () => {
                     showActions
                     onEdit={handleEdit}
                     onDelete={handleDeleteClick}
+                    onCardClick={item.type === 'bibliographie' ? handleEdit : undefined}
                   />
                 </motion.div>
               ))}

@@ -79,6 +79,7 @@ const LEGACY_VIEW_KEY_MAP: Record<string, { config: GenericDetailPageConfig }> =
   'schema:description': { config: feedbackStudentConfig },
   'dcterms:references': { config: bibliographyStudentConfig },
   'dcterms:bibliographicCitation': { config: bibliographyStudentConfig },
+  Bibliographie: { config: bibliographyStudentConfig },
   outils: { config: toolStudentConfig },
   'schema:tool': { config: toolStudentConfig },
   projets: { config: experimentationStudentConfig },
@@ -386,6 +387,35 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
     return map;
   }, [tabs, handleSaveComplete, handleDirtyChange, clearPendingLinks, handleCloseTab, navigate]);
 
+  const getLinkLabel = (resourceTitle: string): string => {
+    const lower = resourceTitle.toLowerCase();
+    if (/^[aeiouéèêëàâîïôùûü]/i.test(lower)) return `Lier l'${lower}`;
+    if (lower.endsWith('e')) return `Lier la ${lower}`;
+    return `Lier le ${lower}`;
+  };
+
+  const getResourceTree = (tabId: string): { root: string; children: { title: string; isActive: boolean }[] } | undefined => {
+    const activeTab = tabs.find((t) => t.id === tabId);
+    if (!activeTab) return undefined;
+
+    // Remonter jusqu'à la racine
+    let root: InternalTab = activeTab;
+    while (root.parentTabId) {
+      const parent = tabs.find((t) => t.id === root.parentTabId);
+      if (!parent) break;
+      root = parent;
+    }
+
+    // Enfants directs de la racine
+    const children = tabs.filter((t) => t.parentTabId === root.id);
+    if (children.length === 0) return undefined;
+
+    return {
+      root: root.title,
+      children: children.map((t) => ({ title: t.title, isActive: t.id === tabId })),
+    };
+  };
+
   return (
     <>
       {tabs.map((tab) => {
@@ -416,6 +446,8 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
               activeTabId={activeTabId}
               onTabChange={handleTabChange}
               onTabClose={handleCloseTab}
+              saveLabel={tab.parentTabId && tab.mode === 'create' ? getLinkLabel(tab.title) : undefined}
+              resourceTree={tab.parentTabId ? getResourceTree(tab.id) : undefined}
             />
           </div>
         );
