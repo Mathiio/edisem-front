@@ -96,7 +96,7 @@ export const ProfilDropdown = () => {
 
             <DropdownSection className='mb-0'>
               <DropdownItem key='mon-espace' className={menuItemClass}>
-                <Link to='/mon-espace' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${itemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
+                <Link to={userData?.type === 'actant' ? '/mon-espace-3' : '/mon-espace'} className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${itemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
                   <UserIcon size={16} />
                   <p className='text-base font-normal'>Mon espace</p>
                 </Link>
