@@ -8,7 +8,8 @@ import { GenericDetailPageConfig } from '@/pages/generic/config';
 import { toolStudentConfig } from '@/pages/generic/config/toolStudentConfig';
 import { feedbackStudentConfig, feedbackStudentConfigSimplified } from '@/pages/generic/config/feedbackStudentConfig';
 import { experimentationStudentConfig } from '@/pages/generic/config/experimentationStudentConfig';
-import { bibliographyStudentConfig } from '@/pages/generic/config/bibliographyStudentConfig';
+import { bibliographyStudentConfig, bibliographyStudentConfigSimplified } from '@/pages/generic/config/bibliographyStudentConfig';
+import { SimplifiedDetailConfig } from '@/pages/generic/simplifiedConfig';
 import { toolConfig } from '@/pages/generic/config/toolConfig';
 import { feedbackConfig } from '@/pages/generic/config/feedbackConfig';
 import { experimentationConfig } from '@/pages/generic/config/experimentationConfig';
@@ -84,6 +85,11 @@ const LEGACY_VIEW_KEY_MAP: Record<string, { config: GenericDetailPageConfig }> =
   'schema:tool': { config: toolStudentConfig },
   projets: { config: experimentationStudentConfig },
   'dcterms:isPartOf': { config: experimentationStudentConfig },
+};
+
+const TEMPLATE_ID_TO_SIMPLIFIED: Record<number, SimplifiedDetailConfig> = {
+  [feedbackStudentConfigSimplified.templateId]: feedbackStudentConfigSimplified,
+  [bibliographyStudentConfigSimplified.templateId]: bibliographyStudentConfigSimplified,
 };
 
 const getConfigForViewKey = (viewKey: string, templateId?: number): { config: GenericDetailPageConfig } | undefined => {
@@ -358,9 +364,11 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
       // Déterminer la config simplifiée correspondante pour générer le handleSave
       let simplifiedConfig: any = null;
       
-      // Essayer de trouver la config simplifiée source
-      if (tab.config === feedbackStudentConfig) simplifiedConfig = feedbackStudentConfigSimplified;
-      // Il faudrait importer les autres configs simplifiées ici si nécessaire (toolStudentConfigSimplified, etc.)
+      // Essayer de trouver la config simplifiée source via templateId (plus robuste qu'une comparaison par référence)
+      const templateId = tab.config.resourceTemplateId;
+      if (templateId && TEMPLATE_ID_TO_SIMPLIFIED[templateId]) {
+        simplifiedConfig = TEMPLATE_ID_TO_SIMPLIFIED[templateId];
+      }
       
       let onSaveHandler: ((data: any) => Promise<void>) | undefined = undefined;
       
