@@ -62,16 +62,16 @@ export const bibliographyStudentConfigSimplified: SimplifiedDetailConfig = {
             { key: 'publisher', label: 'Éditeur / Revue', property: 'dcterms:publisher' },
             { key: 'volume', label: 'Volume', property: 'bibo:volume' },
             { key: 'issue', label: 'Numéro', property: 'bibo:issue' },
-            { key: 'pages', label: 'Pages', property: 'bibo:pageStart' },
+            { key: 'pages', label: 'Pages', property: 'bibo:pages' },
             { key: 'numPages', label: 'Nombre de pages', property: 'bibo:numPages' },
-            { key: 'collection', label: 'Collection', property: 'schema:isPartOf' },
+            { key: 'collection', label: 'Collection', property: 'schema:collection' },
           ],
         },
         {
           key: 'identification',
           title: 'Identification',
           subcategories: [
-            { key: 'isbn', label: 'ISBN', property: 'schema:isbn' },
+            { key: 'isbn', label: 'ISBN', property: 'jdc:hasConcept' },
             { key: 'format', label: 'Format', property: 'dcterms:format' },
             { key: 'type', label: 'Type', property: 'dcterms:type' },
           ],
@@ -80,7 +80,7 @@ export const bibliographyStudentConfigSimplified: SimplifiedDetailConfig = {
           key: 'source',
           title: 'Source',
           subcategories: [
-            { key: 'bookTitle', label: 'Titre du livre', property: 'oa:hasSource' },
+            { key: 'bookTitle', label: 'Titre du livre', property: 'dcterms:isPartOf' },
             { key: 'event', label: 'Événement', property: 'bibo:presentedAt' },
           ],
         },
