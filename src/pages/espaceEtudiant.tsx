@@ -114,25 +114,39 @@ export const EspaceEtudiant: React.FC = () => {
     fetchTeacherResources();
   }, []);
 
+  // Tri par nom d'intervenant (alphabétique) puis par titre de ressource
+  const sortByActantThenTitle = (items: StudentResourceCard[]): StudentResourceCard[] =>
+    [...items].sort((a, b) => {
+      const actantA = a.actants?.[0]?.title?.toLowerCase() || '';
+      const actantB = b.actants?.[0]?.title?.toLowerCase() || '';
+      if (actantA !== actantB) return actantA.localeCompare(actantB, 'fr');
+      return (a.title || '').toLowerCase().localeCompare((b.title || '').toLowerCase(), 'fr');
+    });
+
   // Obtenir les ressources filtrées d'un cours
   const getFilteredResourcesForCourse = (courseId: number, resources: AllStudentResources | null): StudentResourceCard[] => {
     if (!resources) return [];
     const filter = filters[courseId] || 'experimentation';
 
+    let items: StudentResourceCard[];
     if (filter === 'all') {
-      return [...resources.experimentations, ...resources.tools, ...resources.feedbacks].sort((a, b) => new Date(b.created || 0).getTime() - new Date(a.created || 0).getTime());
+      items = [...resources.experimentations, ...resources.tools, ...resources.feedbacks];
+    } else {
+      switch (filter) {
+        case 'experimentation':
+          items = resources.experimentations;
+          break;
+        case 'outil':
+          items = resources.tools;
+          break;
+        case 'retour_experience':
+          items = resources.feedbacks;
+          break;
+        default:
+          items = [];
+      }
     }
-
-    switch (filter) {
-      case 'experimentation':
-        return resources.experimentations;
-      case 'outil':
-        return resources.tools;
-      case 'retour_experience':
-        return resources.feedbacks;
-      default:
-        return [];
-    }
+    return sortByActantThenTitle(items);
   };
 
   // Mettre à jour le filtre d'un cours
@@ -144,22 +158,25 @@ export const EspaceEtudiant: React.FC = () => {
   const getFilteredTeacherResources = (): StudentResourceCard[] => {
     if (!teacherResources) return [];
 
+    let items: StudentResourceCard[];
     if (teacherFilter === 'all') {
-      return [...teacherResources.experimentations, ...teacherResources.tools, ...teacherResources.feedbacks].sort(
-        (a, b) => new Date(b.created || 0).getTime() - new Date(a.created || 0).getTime(),
-      );
+      items = [...teacherResources.experimentations, ...teacherResources.tools, ...teacherResources.feedbacks];
+    } else {
+      switch (teacherFilter) {
+        case 'experimentation':
+          items = teacherResources.experimentations;
+          break;
+        case 'outil':
+          items = teacherResources.tools;
+          break;
+        case 'retour_experience':
+          items = teacherResources.feedbacks;
+          break;
+        default:
+          items = [];
+      }
     }
-
-    switch (teacherFilter) {
-      case 'experimentation':
-        return teacherResources.experimentations;
-      case 'outil':
-        return teacherResources.tools;
-      case 'retour_experience':
-        return teacherResources.feedbacks;
-      default:
-        return [];
-    }
+    return sortByActantThenTitle(items);
   };
 
   return (

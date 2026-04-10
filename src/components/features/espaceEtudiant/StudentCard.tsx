@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Dropdown, DropdownItem, DropdownMenu, DropdownTrigger } from '@heroui/react';
 import { Conference } from '@/types/ui';
-import { EditIcon, TrashIcon, UserIcon, ThumbnailIcon, SeminaireIcon } from '@/components/ui/icons';
+import { EyeIcon, TrashIcon, UserIcon, ThumbnailIcon, SeminaireIcon } from '@/components/ui/icons';
 import { getResourceAuthors, getResourceSubtitle, getSafeResourceUrl, getResourceThumbnail } from '@/lib/resourceUtils';
 import { getRessourceLabel, getResourceIcon } from '@/config/resourceConfig';
 import { useNavigate } from 'react-router-dom';
@@ -19,16 +19,15 @@ export const StudentCard: React.FC<ExpCardProps> = (props) => {
   const { type = 'experimentation_etudiant', showActions = false, onEdit, onDelete, onCardClick, ...experimentation } = props;
   const navigate = useNavigate();
 
-  const handleEdit = () => {
-    if (onEdit && experimentation.id) {
-      onEdit(experimentation.id, type);
-    }
-  };
-
   const handleDelete = () => {
     if (onDelete && experimentation.id) {
       onDelete(experimentation.id);
     }
+  };
+
+  const handleNavigateToView = () => {
+    const url = getSafeResourceUrl(item);
+    if (url && url !== '#') navigate(url);
   };
 
   // Actions Dropdown
@@ -47,11 +46,11 @@ export const StudentCard: React.FC<ExpCardProps> = (props) => {
       </DropdownTrigger>
       <DropdownMenu aria-label='Actions' className='bg-c2 rounded-[12px] border-2 border-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] p-2 min-w-[140px]'>
         <DropdownItem
-          key='edit'
+          key='view'
           className='hover:bg-c3 text-c6 px-3 py-2 rounded-[8px] transition-all duration-200'
-          startContent={<EditIcon size={14} className='text-c5' />}
-          onPress={handleEdit}>
-          Modifier
+          startContent={<EyeIcon size={14} className='text-c5' />}
+          onPress={handleNavigateToView}>
+          Voir la ressource
         </DropdownItem>
         <DropdownItem
           key='delete'
@@ -80,13 +79,16 @@ export const StudentCard: React.FC<ExpCardProps> = (props) => {
       onCardClick(experimentation.id, type);
       return;
     }
+    // En mode actions (mon-espace), le clic ouvre l'édition
+    if (showActions && onEdit && experimentation.id) {
+      onEdit(experimentation.id, type);
+      return;
+    }
     const url = getSafeResourceUrl(item);
     if (url && url !== '#') {
       navigate(url);
       return;
     }
-
-    console.warn('Navigation impossible: ID manquant pour ce type', { type, item });
   };
 
   const renderAuthorNames = () => {
