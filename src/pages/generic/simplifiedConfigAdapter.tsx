@@ -1425,6 +1425,8 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
             if (mediagraphies.includes(ref)) return false;
             if (ref?.type === 'bibliographie' || ref?.template || ref?.class || ref?.resource_template_id) return true;
             if ((ref?.['o:id'] || ref?.id) && (ref?.['o:title'] || ref?.title)) return true;
+            // Format brut API (fallback quand l'enrichissement échoue) : { type: 'resource', value_resource_id: X }
+            if (ref?.value_resource_id !== undefined) return true;
             return false;
           });
 
@@ -1476,11 +1478,14 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                   <h3 className='text-lg text-c5 font-semibold mb-4'>Bibliographies</h3>
                   {canEdit ? (
                     <ItemsList
-                      items={bibliographies.map((ref: any) => ({
-                        id: ref.id || ref['o:id'] || ref['value_resource_id'],
-                        title: ref.title || ref['o:title'] || ref['dcterms:title']?.[0]?.['@value'] || 'Bibliographie',
-                        url: '#',
-                      }))}
+                      items={bibliographies.map((ref: any) => {
+                        const refId = String(ref.id || ref['o:id'] || ref['value_resource_id']);
+                        return {
+                          id: refId,
+                          title: updatedResources?.[refId]?.title || ref.title || ref['o:title'] || ref['dcterms:title']?.[0]?.['@value'] || 'Bibliographie',
+                          url: '#',
+                        };
+                      })}
                       isEditing={canEdit}
                       onEdit={(id) => onEditResource?.(view.key, id)}
                       onRemoveItem={onRemoveItem ? (id) => onRemoveItem(view.key, id) : undefined}

@@ -254,6 +254,16 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
 // ========================================
 
 /**
+ * Property IDs Omeka S pour les propriétés utilisées dans les vues dynamiques
+ * mais potentiellement absentes du template de la ressource parente.
+ * Source: /omk/api/properties?term=<term>
+ */
+export const OMEKA_PROPERTY_IDS: Record<string, number> = {
+  'dcterms:references': 36,
+  'dcterms:bibliographicCitation': 48,
+};
+
+/**
  * Map inversé: template_id -> ResourceType
  */
 export const TEMPLATE_ID_TO_TYPE: Record<number, ResourceType> = Object.values(RESOURCE_TYPES).reduce((acc, config) => {

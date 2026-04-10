@@ -22,7 +22,7 @@ import { recitTechnoConfig } from '@/pages/generic/config/recitTechnoConfig';
 import { recitCitoyenConfig } from '@/pages/generic/config/recitcitoyenConfig';
 import { recitMediatiqueConfig } from '@/pages/generic/config/recitmediatiqueConfig';
 import { createHandleSave } from '@/pages/generic/simplifiedConfigAdapter';
-import { getRessourceLabel } from '@/config/resourceConfig';
+import { getRessourceLabel, getResourceUrl } from '@/config/resourceConfig';
 import { AlertModal } from '@/components/ui/AlertModal';
 
 /**
@@ -185,60 +185,70 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
 
 
 
-  const handleSaveComplete = useCallback((tabId: string, savedItemId: string | number, savedItemTitle?: string) => {
-    setTabs((prevTabs) => {
-      const tab = prevTabs.find((t) => t.id === tabId);
+  const handleSaveComplete = useCallback(
+    (tabId: string, savedItemId: string | number, savedItemTitle?: string) => {
+      let navigationUrl: string | null = null;
 
-      if (tab?.parentTabId && tab.linkedField) {
-        const parentId = tab.parentTabId;
-        const linkedField = tab.linkedField; // Extract to ensure TypeScript knows it's defined
+      setTabs((prevTabs) => {
+        const tab = prevTabs.find((t) => t.id === tabId);
 
-        // Mettre à jour le titre dans updatedResources si disponible
-        if (savedItemTitle) {
-          setUpdatedResources((prev) => ({
-            ...prev,
-            [String(savedItemId)]: {
-              title: savedItemTitle,
-              // On pourrait aussi mettre à jour le thumbnail si on l'avait
-            },
-          }));
-        }
+        if (tab?.parentTabId && tab.linkedField) {
+          const parentId = tab.parentTabId;
+          const linkedField = tab.linkedField; // Extract to ensure TypeScript knows it's defined
 
-        // Only add to pendingLinks if the tab was in create mode
-        // In edit mode, the link already exists, so we don't need to add it again
-        if (tab.mode === 'create') {
-          // Ajouter le lien aux pendingLinks via setState (pas ref)
-          // Cela va déclencher un re-render et passer les liens au parent
-          setPendingLinksToPass((prev) => ({
-            ...prev,
-            [parentId]: [
-              ...(prev[parentId] || []),
-              {
-                linkedField,
-                resourceId: savedItemId,
-                resourceTitle: savedItemTitle,
+          // Mettre à jour le titre dans updatedResources si disponible
+          if (savedItemTitle) {
+            setUpdatedResources((prev) => ({
+              ...prev,
+              [String(savedItemId)]: {
+                title: savedItemTitle,
+                // On pourrait aussi mettre à jour le thumbnail si on l'avait
               },
-            ],
-          }));
+            }));
+          }
+
+          // Only add to pendingLinks if the tab was in create mode
+          // In edit mode, the link already exists, so we don't need to add it again
+          if (tab.mode === 'create') {
+            // Ajouter le lien aux pendingLinks via setState (pas ref)
+            // Cela va déclencher un re-render et passer les liens au parent
+            setPendingLinksToPass((prev) => ({
+              ...prev,
+              [parentId]: [
+                ...(prev[parentId] || []),
+                {
+                  linkedField,
+                  resourceId: savedItemId,
+                  resourceTitle: savedItemTitle,
+                },
+              ],
+            }));
+          }
+
+          // Marquer le parent comme dirty et supprimer l'onglet enfant
+          const newTabs = prevTabs.map((t) => (t.id === parentId ? { ...t, isDirty: true } : t)).filter((t) => t.id !== tabId);
+
+          // Changer vers le parent
+          setActiveTabId(parentId);
+
+          return newTabs;
         }
 
-        // Marquer le parent comme dirty et supprimer l'onglet enfant
-        // Even in edit mode, we might want to mark parent as dirty if we want to force a refresh,
-        // but for now let's assume parent doesn't need to be dirty if we just edited a child.
-        // Actually, if we edited a child, the parent might show outdated info (e.g. title), so maybe keep it dirty?
-        // But the user issue is duplication, which comes from pendingLinks.
-        // So we just filter tabs and optionally mark parent dirty.
-        const newTabs = prevTabs.map((t) => (t.id === parentId ? { ...t, isDirty: true } : t)).filter((t) => t.id !== tabId);
+        // Onglet principal qui vient de terminer une création
+        if (tab && !tab.parentTabId && tab.mode === 'create') {
+          const resourceUrl = getResourceUrl(initialConfig.type || '', savedItemId);
+          navigationUrl = `${resourceUrl}?mode=edit`;
+        }
 
-        // Changer vers le parent
-        setActiveTabId(parentId);
+        return prevTabs;
+      });
 
-        return newTabs;
+      if (navigationUrl) {
+        navigate(navigationUrl);
       }
-
-      return prevTabs;
-    });
-  }, []);
+    },
+    [navigate, initialConfig.type],
+  );
 
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;

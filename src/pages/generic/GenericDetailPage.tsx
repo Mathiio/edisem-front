@@ -18,7 +18,7 @@ import { generateSmartRecommendations } from './helpers';
 import { ResourcePicker } from '@/components/features/forms/ResourcePicker';
 import { ResourceFormTabs, ResourceTabInfo } from '@/components/features/forms/ResourceFormTabs';
 import { getTemplatePropertiesMap } from '@/services/Items';
-import { getRessourceLabel, getResourceConfigByTemplateId } from '@/config/resourceConfig';
+import { getRessourceLabel, getResourceConfigByTemplateId, OMEKA_PROPERTY_IDS } from '@/config/resourceConfig';
 
 const getResourceFallbackTitle = (id: number | string, templateId?: number | string): string => {
   if (templateId) {
@@ -789,9 +789,9 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
             return;
           }
 
-          if (fallbackProp && templatePropMap[fallbackProp]) {
+          if (fallbackProp && (templatePropMap[fallbackProp] || OMEKA_PROPERTY_IDS[fallbackProp])) {
             omekaPropertyKey = fallbackProp;
-            propertyId = templatePropMap[fallbackProp];
+            propertyId = templatePropMap[fallbackProp] || OMEKA_PROPERTY_IDS[fallbackProp];
           }
         }
 
