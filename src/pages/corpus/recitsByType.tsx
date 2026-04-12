@@ -180,7 +180,7 @@ export const RecitsByType: React.FC = () => {
                     data={genres}
                     perPage={3}
                     perMove={1}
-                    renderSlide={(genre, index) => <GenreCard genre={genre} key={`${genre.id}-${index}`} basePath={`${location.pathname}/genre`} />}
+                    renderSlide={(genre, index) => <GenreCard genre={genre} key={`${genre.id}-${index}`} basePath={`/corpus/genre`} />}
                 />
             </div>
             )}
