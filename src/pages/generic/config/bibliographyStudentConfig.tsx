@@ -52,7 +52,6 @@ export const bibliographyStudentConfigSimplified: SimplifiedDetailConfig = {
           subcategories: [
             { key: 'creator', label: 'Auteur(s)', property: 'dcterms:creator' },
             { key: 'editor', label: 'Directeur(s)', property: 'bibo:editor' },
-            { key: 'account', label: 'Compte Twitter/X', property: 'foaf:accountName' },
           ],
         },
         {
