@@ -75,6 +75,13 @@ export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
       renderType: 'references',
       resourceTemplateIds: [81, 99, 98, 83],
     },
+    {
+      key: 'Domaine',
+      title: 'Domaines du récit',
+      property: 'dcterms:subject',
+      renderType: 'items',
+      itemSetIds: [21318],
+    },
   ],
 
   showKeywords: true,
