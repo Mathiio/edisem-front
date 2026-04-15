@@ -13,6 +13,7 @@ export interface ResourcePickerProps {
   resourceClassId?: number; // ID de classe Omeka S pour filtrer les ressources (obsolète, utilisez resourceTemplateId)
   resourceTemplateId?: number; // ID de template Omeka S pour filtrer les ressources (recommandé)
   resourceTemplateIds?: number[]; // IDs de templates multiples (pour bibliographies/médiagraphies)
+  itemSetIds?: number[]; // IDs d'item sets Omeka S (pour filtrer par groupe d'objets)
   multiSelect?: boolean; // Autoriser la sélection multiple
   selectedIds?: (string | number)[]; // IDs déjà sélectionnés
   displayProperty?: string; // Propriété à afficher (default: 'dcterms:title')
@@ -85,6 +86,29 @@ const loadResourcesByTemplateId = async (templateId: number): Promise<{ resource
   }
 };
 
+// Helper function to load resources from item set IDs
+const loadResourcesByItemSetIds = async (itemSetIds: number[]): Promise<TemplateData[]> => {
+  try {
+    const allResources: any[] = [];
+    for (const itemSetId of itemSetIds) {
+      const url = `${API_BASE}items?item_set_id=${itemSetId}&per_page=100`;
+      const response = await fetch(url);
+      if (!response.ok) continue;
+      const data = await response.json();
+      allResources.push(...data);
+    }
+    const resources = allResources.map((item: any) => ({
+      ...item,
+      id: item['o:id'],
+      title: item['o:title'] || item['dcterms:title']?.[0]?.['@value'] || `Item ${item['o:id']}`,
+    }));
+    return [{ templateId: 0, templateLabel: 'Domaine', resources }];
+  } catch (err) {
+    console.error('[ResourcePicker] Erreur chargement ressources par item set:', err);
+    return [];
+  }
+};
+
 // Structure pour stocker les ressources par template
 interface TemplateData {
   templateId: number;
@@ -132,6 +156,7 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
   resourceClassId,
   resourceTemplateId,
   resourceTemplateIds,
+  itemSetIds,
   multiSelect = false,
   selectedIds = [],
   displayProperty = 'dcterms:title',
@@ -151,11 +176,18 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
   // Fetch resources (ancien système avec resourceClassId)
   const { data: classResources, loading: classLoading } = useGetDataByClass(resourceClassId || 0);
 
-  // Charger les ressources par template ID(s) quand le modal s'ouvre
+  // Charger les ressources par template ID(s) ou item set ID(s) quand le modal s'ouvre
   useEffect(() => {
     if (isOpen) {
-      // Priorité aux resourceTemplateIds multiples
-      if (resourceTemplateIds && resourceTemplateIds.length > 0) {
+      // Priorité aux itemSetIds
+      if (itemSetIds && itemSetIds.length > 0) {
+        setTemplateLoading(true);
+        setActiveTab('all');
+        loadResourcesByItemSetIds(itemSetIds).then((res) => {
+          setTemplateDataList(res);
+          setTemplateLoading(false);
+        });
+      } else if (resourceTemplateIds && resourceTemplateIds.length > 0) {
         setTemplateLoading(true);
         setActiveTab('all'); // Reset to "all" tab
         loadResourcesByMultipleTemplateIds(resourceTemplateIds).then((res) => {
@@ -171,7 +203,7 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
         });
       }
     }
-  }, [isOpen, resourceTemplateId, resourceTemplateIds]);
+  }, [isOpen, resourceTemplateId, resourceTemplateIds, itemSetIds]);
 
   // Calculer les ressources plates (pour la compatibilité avec le reste du code)
   const allTemplateResources = useMemo(() => {
@@ -179,8 +211,8 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
   }, [templateDataList]);
 
   // Choisir la source de données appropriée
-  const resources = resourceTemplateId || resourceTemplateIds ? allTemplateResources : classResources;
-  const loading = resourceTemplateId || resourceTemplateIds ? templateLoading : classLoading;
+  const resources = resourceTemplateId || resourceTemplateIds || itemSetIds ? allTemplateResources : classResources;
+  const loading = resourceTemplateId || resourceTemplateIds || itemSetIds ? templateLoading : classLoading;
 
   // Ressources filtrées par onglet actif
   const resourcesForActiveTab = useMemo(() => {
@@ -535,9 +567,9 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
                     onClose={() => toggleSelection(resource)}
                     variant='flat'
                     classNames={{
-                      base: 'bg-c6 text-white px-2 py-px rounded-lg',
-                      content: 'text-white font-medium px-3',
-                      closeButton: 'text-white/70 hover:text-white',
+                      base: 'bg-action px-2 py-px rounded-lg',
+                      content: 'text-selected font-medium px-3',
+                      closeButton: 'text-selected/70 hover:text-selected',
                     }}>
                     {truncate(getDisplayValue(resource), 30)}
                   </Chip>

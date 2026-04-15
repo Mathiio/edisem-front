@@ -5,7 +5,7 @@
  * SimpleDetailConfig, sans avoir à créer de composants React personnalisés.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, Variants } from 'framer-motion';
 import { Skeleton, Spinner, Input, Textarea, Slider, Button, Link, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, addToast, cn } from '@heroui/react';
 import { DatePicker } from '@heroui/react';
@@ -18,6 +18,7 @@ import { ResourceSelectionModal } from '@/components/features/forms/ResourceSele
 import { InternalFieldConfig, getOverviewFields, getDetailsFields, getHeaderFields } from './simplifiedConfig';
 import { getOmekaValue, getResourceIds } from './simplifiedConfigAdapter';
 import { isValidYouTubeUrl, getYouTubeThumbnailUrl } from '@/lib/utils';
+import { Select, SelectItem } from '@/theme/components/select';
 import { getResourceConfigByType } from '@/config/resourceConfig';
 
 // ========================================
@@ -443,6 +444,53 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
 };
 
 // ========================================
+// ItemSetSelect
+// Sélecteur dropdown peuplé depuis un item set Omeka S
+// ========================================
+
+const ItemSetSelect: React.FC<{
+  itemSetId: number;
+  selectedId?: number;
+  label: string;
+  onChange: (id: number, title: string) => void;
+}> = ({ itemSetId, selectedId, label, onChange }) => {
+  const [items, setItems] = useState<{ id: number; title: string }[]>([]);
+
+  useEffect(() => {
+    fetch(`/omk/api/items?item_set_id=${itemSetId}&per_page=100`)
+      .then((r) => r.json())
+      .then((data) =>
+        setItems(
+          data.map((item: any) => ({
+            id: item['o:id'],
+            title: item['o:title'] ?? `Item ${item['o:id']}`,
+          }))
+        )
+      )
+      .catch(console.error);
+  }, [itemSetId]);
+
+  return (
+    <div className='flex flex-col gap-2'>
+      <label className='text-[14px] text-c5 font-medium'>{label}</label>
+      <Select
+        aria-label={label}
+        selectedKeys={selectedId ? new Set([String(selectedId)]) : new Set()}
+        onSelectionChange={(keys) => {
+          const key = Array.from(keys)[0] as string;
+          const found = items.find((i) => String(i.id) === key);
+          if (found) onChange(found.id, found.title);
+        }}
+        placeholder='Sélectionner...'>
+        {items.map((item) => (
+          <SelectItem key={String(item.id)} textValue={item.title}>{item.title}</SelectItem>
+        ))}
+      </Select>
+    </div>
+  );
+};
+
+// ========================================
 // SimpleDetailsCard
 // Combine le titre, les métadonnées et les détails en un seul bloc unifié (mode édition)
 // ========================================
@@ -723,6 +771,23 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
               </div>
             ))}
 
+          {/* === Champs ItemSet (sélecteur) === */}
+          {detailsFields
+            .filter((f) => f.type === 'itemset' && f.itemSetId)
+            .map((field) => {
+              const currentIds = getResourceIds(itemDetails, field.property);
+              const currentId = currentIds.length > 0 ? currentIds[0] : undefined;
+              return (
+                <ItemSetSelect
+                  key={field.key}
+                  itemSetId={field.itemSetId!}
+                  selectedId={currentId}
+                  label={field.label}
+                  onChange={(id, title) => onFieldChange?.(field.property, [{ id, title }])}
+                />
+              );
+            })}
+
           {/* === Section URL externe === */}
           {urlField && (
             <div className='flex flex-col gap-2'>
@@ -778,6 +843,19 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
           />
         )}
         {actants && actants.length > 0 && <p className='text-[14px] text-end text-c4 italic'>Ajouté par : {actants.map((a) => getPersonDisplayName(a)).join(', ')}</p>}
+        {detailsFields
+          .filter((f) => f.type === 'itemset')
+          .map((field) => {
+            const ids = getResourceIds(itemDetails, field.property);
+            const resolved = ids.map((id) => resourceCache[id]).filter(Boolean);
+            if (resolved.length === 0) return null;
+            return (
+              <p key={field.key} className='text-[14px] text-c5'>
+                <span className='font-medium'>{field.label} : </span>
+                {resolved.map((r: any) => r.title || r.name).join(', ')}
+              </p>
+            );
+          })}
         {description && (
           <p className='text-[16px] text-c5 font-semibold transition-all ease-in-out duration-200'>
             {expanded ? 'affichez moins' : '...affichez plus'}

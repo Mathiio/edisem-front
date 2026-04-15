@@ -26,6 +26,7 @@ export type FieldType =
   | 'slider' // Slider (0-100)
   | 'url' // Lien externe
   | 'resource' // Ressource liée (avec vignette et nom)
+  | 'itemset' // Sélection depuis un item set Omeka S
   | 'media' // Médias (images/vidéos)
   | 'status' // Statut (chip/badge)
   | 'percentage'; // Pourcentage avec barre de progression
@@ -79,6 +80,9 @@ export interface FieldDefinition {
 
   /** Pour resource: permettre sélection multiple */
   multiSelect?: boolean;
+
+  /** Pour itemset: ID de l'item set Omeka S */
+  itemSetId?: number;
 
   /** Propriétés sources multiples (pour combiner plusieurs propriétés) */
   sourceProperties?: string[];
@@ -192,6 +196,9 @@ export interface SimplifiedViewConfig {
   /** Template IDs multiples (pour les references avec bibliographies et mediagraphies) */
   resourceTemplateIds?: number[];
 
+  /** Item set IDs Omeka S (pour filtrer par groupe d'objets) */
+  itemSetIds?: number[];
+
   /** Fonction de rendu custom (pour renderType='custom') */
   customRender?: (context: import('./config').RenderContentContext) => React.ReactNode;
 }
@@ -298,6 +305,9 @@ export interface InternalFieldConfig {
   /** Pour resource */
   resourceTemplateId?: number;
   multiSelect?: boolean;
+
+  /** Pour itemset */
+  itemSetId?: number;
 
   /** Propriétés sources multiples */
   sourceProperties?: string[];
@@ -413,6 +423,7 @@ export const extractFieldsFromConfig = (fields: SimplifiedFieldsMapping): Intern
         step: fieldValue.step ?? defaults.step,
         resourceTemplateId: fieldValue.resourceTemplateId ?? defaults.resourceTemplateId,
         multiSelect: fieldValue.multiSelect ?? defaults.multiSelect,
+        itemSetId: fieldValue.itemSetId,
         sourceProperties: fieldValue.sourceProperties,
       });
     }

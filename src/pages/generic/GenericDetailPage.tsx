@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, Variants } from 'framer-motion';
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Spinner, addToast, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from '@heroui/react';
+import { Select, SelectItem } from '@/theme/components/select';
 import { LongCarrousel, FullCarrousel } from '@/components/ui/Carrousels';
 import { KeywordsCard } from '@/components/features/conference/KeywordsCards';
 import { Layouts } from '@/components/layout/Layouts';
@@ -29,6 +30,53 @@ const getResourceFallbackTitle = (id: number | string, templateId?: number | str
 };
 import { useFormState } from '@/hooks/useFormState';
 import { MediaFile } from '@/components/features/forms/MediaDropzone';
+
+// ========================================
+// Composant local: sélecteur depuis un item set Omeka
+// ========================================
+const ItemSetFormField: React.FC<{
+  label: string;
+  itemSetId: number;
+  value?: number;
+  onChange: (id: number, title: string) => void;
+}> = ({ label, itemSetId, value, onChange }) => {
+  const [items, setItems] = React.useState<{ id: number; title: string }[]>([]);
+
+  React.useEffect(() => {
+    fetch(`/omk/api/items?item_set_id=${itemSetId}&per_page=100`)
+      .then((r) => r.json())
+      .then((data) =>
+        setItems(
+          data.map((item: any) => ({
+            id: item['o:id'],
+            title: item['o:title'] ?? `Item ${item['o:id']}`,
+          }))
+        )
+      )
+      .catch(console.error);
+  }, [itemSetId]);
+
+  return (
+    <div className='flex flex-col gap-2'>
+      <label className='text-[14px] text-c5 font-medium'>{label}</label>
+      <Select
+        aria-label={label}
+        selectedKeys={value ? new Set([String(value)]) : new Set()}
+        onSelectionChange={(keys) => {
+          const key = Array.from(keys)[0] as string;
+          const found = items.find((i) => String(i.id) === key);
+          if (found) onChange(found.id, found.title);
+        }}
+        placeholder='Sélectionner...'>
+        {items.map((item) => (
+          <SelectItem key={String(item.id)} textValue={item.title}>
+            {item.title}
+          </SelectItem>
+        ))}
+      </Select>
+    </div>
+  );
+};
 
 // API Config
 const API_BASE = '/omk/api/';
@@ -234,6 +282,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     viewKey: string;
     resourceTemplateId?: number;
     resourceTemplateIds?: number[];
+    itemSetIds?: number[];
     multiSelect?: boolean;
   }>({
     isOpen: false,
@@ -1536,12 +1585,14 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     // Vérifier si on a plusieurs template IDs (pour les références bibliographiques/médiagraphiques)
     const resourceTemplateIds = viewOption?.resourceTemplateIds;
     const resourceTemplateId = viewOption?.resourceTemplateId || defaultTemplateIds[viewKey];
+    const itemSetIds = viewOption?.itemSetIds;
 
     setPickerState({
       isOpen: true,
       viewKey,
       resourceTemplateId,
       resourceTemplateIds,
+      itemSetIds,
       multiSelect: true,
     });
   };
@@ -1549,9 +1600,54 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   // Handle creating a new resource (opens new tab)
   const handleCreateNew = (viewKey: string) => {
     const viewOption = config.viewOptions.find((v) => v.key === viewKey);
+    // Si la vue utilise des item sets, ouvrir la modale de création rapide
+    if (viewOption?.itemSetIds && viewOption.itemSetIds.length > 0) {
+      setCreateItemSetModalState({ isOpen: true, viewKey, itemSetIds: viewOption.itemSetIds });
+      return;
+    }
     const templateId = viewOption?.resourceTemplateId || viewOption?.resourceTemplateIds?.[0];
     if (onCreateNewResource) {
       onCreateNewResource(viewKey, templateId);
+    }
+  };
+
+  // État pour la modale de création d'item dans un item set
+  const [createItemSetModalState, setCreateItemSetModalState] = useState<{
+    isOpen: boolean;
+    viewKey: string;
+    itemSetIds: number[];
+  }>({ isOpen: false, viewKey: '', itemSetIds: [] });
+  const [createItemSetTitle, setCreateItemSetTitle] = useState('');
+  const [createItemSetLoading, setCreateItemSetLoading] = useState(false);
+
+  const handleCreateItemSetResource = async () => {
+    if (!createItemSetTitle.trim()) return;
+    setCreateItemSetLoading(true);
+    try {
+      const body = {
+        'o:item_set': createItemSetModalState.itemSetIds.map((id) => ({ 'o:id': id })),
+        'dcterms:title': [{ type: 'literal', '@value': createItemSetTitle.trim(), property_id: 1, is_public: true }],
+      };
+      const url = `${API_BASE}items?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error('Erreur création');
+      const created = await response.json();
+      const newId = created['o:id'];
+      // Ajouter l'item créé à la vue
+      const { viewKey } = createItemSetModalState;
+      const currentItems = formData[viewKey] || itemDetails?.[viewKey] || [];
+      setValue(viewKey, [...currentItems, { id: newId, 'o:id': newId, title: createItemSetTitle.trim() }]);
+      setCreateItemSetModalState({ isOpen: false, viewKey: '', itemSetIds: [] });
+      setCreateItemSetTitle('');
+      addToast({ title: 'Créé avec succès', classNames: { base: 'bg-success', title: 'text-c6' }, timeout: 2000 });
+    } catch {
+      addToast({ title: 'Erreur lors de la création', classNames: { base: 'bg-danger', title: 'text-c6' }, timeout: 3000 });
+    } finally {
+      setCreateItemSetLoading(false);
     }
   };
 
@@ -2275,6 +2371,19 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                   </div>
                 )}
 
+                {/* Champs ItemSet (sélecteur depuis un item set Omeka) */}
+                {config.formFields
+                  ?.filter((f) => f.type === 'selection' && f.selectionConfig?.itemSetId)
+                  .map((field) => (
+                    <ItemSetFormField
+                      key={field.key}
+                      label={field.label}
+                      itemSetId={field.selectionConfig!.itemSetId!}
+                      value={formData[field.key]?.[0]?.id ?? undefined}
+                      onChange={(id, title) => setValue(field.key, [{ id, title }])}
+                    />
+                  ))}
+
                 {/* Lien externe */}
                 <div className='flex flex-col gap-2'>
                   <label className='text-[14px] text-c5 font-medium'>Lien externe</label>
@@ -2485,12 +2594,51 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
           title={`Sélectionner ${pickerState.viewKey === 'keywords' ? 'des mots-clés' : 'des ressources'}`}
           resourceTemplateId={pickerState.resourceTemplateId}
           resourceTemplateIds={pickerState.resourceTemplateIds}
+          itemSetIds={pickerState.itemSetIds}
           multiSelect={pickerState.multiSelect}
           selectedIds={[]}
-          displayMode={pickerState.viewKey === 'keywords' ? 'alphabetic' : 'grid'}
+          displayMode={pickerState.viewKey === 'keywords' || pickerState.itemSetIds ? 'alphabetic' : 'grid'}
         />
+        {/* Modale création rapide d'un item dans un item set */}
+        <Modal
+          isOpen={createItemSetModalState.isOpen}
+          onClose={() => { setCreateItemSetModalState({ isOpen: false, viewKey: '', itemSetIds: [] }); setCreateItemSetTitle(''); }}
+          classNames={{ base: 'bg-c1 border-2 border-c3', header: 'border-b border-c3', body: 'py-6', footer: 'border-t border-c3' }}>
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader><span className='text-c6 font-semibold'>Créer une nouvelle entrée</span></ModalHeader>
+                <ModalBody>
+                  <div className='flex flex-col gap-2'>
+                    <label className='text-[14px] text-c5 font-medium'>Titre</label>
+                    <input
+                      autoFocus
+                      type='text'
+                      value={createItemSetTitle}
+                      onChange={(e) => setCreateItemSetTitle(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') void handleCreateItemSetResource(); }}
+                      placeholder="Nom de l'entrée..."
+                      className='bg-c2 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action'
+                    />
+                  </div>
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant='light' onPress={onClose} className='text-c5'>Annuler</Button>
+                  <Button
+                    onPress={() => void handleCreateItemSetResource()}
+                    isLoading={createItemSetLoading}
+                    isDisabled={!createItemSetTitle.trim()}
+                    className='bg-action text-selected'>
+                    Créer
+                  </Button>
+                </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
         {/* Delete Confirmation Modal */}
-      <Modal 
+      <Modal
         isOpen={deleteModalState.isOpen} 
         onClose={() => setDeleteModalState(prev => ({ ...prev, isOpen: false }))}
         classNames={{

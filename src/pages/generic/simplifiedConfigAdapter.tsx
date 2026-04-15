@@ -329,6 +329,7 @@ const fieldTypeToFormType: Record<FieldType, FormFieldType> = {
   slider: 'slider',
   url: 'url',
   resource: 'multiselection',
+  itemset: 'selection',
   media: 'media',
   status: 'text',
   percentage: 'slider',
@@ -336,7 +337,12 @@ const fieldTypeToFormType: Record<FieldType, FormFieldType> = {
 
 export const fieldToFormField = (field: InternalFieldConfig): FormFieldConfig => {
   // For URL type fields, use @id instead of @value (Omeka S stores URIs in @id)
-  const dataPath = field.type === 'url' ? `${field.property}.0.@id` : `${field.property}.0.@value`;
+  // For itemset fields, use value_resource_id (linked resource)
+  const dataPath = field.type === 'url'
+    ? `${field.property}.0.@id`
+    : field.type === 'itemset'
+      ? `${field.property}.0.value_resource_id`
+      : `${field.property}.0.@value`;
   return {
     key: field.key,
     label: field.label,
@@ -353,7 +359,13 @@ export const fieldToFormField = (field: InternalFieldConfig): FormFieldConfig =>
           templateId: field.resourceTemplateId,
           multiple: field.multiSelect,
         }
-      : undefined,
+      : field.itemSetId
+        ? {
+            resourceType: field.label,
+            itemSetId: field.itemSetId,
+            multiple: false,
+          }
+        : undefined,
   };
 };
 
@@ -1275,6 +1287,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
     resourceLabel: view.title,
     resourceTemplateId: view.resourceTemplateId,
     resourceTemplateIds: view.resourceTemplateIds,
+    itemSetIds: view.itemSetIds,
     viewKind,
     getItemCount,
     renderContent: (context) => {
