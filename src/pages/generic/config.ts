@@ -135,6 +135,9 @@ export interface GenericDetailPageConfig {
 
   // Mapping viewKey → propriété Omeka S (généré automatiquement depuis les vues)
   viewKeyToProperty?: Record<string, string>;
+
+  /** Mode édition en une seule colonne (médias → formulaire → vues) */
+  editSingleColumn?: boolean;
 }
 
 // ============================================

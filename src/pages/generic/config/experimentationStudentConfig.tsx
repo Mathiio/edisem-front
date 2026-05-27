@@ -48,7 +48,7 @@ export const experimentationStudentConfigSimplified: SimplifiedDetailConfig = {
       title: 'Outils',
       property: 'theatre:credit',
       renderType: 'items',
-      urlPattern: '/espace-etudiant/outil/:id',
+      urlPattern: '/corpus/outil/:id',
       resourceTemplateIds: [114, 129],
     },
     {

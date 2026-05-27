@@ -16,7 +16,8 @@ import { Seminaires } from '@/pages/corpus/Seminaires';
 import { Experimentations } from '@/pages/corpus/Experimentations';
 import { MisesEnRecits } from '@/pages/corpus/recits';
 import { Personne } from '@/pages/personne';
-import { toolConfig } from '@/pages/generic/config/toolConfig';
+import { toolConfig, toolStudentConfig } from '@/pages/generic/config/toolConfig';
+import { ToolDetailPage } from '@/pages/generic/ToolDetailPage';
 import { RecitsByGenre } from '@/pages/corpus/recitsByGenre';
 import { RecitsByType } from '@/pages/corpus/recitsByType';
 import { ConfigurableDetailPage } from '@/pages/generic/ConfigurableDetailPage';
@@ -36,7 +37,6 @@ import { EspaceEtudiant } from './pages/espaceEtudiant';
 import { LoadingScreen } from './components/layout/LoadingScreen';
 import { useState, useCallback, useEffect, createContext, useContext } from 'react';
 import { experimentationStudentConfig } from './pages/generic/config/experimentationStudentConfig';
-import { toolStudentConfig } from './pages/generic/config/toolStudentConfig';
 import { feedbackStudentConfig } from './pages/generic/config/feedbackStudentConfig';
 import { bibliographyStudentConfig } from './pages/generic/config/bibliographyStudentConfig';
 import { MonEspace } from './pages/monespace';
@@ -132,7 +132,7 @@ function App() {
             <Route path='/mots-cles' Component={ProtectedMotsCles} />
 
             <Route path='/espace-etudiant/experimentation/:id' element={<ConfigurableDetailPage config={experimentationStudentConfig} />} />
-            <Route path='/espace-etudiant/outil/:id' element={<ConfigurableDetailPage config={toolStudentConfig} />} />
+            <Route path='/espace-etudiant/outil/:id' Component={ToolDetailPage} />
             <Route path='/espace-etudiant/retour-experience/:id' element={<ConfigurableDetailPage config={feedbackStudentConfig} />} />
 
             {/* Main corpus routes */}
@@ -181,7 +181,7 @@ function App() {
             <Route path='/corpus/element-esthetique/:id' element={<ConfigurableDetailPage config={elementEsthetiqueConfig} />} />
             <Route path='/corpus/element-narratif/:id' element={<ConfigurableDetailPage config={elementNarratifConfig} />} />
             <Route path='/corpus/analyse-critique/:id' element={<ConfigurableDetailPage config={analyseCritiqueConfig} />} />
-            <Route path='/corpus/outil/:id' element={<ConfigurableDetailPage config={toolConfig} />} />
+            <Route path='/corpus/outil/:id' Component={ToolDetailPage} />
             <Route path='/corpus/bibliographie/:id' element={<ConfigurableDetailPage config={bibliographyStudentConfig} />} />
             <Route path='/corpus/recit-scientifique/:id' element={<ConfigurableDetailPage config={recitScientifiqueConfig} />} />
             <Route path='/corpus/recit-mediatique/:id' element={<ConfigurableDetailPage config={recitMediatiqueConfig} />} />

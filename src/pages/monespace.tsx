@@ -9,7 +9,7 @@ import { ExperimentationIcon, UniversityIcon, PlusIcon, WarningIcon, BookIcon } 
 import { useNavigate } from 'react-router-dom';
 import { experimentationStudentConfigSimplified } from '@/pages/generic/config/experimentationStudentConfig';
 import { feedbackStudentConfigSimplified } from '@/pages/generic/config/feedbackStudentConfig';
-import { toolStudentConfigSimplified } from '@/pages/generic/config/toolStudentConfig';
+import { toolStudentConfigSimplified } from '@/pages/generic/config/toolConfig';
 import { bibliographyStudentConfigSimplified } from '@/pages/generic/config/bibliographyStudentConfig';
 import { useAuth } from '@/hooks/useAuth';
 import type { Key } from 'react';

@@ -244,6 +244,9 @@ export interface SimplifiedDetailConfig {
   /** Formulaire d'édition activé */
   formEnabled?: boolean;
 
+  /** Mode édition en une seule colonne (médias → formulaire → vues) */
+  editSingleColumn?: boolean;
+
   // ---- Overrides custom (pour configs avancées comme les conférences) ----
 
   /** Data fetcher custom — remplace le fetcher Omeka S par défaut */

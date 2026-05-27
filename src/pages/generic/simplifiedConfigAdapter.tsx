@@ -1827,6 +1827,7 @@ export const convertToGenericConfig = (config: SimplifiedDetailConfig): GenericD
 
     // Formulaire
     formEnabled: config.formEnabled ?? false,
+    editSingleColumn: config.editSingleColumn ?? false,
     resourceTemplateId: config.templateId,
     formFields,
 

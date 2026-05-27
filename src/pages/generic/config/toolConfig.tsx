@@ -9,6 +9,7 @@ import { FullCarrousel } from '@/components/ui/Carrousels';
 import { ResourceCard } from '@/components/features/corpus/ResourceCard';
 import { ThumbnailIcon } from '@/components/ui/icons';
 import MediaViewer from '@/components/features/conference/MediaViewer';
+import { MediaDropzone, MediaFile } from '@/components/features/forms/MediaDropzone';
 import { getResourceDetails } from '@/services/resourceDetails';
 import * as Items from '@/services/Items';
 
@@ -20,72 +21,142 @@ interface ToolOverviewProps {
   title: string;
   logo: string | null;
   medias: string[];
+  allMedias: string[];
   release: string | null;
   homepage: string | null;
-  usageCount: number;
+  itemId: string | number | null;
+  isEditing?: boolean;
+  loadingMedia?: boolean;
+  mediaFiles?: MediaFile[];
+  onMediasChange?: (files: MediaFile[]) => void;
+  youtubeUrls?: string[];
+  onYouTubeUrlsChange?: (urls: string[]) => void;
+  removedMediaIndexes?: number[];
+  onRemoveExistingMedia?: (index: number) => void;
 }
 
 const CustomToolOverview: React.FC<ToolOverviewProps> = ({
   title,
   logo,
   medias,
+  allMedias,
   release,
   homepage,
-  usageCount,
+  itemId,
+  isEditing = false,
+  loadingMedia = false,
+  mediaFiles = [],
+  onMediasChange,
+  youtubeUrls = [],
+  onYouTubeUrlsChange,
+  removedMediaIndexes = [],
+  onRemoveExistingMedia,
 }) => {
-  return (
-    <div className='flex flex-col items-center gap-50'>
-      <div className='gap-20 text-c6 w-full flex flex-col items-center'>
-        {logo ? (
-          <img className='w-100 h-100 object-cover rounded-18' src={logo} alt={title} />
+  const [usageCount, setUsageCount] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (isEditing || !itemId) {
+      setUsageCount(isEditing ? null : 0);
+      return;
+    }
+    let cancelled = false;
+    getResourceDetails(itemId)
+      .then((details: any) => { if (!cancelled) setUsageCount((details?.usedBy || []).length); })
+      .catch(() => { if (!cancelled) setUsageCount(0); });
+    return () => { cancelled = true; };
+  }, [itemId, isEditing]);
+
+  const existingMedias = allMedias.filter((_, i) => !removedMediaIndexes.includes(i));
+  const handleRemove = (index: number) => {
+    const originalIndex = allMedias.indexOf(existingMedias[index]);
+    if (originalIndex !== -1) onRemoveExistingMedia?.(originalIndex);
+  };
+
+  // Mode édition : zone médias uniquement (titre, date, lien → formulaire unifié)
+  if (isEditing) {
+    return (
+      <div className='w-full flex flex-col gap-2'>
+        <label className='text-sm font-medium text-c5'>
+          Images &amp; médias
+          <span className='ml-1.5 text-xs text-c4 font-normal'>— La première image devient le logo</span>
+        </label>
+        {loadingMedia ? (
+          <Skeleton className='w-full h-[350px] rounded-2xl bg-c3' />
         ) : (
-          <div className='w-100 h-100 rounded-18 object-cover flex items-center justify-center bg-c3'>
+          <MediaDropzone
+            value={mediaFiles}
+            onChange={(files) => onMediasChange?.(files)}
+            youtubeUrls={youtubeUrls}
+            onYouTubeUrlsChange={onYouTubeUrlsChange}
+            height='350px'
+            maxFiles={10}
+            acceptedTypes={['image/*', 'video/*']}
+            existingMedias={existingMedias}
+            onRemoveExisting={handleRemove}
+            disabled={false}
+            className='w-full'
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className='flex flex-col items-center gap-12'>
+      <div className='gap-5 text-c6 w-full flex flex-col items-center'>
+        {logo ? (
+          <img className='w-24 h-24 object-cover rounded-2xl' src={logo} alt={title} />
+        ) : (
+          <div className='w-24 h-24 rounded-2xl flex items-center justify-center bg-c3'>
             <div className='text-c6 text-4xl font-bold opacity-30'>{title?.charAt(0)}</div>
           </div>
         )}
-        <h1 className='text-64 font-medium text-c6 leading-none'>{title}</h1>
+        <h1 className='text-6xl font-medium text-c6 leading-none text-center'>{title}</h1>
       </div>
 
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-25 w-2/3'>
-        <div className='shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 p-25 rounded-20 flex flex-col gap-1.5 h-full'>
-          <div className='flex items-center gap-10 border-b-2 border-c3 pb-2'>
-            <h3 className='text-16 font-medium text-c6 w-full text-center'>Date De Publication</h3>
+      <div className='grid grid-cols-1 md:grid-cols-3 gap-6 w-2/3'>
+        <div className='shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 p-6 rounded-3xl flex flex-col gap-1.5 h-full'>
+          <div className='flex items-center gap-2.5 border-b-2 border-c3 pb-2'>
+            <h3 className='text-base font-medium text-c6 w-full text-center'>Date De Publication</h3>
           </div>
-          <div className='flex flex-col gap-10'>
-            <p className='text-14 text-c5 py-3 w-full text-center'>{release}</p>
+          <div className='flex flex-col gap-2.5'>
+            <p className='text-sm text-c5 py-3 w-full text-center'>{release}</p>
           </div>
         </div>
 
-        <div className='shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 p-25 rounded-20 flex flex-col gap-1.5 h-full'>
-          <div className='flex items-center gap-10 border-b-2 border-c3 pb-2'>
-            <h3 className='text-16 font-medium text-c6 w-full text-center'>Lien Externe</h3>
+        <div className='shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 p-6 rounded-3xl flex flex-col gap-1.5 h-full'>
+          <div className='flex items-center gap-2.5 border-b-2 border-c3 pb-2'>
+            <h3 className='text-base font-medium text-c6 w-full text-center'>Lien Externe</h3>
           </div>
-          <div className='flex flex-col gap-10'>
+          <div className='flex flex-col gap-2.5'>
             <a
               href={homepage || '#'}
-              className='text-14 text-c5 py-3 px-4 hover:bg-c2 w-full text-center transition-all duration-300 ease-in-out rounded-8 cursor-pointer'>
+              className='text-sm text-c5 py-3 px-4 hover:bg-c2 w-full text-center transition-all duration-300 ease-in-out rounded-lg cursor-pointer'>
               Page de l'outil
             </a>
           </div>
         </div>
 
-        <div className='shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 p-25 rounded-20 flex flex-col gap-1.5 h-full'>
-          <div className='flex items-center gap-10 border-b-2 border-c3 pb-2'>
-            <h3 className='text-16 font-medium text-c6 w-full text-center'>Popularit&eacute;</h3>
+        <div className='shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 p-6 rounded-3xl flex flex-col gap-1.5 h-full'>
+          <div className='flex items-center gap-2.5 border-b-2 border-c3 pb-2'>
+            <h3 className='text-base font-medium text-c6 w-full text-center'>Popularit&eacute;</h3>
           </div>
-          <div className='flex flex-col gap-10'>
-            <p className='text-14 text-c5 py-3 w-full text-center'>
-              Utilis&eacute; dans {usageCount} ressource{usageCount > 1 ? 's' : ''}
+          <div className='flex flex-col gap-2.5'>
+            <p className='text-sm text-c5 py-3 w-full text-center'>
+              {usageCount === null ? (
+                <span className='text-c4'>…</span>
+              ) : (
+                <>Utilis&eacute; dans {usageCount} ressource{usageCount > 1 ? 's' : ''}</>
+              )}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Media Gallery — exclude the logo image to avoid duplication */}
-      {medias && medias.length > 0 && (
-        <div className={`mx-auto mt-10 gap-6 ${medias.length === 1 ? 'w-2/3' : 'w-full grid grid-cols-1 md:grid-cols-2'}`}>
-          {medias.map((media: string, index: number) => (
-            <div key={index} className='rounded-18 overflow-hidden relative shadow-lg'>
+      {medias.length > 0 && (
+        <div className={`mx-auto mt-2.5 gap-6 ${medias.length === 1 ? 'w-2/3' : 'w-full grid grid-cols-1 md:grid-cols-2'}`}>
+          {medias.map((media, index) => (
+            <div key={index} className='rounded-2xl overflow-hidden relative shadow-lg'>
               <MediaViewer src={media} alt={title} className='w-full h-full object-cover' />
             </div>
           ))}
@@ -96,16 +167,16 @@ const CustomToolOverview: React.FC<ToolOverviewProps> = ({
 };
 
 const CustomToolOverviewSkeleton: React.FC = () => (
-  <div className='flex flex-col items-center gap-50'>
-    <div className='gap-20 w-full flex flex-col items-center'>
-      <Skeleton className='rounded-18 w-100 h-100 bg-c2' />
-      <Skeleton className='w-[400px] h-60 rounded-10 bg-c3' />
+  <div className='flex flex-col items-center gap-12'>
+    <div className='gap-5 w-full flex flex-col items-center'>
+      <Skeleton className='rounded-2xl w-24 h-24 bg-c2' />
+      <Skeleton className='w-96 h-14 rounded-lg bg-c3' />
     </div>
-    <div className='grid grid-cols-1 md:grid-cols-3 gap-25 w-2/3'>
+    <div className='grid grid-cols-1 md:grid-cols-3 gap-6 w-2/3'>
       {[0, 1, 2].map((i) => (
-        <div key={i} className='shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 p-25 rounded-20 flex flex-col gap-1.5 h-full'>
-          <Skeleton className='h-6 w-full rounded-8 bg-c2' />
-          <Skeleton className='h-6 w-full rounded-8 bg-c2 mt-4' />
+        <div key={i} className='shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 p-6 rounded-3xl flex flex-col gap-3 h-full'>
+          <Skeleton className='h-5 w-3/4 mx-auto rounded-lg bg-c2' />
+          <Skeleton className='h-4 w-1/2 mx-auto rounded-lg bg-c2 mt-2' />
         </div>
       ))}
     </div>
@@ -116,6 +187,9 @@ const CustomToolOverviewSkeleton: React.FC = () => (
 // SimpleToolCard (same UI as Tool.tsx)
 // ========================================
 
+const TOOL_CARD_SHELL =
+  'group shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 cursor-pointer rounded-2xl hover:bg-c2 transition-all ease-in-out duration-300';
+
 const SimpleToolCard = ({ outil }: { outil: any }) => {
   const media = outil.associatedMedia && outil.associatedMedia.length > 0 ? outil.associatedMedia[0] : null;
   const imageSrc = outil.logo || outil.thumbnail || (media ? (media.thumbnail || media.url) : null);
@@ -123,17 +197,18 @@ const SimpleToolCard = ({ outil }: { outil: any }) => {
   return (
     <Link
       href={`/corpus/outil/${outil.id}`}
-      className='group shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 cursor-pointer py-40 px-20 rounded-18 justify-between flex flex-col gap-4 hover:bg-c2 h-full transition-all ease-in-out duration-300 relative'>
-      {imageSrc ? (
-        <div className='w-60 h-60 rounded-10 overflow-hidden bg-c3 flex-shrink-0'>
-          <img alt={outil.title} className='w-full h-full object-cover' src={imageSrc} />
-        </div>
-      ) : (
-        <div className='w-60 h-60 rounded-8 flex items-center justify-center bg-c3 flex-shrink-0'>
-          <ThumbnailIcon className='text-c4/20' size={40} />
-        </div>
-      )}
-      <p className='text-c6 text-16'>{outil.title}</p>
+      className={`${TOOL_CARD_SHELL} p-4 flex flex-col gap-2.5 aspect-square w-full`}
+      title={outil.title}>
+      <div
+        className={`flex-1 min-h-0 w-full rounded-xl overflow-hidden flex items-center justify-center ${
+          imageSrc ? 'bg-cover bg-center' : 'bg-gradient-to-br from-c2 to-c3'
+        }`}
+        style={imageSrc ? { backgroundImage: `url(${imageSrc})` } : undefined}>
+        {!imageSrc && <ThumbnailIcon className='text-c4/20' size={36} />}
+      </div>
+      <p className='text-sm text-c6 font-medium line-clamp-2 leading-snug text-center shrink-0'>
+        {outil.title}
+      </p>
     </Link>
   );
 };
@@ -211,60 +286,60 @@ const CustomToolDetails: React.FC<ToolDetailsProps> = ({
   return (
     <>
       {/* Detailed Info List */}
-      <div className='w-2/3 mx-auto flex flex-col mt-10 border-t border-c3'>
+      <div className='w-2/3 mx-auto flex flex-col mt-2.5 border-t border-c3'>
         {description && (
           <div className='border-b-2 border-c3 py-6'>
-            <h3 className='text-18 font-bold text-c6 mb-2'>Descriptif g&eacute;n&eacute;ral</h3>
-            <div className='text-c5 text-16 leading-relaxed whitespace-pre-wrap'>{description}</div>
+            <h3 className='text-lg font-bold text-c6 mb-2'>Descriptif g&eacute;n&eacute;ral</h3>
+            <div className='text-c5 text-base leading-relaxed whitespace-pre-wrap'>{description}</div>
           </div>
         )}
 
         {category && (
           <div className='border-b-2 border-c3 py-6'>
-            <h3 className='text-18 font-bold text-c6 mb-2'>Type de l'outil</h3>
-            <p className='text-c5 text-16'>{category}</p>
+            <h3 className='text-lg font-bold text-c6 mb-2'>Type de l'outil</h3>
+            <p className='text-c5 text-base'>{category}</p>
           </div>
         )}
 
         {purpose && (
           <div className='border-b-2 border-c3 py-6'>
-            <h3 className='text-18 font-bold text-c6 mb-2'>Fonction</h3>
-            <p className='text-c5 text-16'>{purpose}</p>
+            <h3 className='text-lg font-bold text-c6 mb-2'>Fonction</h3>
+            <p className='text-c5 text-base'>{purpose}</p>
           </div>
         )}
 
         {os.length > 0 && (
           <div className='border-b-2 border-c3 py-6'>
-            <h3 className='text-18 font-bold text-c6 mb-2'>Syst&egrave;mes d'exploitation</h3>
-            <p className='text-c5 text-16'>{os.join(', ')}</p>
+            <h3 className='text-lg font-bold text-c6 mb-2'>Syst&egrave;mes d'exploitation</h3>
+            <p className='text-c5 text-base'>{os.join(', ')}</p>
           </div>
         )}
 
         {license && (
           <div className='border-b-2 border-c3 py-6'>
-            <h3 className='text-18 font-bold text-c6 mb-2'>License</h3>
-            <p className='text-c5 text-16'>{license}</p>
+            <h3 className='text-lg font-bold text-c6 mb-2'>License</h3>
+            <p className='text-c5 text-base'>{license}</p>
           </div>
         )}
 
         {fileRelease.length > 0 && (
           <div className='border-b-2 border-c3 py-6'>
-            <h3 className='text-18 font-bold text-c6 mb-2'>Format de fichier</h3>
-            <p className='text-c5 text-16'>{fileRelease.join(', ')}</p>
+            <h3 className='text-lg font-bold text-c6 mb-2'>Format de fichier</h3>
+            <p className='text-c5 text-base'>{fileRelease.join(', ')}</p>
           </div>
         )}
 
         {programmingLanguages.length > 0 && (
           <div className='border-b-2 border-c3 py-6'>
-            <h3 className='text-18 font-bold text-c6 mb-2'>Langage de programmation de l'outil</h3>
-            <p className='text-c5 text-16'>{programmingLanguages.join(', ')}</p>
+            <h3 className='text-lg font-bold text-c6 mb-2'>Langage de programmation de l'outil</h3>
+            <p className='text-c5 text-base'>{programmingLanguages.join(', ')}</p>
           </div>
         )}
       </div>
 
       {/* Carousel: Resources using this tool */}
       {!loadingUsedBy && usedBy.length > 0 && (
-        <div className='w-full flex flex-col items-center gap-50 mt-20'>
+        <div className='w-full flex flex-col items-center gap-12 mt-5'>
           <div className='w-full'>
             <FullCarrousel
               title='Ressources utilisant cet outil'
@@ -277,17 +352,17 @@ const CustomToolDetails: React.FC<ToolDetailsProps> = ({
         </div>
       )}
 
-      {/* Carousel: Related Tools (SimpleToolCard - same UI as Tool.tsx) */}
-      <div className='w-full'>
+      {/* Carousel: Related Tools — petits carrés */}
+      <div className='w-full mt-5'>
         {loadingRelated ? (
-          <div className='w-full h-[200px] flex items-center justify-center'>
+          <div className='w-full h-[120px] flex items-center justify-center'>
             <Skeleton className='w-full h-full bg-c3 rounded-xl' />
           </div>
         ) : relatedTools.length > 0 ? (
           <FullCarrousel
-            title="D'autres Outils \u00e0 D\u00e9couvrir"
+            title={"D'autres Outils à Découvrir"}
             data={relatedTools}
-            perPage={6}
+            perPage={8}
             perMove={1}
             renderSlide={(t: any) => <SimpleToolCard outil={t} key={t.id} />}
           />
@@ -298,11 +373,11 @@ const CustomToolDetails: React.FC<ToolDetailsProps> = ({
 };
 
 const CustomToolDetailsSkeleton: React.FC = () => (
-  <div className='w-2/3 mx-auto flex flex-col mt-10 border-t border-c3'>
+  <div className='w-2/3 mx-auto flex flex-col mt-2.5 border-t border-c3'>
     {[0, 1, 2, 3].map((i) => (
       <div key={i} className='border-b-2 border-c3 py-6'>
-        <Skeleton className='h-6 w-1/4 rounded-8 bg-c2 mb-2' />
-        <Skeleton className='h-4 w-full rounded-8 bg-c2' />
+        <Skeleton className='h-6 w-1/4 rounded-lg bg-c2 mb-2' />
+        <Skeleton className='h-4 w-full rounded-lg bg-c2' />
       </div>
     ))}
   </div>
@@ -369,19 +444,103 @@ const getProgrammingLanguages = (itemDetails: any): string[] => {
   return languages;
 };
 
-export const toolConfigSimplified: SimplifiedDetailConfig = {
-  resourceType: RESOURCE_TYPES.outil.type,
-  templateId: 114,
+/** Templates Omeka S — même UI, création/sauvegarde selon le template de l'item */
+export const TOOL_TEMPLATE_CHERCHEUR = 114;
+export const TOOL_TEMPLATE_ETUDIANT = 129;
 
+const sharedToolConfigBase: Omit<SimplifiedDetailConfig, 'resourceType' | 'templateId'> = {
   fields: {
     title: { property: 'dcterms:title', type: 'title', zone: 'header' },
-    description: { property: 'dcterms:description', type: 'textarea', zone: 'details' },
-    date: { property: 'DOAP:release', type: 'date', zone: 'details' },
-    contributors: { property: 'dcterms:contributor', type: 'resource', zone: 'overview' },
-    externalLink: { property: 'DOAP:homepage', type: 'url', zone: 'details' },
+    description: {
+      property: 'dcterms:description',
+      type: 'textarea',
+      label: 'Description',
+      placeholder: "Description de l'outil...",
+      zone: 'details',
+    },
+    date: { property: 'DOAP:release', type: 'date', label: 'Date de sortie', zone: 'details' },
+    category: { property: 'DOAP:category', type: 'text', label: "Type d'outil", zone: 'details' },
+    purpose: { property: 'oa:hasPurpose', type: 'textarea', label: 'Fonction', zone: 'details' },
+    contributors: {
+      property: 'dcterms:contributor',
+      type: 'resource',
+      label: 'Contributeurs',
+      resourceTemplateId: 96,
+      multiSelect: true,
+      zone: 'overview',
+    },
+    externalLink: {
+      property: 'DOAP:homepage',
+      type: 'url',
+      label: 'Site web',
+      placeholder: 'https://...',
+      zone: 'details',
+    },
   },
 
-  views: [], // No views -> full width, no right column
+  views: [
+    {
+      key: 'caracteristiques',
+      title: 'Caractéristiques',
+      renderType: 'categories',
+      editable: true,
+      categories: [
+        {
+          key: 'general',
+          title: 'Informations générales',
+          subcategories: [
+            { key: 'category', label: "Type d'outil", property: 'DOAP:category' },
+            { key: 'purpose', label: 'Fonction', property: 'oa:hasPurpose' },
+            { key: 'operatingSystem', label: "Systèmes d'exploitation", property: 'DOAP:os' },
+            { key: 'license', label: 'Licence', property: 'DOAP:license' },
+          ],
+        },
+      ],
+    },
+    {
+      key: 'specifications',
+      title: 'Spécifications',
+      renderType: 'categories',
+      editable: true,
+      categories: [
+        {
+          key: 'technical',
+          title: 'Spécifications techniques',
+          subcategories: [
+            { key: 'fileRelease', label: 'Formats de fichiers', property: 'DOAP:file-release' },
+            { key: 'programmingLanguage', label: 'Langage de programmation', property: 'DOAP:programming-language' },
+          ],
+        },
+      ],
+    },
+    {
+      key: 'liens',
+      title: 'Liens',
+      renderType: 'categories',
+      editable: true,
+      categories: [
+        {
+          key: 'external',
+          title: 'Liens externes',
+          subcategories: [
+            { key: 'homepage', label: 'Site web officiel', property: 'DOAP:homepage' },
+            { key: 'repository', label: 'Dépôt Git', property: 'DOAP:repository' },
+            { key: 'bugDatabase', label: 'Base de bugs', property: 'DOAP:bug-database' },
+          ],
+        },
+      ],
+    },
+    {
+      key: 'projets',
+      title: 'Projets associés',
+      property: 'dcterms:isPartOf',
+      renderType: 'items',
+      resourceTemplateIds: [108, 127],
+      editable: true,
+    },
+  ],
+
+  defaultView: 'caracteristiques',
 
   customOverviewComponent: CustomToolOverview,
   customOverviewSkeleton: CustomToolOverviewSkeleton,
@@ -391,24 +550,22 @@ export const toolConfigSimplified: SimplifiedDetailConfig = {
   customMapOverviewProps: (itemDetails: any, _currentVideoTime: number) => {
     const title = itemDetails['o:title'] || getOmekaValue(itemDetails, 'dcterms:title') || '';
     const logo = getToolLogo(itemDetails);
-    // Exclude the logo from medias to avoid duplication (compare by storage hash)
     const allMedias: string[] = itemDetails.associatedMedia || [];
     const getFileHash = (url: string) => url.split('/').pop()?.split('.')[0] || '';
     const logoHash = logo ? getFileHash(logo) : '';
     const medias = logoHash ? allMedias.filter((m: string) => getFileHash(m) !== logoHash) : allMedias;
     const release = getOmekaValue(itemDetails, 'DOAP:release');
     const homepage = getOmekaValue(itemDetails, 'DOAP:homepage');
-
-    // Count usedBy from PHP backend data if available, otherwise 0
-    const usageCount = itemDetails.usedBy?.length || itemDetails.usageCount || 0;
+    const itemId = itemDetails['o:id'] || null;
 
     return {
       title,
       logo,
       medias,
+      allMedias,
       release: typeof release === 'string' ? release : null,
       homepage: typeof homepage === 'string' ? homepage : null,
-      usageCount,
+      itemId,
     };
   },
 
@@ -435,9 +592,30 @@ export const toolConfigSimplified: SimplifiedDetailConfig = {
   },
 
   showKeywords: false,
-  showRecommendations: false, // Recommendations handled inside CustomToolDetails (SimpleToolCard carousel)
+  showRecommendations: false,
   showComments: true,
   formEnabled: true,
+  editSingleColumn: true,
+};
+
+/** Outil chercheur (template 114) */
+export const toolConfigSimplified: SimplifiedDetailConfig = {
+  ...sharedToolConfigBase,
+  resourceType: RESOURCE_TYPES.outil.type,
+  templateId: TOOL_TEMPLATE_CHERCHEUR,
+};
+
+/** Outil étudiant (template 129) — même page, template différent à la création */
+export const toolStudentConfigSimplified: SimplifiedDetailConfig = {
+  ...sharedToolConfigBase,
+  resourceType: RESOURCE_TYPES.outil_etudiant.type,
+  templateId: TOOL_TEMPLATE_ETUDIANT,
 };
 
 export const toolConfig = convertToGenericConfig(toolConfigSimplified);
+export const toolStudentConfig = convertToGenericConfig(toolStudentConfigSimplified);
+
+/** Choisit la config de sauvegarde selon le template Omeka de l'item */
+export function getToolConfigForTemplateId(templateId?: number | string | null) {
+  return Number(templateId) === TOOL_TEMPLATE_ETUDIANT ? toolStudentConfig : toolConfig;
+}

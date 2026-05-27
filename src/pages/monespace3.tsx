@@ -21,7 +21,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { experimentationStudentConfigSimplified } from '@/pages/generic/config/experimentationStudentConfig';
 import { feedbackStudentConfigSimplified } from '@/pages/generic/config/feedbackStudentConfig';
-import { toolStudentConfigSimplified } from '@/pages/generic/config/toolStudentConfig';
+import { toolConfigSimplified, toolStudentConfigSimplified } from '@/pages/generic/config/toolConfig';
 import { conferenceConfigSimplified } from '@/pages/generic/config/conferenceConfig';
 import { recitArtitstiqueConfigSimplified } from '@/pages/generic/config/recitArtitstiqueConfig';
 import { recitScientifiqueConfigSimplified } from '@/pages/generic/config/recitScientifiqueConfig';
@@ -30,7 +30,6 @@ import { recitCitoyenConfigSimplified } from '@/pages/generic/config/recitcitoye
 import { recitMediatiqueConfigSimplified } from '@/pages/generic/config/recitmediatiqueConfig';
 import { experimentationConfigSimplified } from '@/pages/generic/config/experimentationConfig';
 import { feedbackConfigSimplified } from '@/pages/generic/config/feedbackConfig';
-import { toolConfigSimplified } from '@/pages/generic/config/toolConfig';
 import { analyseCritiqueConfigSimplified } from '@/pages/generic/config/analyseCritiqueConfig';
 import { elementEsthetiqueConfigSimplified } from '@/pages/generic/config/elementEsthetiqueConfig';
 import { elementNarratifConfigSimplified } from '@/pages/generic/config/elementNarratifConfig';

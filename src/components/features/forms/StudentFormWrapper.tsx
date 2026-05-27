@@ -5,12 +5,11 @@ import { GenericDetailPage } from '@/pages/generic/GenericDetailPage';
 import { GenericDetailPageConfig } from '@/pages/generic/config';
 
 // Import de toutes les configs pour le registre dynamique
-import { toolStudentConfig } from '@/pages/generic/config/toolStudentConfig';
+import { toolConfig, toolStudentConfig } from '@/pages/generic/config/toolConfig';
 import { feedbackStudentConfig, feedbackStudentConfigSimplified } from '@/pages/generic/config/feedbackStudentConfig';
 import { experimentationStudentConfig } from '@/pages/generic/config/experimentationStudentConfig';
 import { bibliographyStudentConfig, bibliographyStudentConfigSimplified } from '@/pages/generic/config/bibliographyStudentConfig';
 import { SimplifiedDetailConfig } from '@/pages/generic/simplifiedConfig';
-import { toolConfig } from '@/pages/generic/config/toolConfig';
 import { feedbackConfig } from '@/pages/generic/config/feedbackConfig';
 import { experimentationConfig } from '@/pages/generic/config/experimentationConfig';
 import { conferenceConfig } from '@/pages/generic/config/conferenceConfig';

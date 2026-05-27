@@ -228,7 +228,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
     label: 'Outil (Étudiant)',
     icon: undefined,
     templateIds: [129],
-    getUrl: (id) => `/espace-etudiant/outil/${id}`,
+    getUrl: (id) => `/corpus/outil/${id}`,
   },
 
   retour_experience_etudiant: {

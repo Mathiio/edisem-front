@@ -2085,11 +2085,67 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   const OverviewSkeleton = config.overviewSkeleton;
   const DetailsSkeleton = config.detailsSkeleton;
 
-  const shouldShowRightColumn = config.viewOptions && config.viewOptions.length > 0;
+  const shouldShowRightColumn = config.viewOptions && config.viewOptions.length > 0 && !(isEditing && config.editSingleColumn);
+  const useSingleColumnEdit = isEditing && config.editSingleColumn;
   const leftColumnSpan = shouldShowRightColumn ? 'col-span-10 lg:col-span-6' : 'col-span-10';
+  const singleColumnEditShell = useSingleColumnEdit ? 'w-2/3 mx-auto flex flex-col gap-12' : 'flex flex-col gap-[25px] w-full';
 
   // Use availableViews instead of config.viewOptions for the selected option
   const selectedOption = availableViews.find((option) => option.key === selected);
+
+  const renderViewsPanel = (options?: { compact?: boolean }) => (
+    <div className={`flex w-full flex-col gap-[20px] flex-grow ${options?.compact ? '' : 'min-h-0 overflow-hidden'}`}>
+      <div className='flex items-center justify-between w-full'>
+        <h2 className='text-[24px] font-medium text-c6'>{selectedOption?.title}</h2>
+
+        <div className='relative'>
+          <Dropdown>
+            <DropdownTrigger className='p-0'>
+              <div
+                className='hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 flex flex-row rounded-[8px] border-2 border-c3 items-center justify-center px-[15px] py-[10px] text-[16px] gap-[10px] text-c6 transition-all ease-in-out duration-200'
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
+                <span className='text-[16px] font-normal text-c6'>Autres choix</span>
+                <ArrowIcon size={12} className='rotate-90 text-c6' />
+              </div>
+            </DropdownTrigger>
+
+            <DropdownMenu aria-label='View options' className='p-[10px] bg-c2 rounded-[12px]'>
+              {(availableViews.length > 0 ? availableViews : config.viewOptions).map((option) => {
+                const isAvailable = availableViews.some((v) => v.key === option.key);
+                const isLoading = loadingViews && !isAvailable;
+
+                return (
+                  <DropdownItem
+                    key={option.key}
+                    className={`p-0 ${selected === option.key ? 'bg-action' : ''}`}
+                    onClick={() => handleOptionSelect(option.key)}
+                    isDisabled={isLoading}>
+                    <div
+                      className={`flex items-center w-full px-[15px] py-[10px] rounded-[8px] transition-all ease-in-out duration-200 ${
+                        isLoading ? 'text-c4 cursor-not-allowed' : selected === option.key ? 'bg-action text-selected font-medium' : 'text-c6 hover:bg-c3'
+                      }`}>
+                      {isLoading && <Spinner size='sm' className='mr-2' />}
+                      <span className='text-[16px]'>{option.title}</span>
+                    </div>
+                  </DropdownItem>
+                );
+              })}
+            </DropdownMenu>
+          </Dropdown>
+        </div>
+      </div>
+
+      <div className={`flex-grow ${options?.compact ? '' : 'min-h-0 overflow-auto'}`}>
+        {viewHasContent(selectedOption) ? (
+          renderedContent
+        ) : (
+          <div className='flex flex-col items-center justify-center w-full h-full py-[20px] text-center bg-c2 rounded-[12px] border border-dashed border-c3'>
+            <p className='text-c5 text-[16px]'>Aucun contenu renseigné pour {selectedOption?.title?.toLowerCase() || 'cette section'}.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   // Sort keywords by popularity (descending order)
   // En mode édition, formData.keywords est la source de vérité (permet ajouts et suppressions)
@@ -2241,37 +2297,39 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
           {/* Mode édition/création: Section unifiée */}
           {isEditing ? (
-            <div className='flex flex-col gap-[25px]'>
+            <div className={`${singleColumnEditShell} ${useSingleColumnEdit ? 'items-stretch' : ''}`}>
               {/* Section Médias */}
-              <OverviewComponent
-                {...config.mapOverviewProps({ ...itemDetails, ...formData }, currentVideoTime)}
-                videoSeek={videoSeek}
-                type={config.type}
-                isEditing={true}
-                loadingMedia={loadingMedia}
-                onTitleChange={(value: string) => setValue('title', value)}
-                onMediasChange={(files: MediaFile[]) => setMediaFiles(files)}
-                onAddPerson={() => handleLinkExisting('personnes')}
-                onResourcesSelected={(_property: string, resources: any[]) => {
-                  const mappedResources = resources.map((r) => ({
-                    id: r.id,
-                    title: r.title,
-                    name: r.title,
-                    type: 'actant',
-                  }));
-                  const currentPersonnes = formData.personnes || [];
-                  setValue('personnes', [...currentPersonnes, ...mappedResources]);
-                }}
-                onLinkChange={(value: string) => setValue('fullUrl', value)}
-                youtubeUrls={youtubeUrls}
-                onYouTubeUrlsChange={(urls: string[]) => setYoutubeUrls(urls)}
-                mediaFiles={mediaFiles}
-                removedMediaIndexes={removedMediaIndexes}
-                onRemoveExistingMedia={handleRemoveExistingMedia}
-              />
+              <div className='w-full'>
+                <OverviewComponent
+                  {...config.mapOverviewProps({ ...itemDetails, ...formData }, currentVideoTime)}
+                  videoSeek={videoSeek}
+                  type={config.type}
+                  isEditing={true}
+                  loadingMedia={loadingMedia}
+                  onTitleChange={(value: string) => setValue('title', value)}
+                  onMediasChange={(files: MediaFile[]) => setMediaFiles(files)}
+                  onAddPerson={() => handleLinkExisting('personnes')}
+                  onResourcesSelected={(_property: string, resources: any[]) => {
+                    const mappedResources = resources.map((r) => ({
+                      id: r.id,
+                      title: r.title,
+                      name: r.title,
+                      type: 'actant',
+                    }));
+                    const currentPersonnes = formData.personnes || [];
+                    setValue('personnes', [...currentPersonnes, ...mappedResources]);
+                  }}
+                  onLinkChange={(value: string) => setValue('fullUrl', value)}
+                  youtubeUrls={youtubeUrls}
+                  onYouTubeUrlsChange={(urls: string[]) => setYoutubeUrls(urls)}
+                  mediaFiles={mediaFiles}
+                  removedMediaIndexes={removedMediaIndexes}
+                  onRemoveExistingMedia={handleRemoveExistingMedia}
+                />
+              </div>
 
               {/* Section Formulaire Unifié */}
-              <div className='bg-c2 rounded-[12px] p-[25px] flex flex-col gap-[20px]'>
+              <div className={`${useSingleColumnEdit ? 'border-t border-c3 pt-6' : 'bg-c2 rounded-[12px] p-[25px]'} flex flex-col gap-[20px] w-full`}>
                 {/* Titre */}
                 <div className='flex flex-col gap-2'>
                   <label className='text-[14px] text-c5 font-medium'>Titre</label>
@@ -2427,6 +2485,24 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Vues (caractéristiques, spécifications, liens…) — colonne unique */}
+              {useSingleColumnEdit && (
+                <div className='w-full border-t border-c3 pt-6'>
+                  {loadingViews ? (
+                    <div className='flex flex-col gap-[15px]'>
+                      <div className='flex items-center justify-between w-full'>
+                        <div className='w-2/5 h-12 bg-c2 rounded-[8px] animate-pulse' />
+                        <div className='w-1/5 h-12 bg-c2 rounded-[8px] animate-pulse' />
+                      </div>
+                      <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
+                      <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
+                    </div>
+                  ) : (
+                    renderViewsPanel({ compact: true })
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -2467,12 +2543,10 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
             }>
             {loadingViews ? (
               <div className='flex w-full flex-col gap-[20px] flex-grow'>
-                {/* Header skeleton */}
                 <div className='flex items-center justify-between w-full'>
                   <div className='w-2/5 h-12 bg-c2 rounded-[8px] animate-pulse' />
                   <div className='w-1/5 h-12 bg-c2 rounded-[8px] animate-pulse' />
                 </div>
-                {/* Content skeleton */}
                 <div className='flex flex-col gap-[15px]'>
                   <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
                   <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
@@ -2483,63 +2557,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                 </div>
               </div>
             ) : (
-            <div className='flex w-full flex-col gap-[20px] flex-grow min-h-0 overflow-hidden'>
-              {/* Header avec titre et dropdown */}
-              <div className='flex items-center justify-between w-full'>
-                <h2 className='text-[24px] font-medium text-c6'>{selectedOption?.title}</h2>
-
-                {/* Forcing dropdown visibility as requested by user - even if availableViews.length === 1 or 0 (though 0 is unlikely if config is correct) */}
-                <div className='relative'>
-                  <Dropdown>
-                    <DropdownTrigger className='p-0'>
-                      <div
-                        className='hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 flex flex-row rounded-[8px] border-2 border-c3 items-center justify-center px-[15px] py-[10px] text-[16px] gap-[10px] text-c6 transition-all ease-in-out duration-200'
-                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-                        <span className='text-[16px] font-normal text-c6'>Autres choix</span>
-                        <ArrowIcon size={12} className='rotate-90 text-c6' />
-                      </div>
-                    </DropdownTrigger>
-
-                    <DropdownMenu aria-label='View options' className='p-[10px] bg-c2 rounded-[12px]'>
-                      {/* Use config.viewOptions directly if availableViews is empty (fallback) */}
-                      {(availableViews.length > 0 ? availableViews : config.viewOptions).map((option) => {
-                        const isAvailable = availableViews.some((v) => v.key === option.key);
-                        // If option is not in availableViews but we force show it, it might mean it has no content.
-                        const isLoading = loadingViews && !isAvailable; 
-
-                        return (
-                          <DropdownItem
-                            key={option.key}
-                            className={`p-0 ${selected === option.key ? 'bg-action' : ''}`}
-                            onClick={() => handleOptionSelect(option.key)}
-                            isDisabled={isLoading}>
-                            <div
-                              className={`flex items-center w-full px-[15px] py-[10px] rounded-[8px] transition-all ease-in-out duration-200 ${
-                                isLoading ? 'text-c4 cursor-not-allowed' : selected === option.key ? 'bg-action text-selected font-medium' : 'text-c6 hover:bg-c3'
-                              }`}>
-                              {isLoading && <Spinner size='sm' className='mr-2' />}
-                              <span className='text-[16px]'>{option.title}</span>
-                            </div>
-                          </DropdownItem>
-                        );
-                      })}
-                    </DropdownMenu>
-                  </Dropdown>
-                </div>
-              </div>
-
-              {/* Contenu de la vue sélectionnée ou message vide */}
-              <div className='flex-grow min-h-0 overflow-auto'>
-                {/* Modified: Use viewHasContent(selectedOption) to check for content availability */}
-                {viewHasContent(selectedOption) ? (
-                  renderedContent
-                ) : (
-                  <div className='flex flex-col items-center justify-center w-full h-full py-[20px] text-center bg-c2 rounded-[12px] border border-dashed border-c3'>
-                    <p className='text-c5 text-[16px]'>Aucun contenu renseigné pour {selectedOption?.title?.toLowerCase() || 'cette section'}.</p>
-                  </div>
-                )}
-              </div>
-            </div>
+              renderViewsPanel()
             )}
           </motion.div>
         ) : null}
@@ -2577,8 +2595,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
           ) : null
         )}
 
-        {/* Comments */}
-        {config.showComments && (
+        {/* Comments — masqués en mode édition/création */}
+        {config.showComments && !isEditing && (
           <motion.div className={`${shouldShowRightColumn ? 'col-span-4 lg:col-span-4' : 'col-span-10'} h-full flex flex-col gap-[50px] flex-grow`} variants={fadeIn}>
             <CommentSection LinkedResourceId={Number(id)} />
           </motion.div>
