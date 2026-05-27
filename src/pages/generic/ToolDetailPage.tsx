@@ -32,9 +32,7 @@ export const ToolDetailPage: React.FC<ToolDetailPageProps> = ({ initialMode = 'v
     getResourceDetails(id)
       .then((details) => {
         if (cancelled) return;
-        const templateId =
-          details?.resource_template_id ??
-          (details as any)?.['o:resource_template']?.['o:id'];
+        const templateId = details?.template_id;
         setConfig(getToolConfigForTemplateId(templateId));
       })
       .catch(() => {
