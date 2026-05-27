@@ -43,6 +43,7 @@ import { MonEspace } from './pages/monespace';
 
 import { MonEspace3 } from './pages/monespace3';
 import { CreerPage } from '@/pages/creer';
+import { MotsClesPage } from '@/pages/mots-cles';
 import TestOmekaEdit from './pages/test-omeka-edit';
 import { StudentManagement } from './pages/admin/StudentManagement';
 import { CourseManagement } from './pages/admin/CourseManagement';
@@ -67,6 +68,7 @@ const ProtectedCourseManagement = withAuth(CourseManagement, { requiredRole: 'ac
 const ProtectedActantManagement = withAuth(ActantManagement, { requiredRole: 'actant' });
 const ProtectedResourceManagement = withAuth(ResourceManagement, { requiredRole: 'actant' });
 const ProtectedAdminDashboard = withAuth(AdminDashboard, { requiredRole: 'actant' });
+const ProtectedMotsCles = withAuth(MotsClesPage, { requiredRole: 'actant' });
 
 // Wrapper pour protéger ConfigurableDetailPage en mode création (actants et étudiants)
 const ProtectedConfigurableDetailPage = withAuth(ConfigurableDetailPage, { requiredRole: 'any' });
@@ -125,6 +127,9 @@ function App() {
             <Route path='/admin/cours' Component={ProtectedCourseManagement} />
             <Route path='/admin/actants' Component={ProtectedActantManagement} />
             <Route path='/admin/ressources' Component={ProtectedResourceManagement} />
+
+            {/* Temporaire — gestion mots-clés */}
+            <Route path='/mots-cles' Component={ProtectedMotsCles} />
 
             <Route path='/espace-etudiant/experimentation/:id' element={<ConfigurableDetailPage config={experimentationStudentConfig} />} />
             <Route path='/espace-etudiant/outil/:id' element={<ConfigurableDetailPage config={toolStudentConfig} />} />
