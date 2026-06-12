@@ -3,7 +3,7 @@ import { Textarea, Slider, Button } from '@heroui/react';
 import { DatePicker } from '@heroui/react';
 import { motion, Variants } from 'framer-motion';
 import { parseDate } from '@internationalized/date';
-import { PlusIcon } from '@/components/ui/icons';
+import { AddIcon } from '@/components/ui/icons';
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 5 },
@@ -162,7 +162,7 @@ export const ExpDetailsCard: React.FC<ExpDetailsProps> = ({
                   </span>
                 ))}
               <Button size='sm' isIconOnly className='bg-c3 text-c6 hover:bg-action hover:text-selected rounded-full' onPress={onAddActant}>
-                <PlusIcon size={14} />
+                <AddIcon size={14} />
               </Button>
             </div>
           </div>

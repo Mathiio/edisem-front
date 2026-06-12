@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import FilterPopup, { FilterGroup } from './FilterPopup';
 import { Button, Divider } from '@heroui/react';
-import { SearchIcon, ImportIcon, NewItemIcon, AssociateIcon, ExportIcon, EditItemIcon, AnnotateIcon } from '@/components/ui/icons';
+import { SearchIcon, ImportIcon, NewItemIcon, AssociateIcon, ExportIcon, EditIcon, AnnotateIcon } from '@/components/ui/icons';
 import { IconSvgProps } from '@/types/ui';
 import { GeneratedImage } from '@/pages/visualisation';
 import { ExportPopup } from './ExportPopup';
@@ -275,7 +275,7 @@ export const Toolbar: React.FC<ItemsProps> = ({
         <Divider orientation='vertical' className='h-4 w-0.5 bg-c4 mx-4' />
         {renderButton('add', NewItemIcon)}
         {renderButton('link', AssociateIcon)}
-        {renderButton('edit', EditItemIcon)}
+        {renderButton('edit', EditIcon)}
         {renderButton('annotate', AnnotateIcon)}
         <Divider orientation='vertical' className='h-4 w-0.5 bg-c4 mx-4' />
         {renderButton('import', ImportIcon)}

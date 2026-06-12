@@ -114,7 +114,7 @@ const CustomToolOverview: React.FC<ToolOverviewProps> = ({
         <h1 className='text-6xl font-medium text-c6 leading-none text-center'>{title}</h1>
       </div>
 
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-6 w-2/3'>
+      <div className='grid grid-cols-1 md:grid-cols-3 gap-6 w-full'>
         <div className='shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 p-6 rounded-3xl flex flex-col gap-1.5 h-full'>
           <div className='flex items-center gap-2.5 border-b-2 border-c3 pb-2'>
             <h3 className='text-base font-medium text-c6 w-full text-center'>Date De Publication</h3>
@@ -154,7 +154,7 @@ const CustomToolOverview: React.FC<ToolOverviewProps> = ({
       </div>
 
       {medias.length > 0 && (
-        <div className={`mx-auto mt-2.5 gap-6 ${medias.length === 1 ? 'w-2/3' : 'w-full grid grid-cols-1 md:grid-cols-2'}`}>
+        <div className={`mx-auto mt-2.5 gap-6 w-full ${medias.length > 1 ? 'grid grid-cols-1 md:grid-cols-2' : ''}`}>
           {medias.map((media, index) => (
             <div key={index} className='rounded-2xl overflow-hidden relative shadow-lg'>
               <MediaViewer src={media} alt={title} className='w-full h-full object-cover' />
@@ -172,7 +172,7 @@ const CustomToolOverviewSkeleton: React.FC = () => (
       <Skeleton className='rounded-2xl w-24 h-24 bg-c2' />
       <Skeleton className='w-96 h-14 rounded-lg bg-c3' />
     </div>
-    <div className='grid grid-cols-1 md:grid-cols-3 gap-6 w-2/3'>
+    <div className='grid grid-cols-1 md:grid-cols-3 gap-6 w-full'>
       {[0, 1, 2].map((i) => (
         <div key={i} className='shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 p-6 rounded-3xl flex flex-col gap-3 h-full'>
           <Skeleton className='h-5 w-3/4 mx-auto rounded-lg bg-c2' />
@@ -286,7 +286,7 @@ const CustomToolDetails: React.FC<ToolDetailsProps> = ({
   return (
     <>
       {/* Detailed Info List */}
-      <div className='w-2/3 mx-auto flex flex-col mt-2.5 border-t border-c3'>
+      <div className='w-full flex flex-col mt-2.5 border-t border-c3'>
         {description && (
           <div className='border-b-2 border-c3 py-6'>
             <h3 className='text-lg font-bold text-c6 mb-2'>Descriptif g&eacute;n&eacute;ral</h3>
@@ -344,7 +344,7 @@ const CustomToolDetails: React.FC<ToolDetailsProps> = ({
             <FullCarrousel
               title='Ressources utilisant cet outil'
               data={usedBy}
-              perPage={4}
+              perPage={2}
               perMove={1}
               renderSlide={(resource: any) => <ResourceCard item={resource} className='h-full' key={resource.id} />}
             />
@@ -362,7 +362,7 @@ const CustomToolDetails: React.FC<ToolDetailsProps> = ({
           <FullCarrousel
             title={"D'autres Outils à Découvrir"}
             data={relatedTools}
-            perPage={8}
+            perPage={6}
             perMove={1}
             renderSlide={(t: any) => <SimpleToolCard outil={t} key={t.id} />}
           />
@@ -373,11 +373,11 @@ const CustomToolDetails: React.FC<ToolDetailsProps> = ({
 };
 
 const CustomToolDetailsSkeleton: React.FC = () => (
-  <div className='w-2/3 mx-auto flex flex-col mt-2.5 border-t border-c3'>
+  <div className='w-full flex flex-col mt-2.5 border-t border-c3'>
     {[0, 1, 2, 3].map((i) => (
       <div key={i} className='border-b-2 border-c3 py-6'>
-        <Skeleton className='h-6 w-1/4 rounded-lg bg-c2 mb-2' />
-        <Skeleton className='h-4 w-full rounded-lg bg-c2' />
+        <div className='h-6 w-1/4 rounded-lg bg-c3 animate-pulse mb-2' />
+        <div className='h-4 w-full rounded-lg bg-c3 animate-pulse' />
       </div>
     ))}
   </div>
@@ -489,10 +489,10 @@ const sharedToolConfigBase: Omit<SimplifiedDetailConfig, 'resourceType' | 'templ
           key: 'general',
           title: 'Informations générales',
           subcategories: [
-            { key: 'category', label: "Type d'outil", property: 'DOAP:category' },
-            { key: 'purpose', label: 'Fonction', property: 'oa:hasPurpose' },
-            { key: 'operatingSystem', label: "Systèmes d'exploitation", property: 'DOAP:os' },
-            { key: 'license', label: 'Licence', property: 'DOAP:license' },
+            { key: 'category', label: "Type d'outil", property: 'DOAP:category', allowMultipleInputs: false },
+            { key: 'purpose', label: 'Fonction', property: 'oa:hasPurpose', allowMultipleInputs: false },
+            { key: 'operatingSystem', label: "Systèmes d'exploitation", property: 'DOAP:os', allowMultipleInputs: false },
+            { key: 'license', label: 'Licence', property: 'DOAP:license', allowMultipleInputs: false },
           ],
         },
       ],
@@ -507,8 +507,8 @@ const sharedToolConfigBase: Omit<SimplifiedDetailConfig, 'resourceType' | 'templ
           key: 'technical',
           title: 'Spécifications techniques',
           subcategories: [
-            { key: 'fileRelease', label: 'Formats de fichiers', property: 'DOAP:file-release' },
-            { key: 'programmingLanguage', label: 'Langage de programmation', property: 'DOAP:programming-language' },
+            { key: 'fileRelease', label: 'Formats de fichiers', property: 'DOAP:file-release', allowMultipleInputs: false },
+            { key: 'programmingLanguage', label: 'Langage de programmation', property: 'DOAP:programming-language', allowMultipleInputs: false },
           ],
         },
       ],
@@ -523,20 +523,12 @@ const sharedToolConfigBase: Omit<SimplifiedDetailConfig, 'resourceType' | 'templ
           key: 'external',
           title: 'Liens externes',
           subcategories: [
-            { key: 'homepage', label: 'Site web officiel', property: 'DOAP:homepage' },
-            { key: 'repository', label: 'Dépôt Git', property: 'DOAP:repository' },
-            { key: 'bugDatabase', label: 'Base de bugs', property: 'DOAP:bug-database' },
+            { key: 'homepage', label: 'Site web officiel', property: 'DOAP:homepage', allowMultipleInputs: false },
+            { key: 'repository', label: 'Dépôt Git', property: 'DOAP:repository', allowMultipleInputs: false },
+            { key: 'bugDatabase', label: 'Base de bugs', property: 'DOAP:bug-database', allowMultipleInputs: false },
           ],
         },
       ],
-    },
-    {
-      key: 'projets',
-      title: 'Projets associés',
-      property: 'dcterms:isPartOf',
-      renderType: 'items',
-      resourceTemplateIds: [108, 127],
-      editable: true,
     },
   ],
 

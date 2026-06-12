@@ -6,6 +6,10 @@ import {
   ModalFooter as OModalFooter,
   extendVariants,
 } from '@heroui/react';
+import { CloseIcon } from '@heroui/shared-icons';
+
+/** Picto fermer des modales HeroUI (croix simple, pas le CrossIcon cercle du design system). */
+export const ModalCloseIcon = CloseIcon;
 
 /** Bouton fermer HeroUI : même picto qu’en admin, fond au survol légèrement arrondi (pas en pilule). */
 export const modalCloseButtonClasses = [
@@ -18,6 +22,15 @@ export const modalCloseButtonClasses = [
   'transition-colors',
   'duration-200',
 ].join(' ');
+
+/** Footer modale — ResourcePicker, MediaDropzone, EditSaveBar, etc. */
+export const modalFooterClass = 'flex flex-row gap-2 px-6 py-4 justify-end';
+export const modalFooterCancelButtonClass = 'text-c5 rounded-lg';
+export const modalFooterConfirmButtonClass = 'bg-action text-selected rounded-lg';
+
+/** Fondu bas (zone scrollable modale ou bandeau fixe). */
+export const modalBottomFadeClass =
+  'h-5 bg-gradient-to-t from-c1 to-transparent pointer-events-none';
 
 export const Modal = extendVariants(OModal, {
   variants: {

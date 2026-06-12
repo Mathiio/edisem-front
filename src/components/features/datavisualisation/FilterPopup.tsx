@@ -16,7 +16,7 @@ import {
   Select,
   SelectItem,
 } from '@heroui/react';
-import { ArrowIcon, CrossIcon, PlusIcon, DotsIcon } from '@/components/ui/icons';
+import { ArrowIcon, CrossIcon, AddIcon, DotsIcon } from '@/components/ui/icons';
 import { getItemByID } from '@/services/api';
 
 const generateSearchTitle = (filterGroups: any[]): string => {
@@ -569,7 +569,7 @@ export default function FilterPopup({ onSearch }: FilterPopupProps) {
           underline='none'
           size={'sm'}
           className='text-sm flex justify-start w-full gap-2 rounded-none text-c6 bg-transparent cursor-pointer'>
-          <PlusIcon size={12} />
+          <AddIcon size={12} />
           Ajouter un groupe de filtres
         </Link>
         <Divider />
@@ -812,7 +812,7 @@ export default function FilterPopup({ onSearch }: FilterPopupProps) {
                         underline='none'
                         size={'sm'}
                         className='text-sm flex justify-start w-full gap-2 rounded-none text-c6 bg-transparent cursor-pointer'>
-                        <PlusIcon size={12} />
+                        <AddIcon size={12} />
                         Ajouter une condition
                       </Link>
                     )}

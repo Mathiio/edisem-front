@@ -85,6 +85,10 @@ export const feedbackStudentConfigSimplified: SimplifiedDetailConfig = {
   defaultView: 'experimentation',
   formEnabled: true,
 
+  contributorButtons: [
+    { label: 'Ajouter Intervenant', templateId: 96, property: 'schema:contributor' },
+  ],
+
   // Smart recommendations
   smartRecommendations: {
     // getAllResourcesOfType: async () => {

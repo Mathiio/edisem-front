@@ -32,17 +32,25 @@ import { recitTechnoConfig } from '@/pages/generic/config/recitTechnoConfig';
 import { recitScientifiqueConfig } from '@/pages/generic/config/recitScientifiqueConfig';
 import { recitMediatiqueConfig } from '@/pages/generic/config/recitmediatiqueConfig';
 import { recitCitoyenConfig } from '@/pages/generic/config/recitcitoyenConfig';
+import { intervenantConfig } from '@/pages/generic/config/intervenantConfig';
+import { personneConfig } from '@/pages/generic/config/personneConfig';
+import { organisationConfig } from '@/pages/generic/config/organisationConfig';
+import { motCleConfig } from '@/pages/generic/config/motCleConfig';
+import { universiteConfig } from '@/pages/generic/config/universiteConfig';
+import { ecoleDoctoraleConfig } from '@/pages/generic/config/ecoleDoctoraleConfig';
+import { laboratoireConfig } from '@/pages/generic/config/laboratoireConfig';
 import { NavigationTrailProvider } from './hooks/useNavigationTrail';
 import { EspaceEtudiant } from './pages/espaceEtudiant';
 import { LoadingScreen } from './components/layout/LoadingScreen';
 import { useState, useCallback, useEffect, createContext, useContext } from 'react';
 import { experimentationStudentConfig } from './pages/generic/config/experimentationStudentConfig';
 import { feedbackStudentConfig } from './pages/generic/config/feedbackStudentConfig';
-import { bibliographyStudentConfig } from './pages/generic/config/bibliographyStudentConfig';
+import { bibliographyConfig } from './pages/generic/config/bibliographyConfig';
+import { mediagraphyConfig } from './pages/generic/config/mediagraphyConfig';
 import { MonEspace } from './pages/monespace';
 
 import { MonEspace3 } from './pages/monespace3';
-import { CreerPage } from '@/pages/creer';
+import { MonEspace4 } from './pages/monespace4';
 import { MotsClesPage } from '@/pages/mots-cles';
 import TestOmekaEdit from './pages/test-omeka-edit';
 import { StudentManagement } from './pages/admin/StudentManagement';
@@ -111,7 +119,6 @@ function App() {
             {/* Base routes */}
             <Route index path='/' Component={Home} />
             <Route path='/login' Component={LoginPage} />
-            <Route path='/creer' Component={CreerPage} />
             <Route path='/intervenants' Component={Intervenants} />
             <Route path='/visualisation' Component={Visualisation} />
             <Route path='/recherche/' Component={CahierRecherche} />
@@ -119,6 +126,7 @@ function App() {
             <Route path='/mon-espace' Component={MonEspace} />
 
             <Route path='/mon-espace-3' Component={MonEspace3} />
+            <Route path='/mon-espace-4' Component={MonEspace4} />
             <Route path='/test-omeka-edit' Component={TestOmekaEdit} />
 
             {/* Admin routes */}
@@ -182,7 +190,8 @@ function App() {
             <Route path='/corpus/element-narratif/:id' element={<ConfigurableDetailPage config={elementNarratifConfig} />} />
             <Route path='/corpus/analyse-critique/:id' element={<ConfigurableDetailPage config={analyseCritiqueConfig} />} />
             <Route path='/corpus/outil/:id' Component={ToolDetailPage} />
-            <Route path='/corpus/bibliographie/:id' element={<ConfigurableDetailPage config={bibliographyStudentConfig} />} />
+            <Route path='/corpus/bibliographie/:id' element={<ConfigurableDetailPage config={bibliographyConfig} />} />
+            <Route path='/corpus/mediagraphie/:id' element={<ConfigurableDetailPage config={mediagraphyConfig} />} />
             <Route path='/corpus/recit-scientifique/:id' element={<ConfigurableDetailPage config={recitScientifiqueConfig} />} />
             <Route path='/corpus/recit-mediatique/:id' element={<ConfigurableDetailPage config={recitMediatiqueConfig} />} />
             <Route path='/corpus/recit-citoyen/:id' element={<ConfigurableDetailPage config={recitCitoyenConfig} />} />
@@ -193,6 +202,12 @@ function App() {
             <Route path='/intervenant/:id' Component={Intervenant} />
             <Route path='/personne/:id' Component={Personne} />
 
+            {/* Routes entités / structures (édition depuis Mon espace) */}
+            <Route path='/organisation/:id' element={<ConfigurableDetailPage config={organisationConfig} />} />
+            <Route path='/universite/:id' element={<ConfigurableDetailPage config={universiteConfig} />} />
+            <Route path='/ecole-doctorale/:id' element={<ConfigurableDetailPage config={ecoleDoctoraleConfig} />} />
+            <Route path='/laboratoire/:id' element={<ConfigurableDetailPage config={laboratoireConfig} />} />
+
             {/* Resource Creation Routes - Utilise ConfigurableDetailPage en mode create */}
             <Route path='/add-resource/experimentation' element={<ProtectedConfigurableDetailPage config={experimentationStudentConfig} initialMode='create' />} />
             <Route path='/add-resource/outil' element={<ProtectedConfigurableDetailPage config={toolStudentConfig} initialMode='create' />} />
@@ -201,15 +216,21 @@ function App() {
             <Route path='/add-resource/retour-experience-chercheur' element={<ProtectedConfigurableDetailPage config={feedbackConfig} initialMode='create' />} />
             <Route path='/add-resource/outil-chercheur' element={<ProtectedConfigurableDetailPage config={toolConfig} initialMode='create' />} />
             <Route path='/add-resource/conference' element={<ProtectedConfigurableDetailPage config={conferenceConfig} initialMode='create' />} />
-            <Route path='/add-resource/analyse-critique' element={<ProtectedConfigurableDetailPage config={analyseCritiqueConfig} initialMode='create' />} />
-            <Route path='/add-resource/element-esthetique' element={<ProtectedConfigurableDetailPage config={elementEsthetiqueConfig} initialMode='create' />} />
-            <Route path='/add-resource/element-narratif' element={<ProtectedConfigurableDetailPage config={elementNarratifConfig} initialMode='create' />} />
-            <Route path='/add-resource/bibliographie' element={<ProtectedConfigurableDetailPage config={bibliographyStudentConfig} initialMode='create' />} />
+            <Route path='/add-resource/bibliographie' element={<ProtectedConfigurableDetailPage config={bibliographyConfig} initialMode='create' />} />
+            <Route path='/add-resource/mediagraphie' element={<ProtectedConfigurableDetailPage config={mediagraphyConfig} initialMode='create' />} />
             <Route path='/add-resource/recit-artistique' element={<ProtectedConfigurableDetailPage config={recitArtitstiqueConfig} initialMode='create' />} />
             <Route path='/add-resource/recit-scientifique' element={<ProtectedConfigurableDetailPage config={recitScientifiqueConfig} initialMode='create' />} />
             <Route path='/add-resource/recit-techno' element={<ProtectedConfigurableDetailPage config={recitTechnoConfig} initialMode='create' />} />
             <Route path='/add-resource/recit-citoyen' element={<ProtectedConfigurableDetailPage config={recitCitoyenConfig} initialMode='create' />} />
             <Route path='/add-resource/recit-mediatique' element={<ProtectedConfigurableDetailPage config={recitMediatiqueConfig} initialMode='create' />} />
+            <Route path='/add-resource/intervenant' element={<ProtectedConfigurableDetailPage config={intervenantConfig} initialMode='create' />} />
+            <Route path='/add-resource/personne' element={<ProtectedConfigurableDetailPage config={personneConfig} initialMode='create' />} />
+            <Route path='/add-resource/organisation' element={<ProtectedConfigurableDetailPage config={organisationConfig} initialMode='create' />} />
+            <Route path='/add-resource/mot-cle' element={<ProtectedConfigurableDetailPage config={motCleConfig} initialMode='create' />} />
+            <Route path='/add-resource/mot-cle/:id' element={<ProtectedConfigurableDetailPage config={motCleConfig} />} />
+            <Route path='/add-resource/universite' element={<ProtectedConfigurableDetailPage config={universiteConfig} initialMode='create' />} />
+            <Route path='/add-resource/ecole-doctorale' element={<ProtectedConfigurableDetailPage config={ecoleDoctoraleConfig} initialMode='create' />} />
+            <Route path='/add-resource/laboratoire' element={<ProtectedConfigurableDetailPage config={laboratoireConfig} initialMode='create' />} />
           </Routes>
         </NavigationTrailProvider>
       </NavbarReadyContext.Provider>

@@ -3,7 +3,145 @@
  * Endpoints dédiés pour les ressources étudiantes (expérimentations, outils, feedbacks)
  */
 
+import { TEMPLATE_ID_TO_TYPE, filterMonEspaceResources, isParentLinkedOnlyResourceType } from '@/config/resourceConfig';
+import { getYouTubeThumbnail, isOmekaPlaceholderThumbnail, resolveOmekaThumbnail } from '@/lib/resourceUtils';
+import { ApiProxy } from '@/services/ApiProxy';
+import { omekaApiUrl, OMEKA_API_BASE } from '@/utils/omekaApi';
+
 const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=StudentSpace';
+
+/** Propriétés Omeka susceptibles de contenir une URL vidéo ou image */
+const MEDIA_URL_PROPERTIES = [
+  'schema:url',
+  'dcterms:identifier',
+  'bibo:uri',
+  'schema:associatedMedia',
+  'schema:contentUrl',
+  'oa:hasRelatedResource',
+  'schema:embedUrl',
+];
+
+function normalizeOmekaMediaUrl(url: string | null | undefined): string | null {
+  return resolveOmekaThumbnail(url);
+}
+
+function collectUrlsFromOmekaProperties(item: Record<string, any>): string[] {
+  const urls: string[] = [];
+
+  for (const prop of MEDIA_URL_PROPERTIES) {
+    const values = item[prop];
+    if (!Array.isArray(values)) continue;
+
+    for (const v of values) {
+      if (v?.type === 'uri' && typeof v['@id'] === 'string') {
+        urls.push(v['@id']);
+      }
+      if (typeof v?.['@value'] === 'string' && v['@value'].startsWith('http')) {
+        urls.push(v['@value']);
+      }
+      if (typeof v?.url === 'string' && v.url.startsWith('http')) {
+        urls.push(v.url);
+      }
+    }
+  }
+
+  return urls;
+}
+
+/**
+ * Extrait la meilleure miniature disponible depuis un item Omeka S (liste ou détail)
+ */
+function extractThumbnailFromOmekaItem(item: Record<string, any>): string | null {
+  const displayUrls = item['thumbnail_display_urls'];
+  const fromDisplay = normalizeOmekaMediaUrl(
+    displayUrls?.square || displayUrls?.medium || displayUrls?.large,
+  );
+  if (fromDisplay) return fromDisplay;
+
+  const primaryMedia = item['o:primary_media'];
+  const fromPrimary = normalizeOmekaMediaUrl(
+    primaryMedia?.['thumbnail_display_urls']?.square ||
+      primaryMedia?.['thumbnail_display_urls']?.medium ||
+      primaryMedia?.['thumbnail_display_urls']?.large,
+  );
+  if (fromPrimary) return fromPrimary;
+
+  for (const url of collectUrlsFromOmekaProperties(item)) {
+    const ytThumb = getYouTubeThumbnail(url);
+    if (ytThumb) return ytThumb;
+    if (/\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(url)) return url;
+  }
+
+  return null;
+}
+
+function extractExternalUrlFromOmekaItem(item: Record<string, any>): string | null {
+  for (const url of collectUrlsFromOmekaProperties(item)) {
+    if (getYouTubeThumbnail(url)) return url;
+  }
+  return collectUrlsFromOmekaProperties(item)[0] ?? null;
+}
+
+/**
+ * Charge la miniature depuis le premier média attaché (o:media) si absent de la réponse liste
+ */
+async function enrichThumbnailFromMedia(item: Record<string, any>): Promise<string | null> {
+  const mediaRef = item['o:media']?.[0];
+  const mediaId = mediaRef?.['o:id'] ?? mediaRef?.value_resource_id;
+  if (!mediaId) return null;
+
+  try {
+    const response = await fetch(omekaApiUrl(`${OMEKA_API_BASE}media/${mediaId}`));
+    if (!response.ok) return null;
+
+    const media = await response.json();
+
+    const originalUrl = media['o:original_url'];
+    if (typeof originalUrl === 'string') {
+      const fromOriginal = normalizeOmekaMediaUrl(originalUrl);
+      if (fromOriginal) return fromOriginal;
+    }
+
+    const fromThumb = normalizeOmekaMediaUrl(
+      media['o:thumbnail_urls']?.square ||
+        media['o:thumbnail_urls']?.medium ||
+        media['o:thumbnail_urls']?.large,
+    );
+    if (fromThumb) return fromThumb;
+
+    const source =
+      media['o:source'] ||
+      media['dcterms:identifier']?.[0]?.['@value'] ||
+      media['bibo:uri']?.[0]?.['@id'];
+    if (typeof source === 'string') {
+      const yt = getYouTubeThumbnail(source);
+      if (yt) return yt;
+      if (source.includes('/') || source.startsWith('http')) {
+        return normalizeOmekaMediaUrl(source);
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return null;
+}
+
+function normalizeStudentResourceCard(card: StudentResourceCard): StudentResourceCard {
+  const thumbnail =
+    normalizeOmekaMediaUrl(card.thumbnail) ||
+    (card.url ? getYouTubeThumbnail(card.url) || null : null);
+
+  return {
+    ...card,
+    thumbnail,
+    actants: card.actants?.map((a) => ({
+      ...a,
+      name: a.name || (a as { title?: string }).title,
+      picture: normalizeOmekaMediaUrl(a.picture),
+    })),
+  };
+}
 
 /**
  * Types pour les ressources étudiantes
@@ -12,6 +150,8 @@ export interface StudentResourceCard {
   id: number | string;
   title: string;
   thumbnail: string | null;
+  /** URL externe (YouTube, etc.) — fallback miniature dans MySpaceResourceCard */
+  url?: string | null;
   type:
     | 'experimentation_etudiant'
     | 'outil_etudiant'
@@ -28,12 +168,16 @@ export interface StudentResourceCard {
     | 'annotation'
     | 'element_esthetique'
     | 'element_narratif'
-    | 'bibliographie';
+    | 'bibliographie'
+    | 'mediagraphie';
   actants: {
     id: number | string;
     title: string;
+    name?: string;
     picture: string | null;
   }[];
+  /** Date métier (dcterms:issued, dcterms:date, etc.) */
+  date?: string | null;
   created?: string;
 }
 
@@ -115,22 +259,157 @@ export async function getAllStudentResources(): Promise<AllStudentResources> {
 }
 
 /**
- * Récupère les ressources créées par un utilisateur spécifique
- * Retourne un tableau plat filtré par owner_id côté backend
+ * Extrait les actants affichés sur une card depuis les propriétés Omeka S
  */
-export async function getUserResources(userId: number): Promise<StudentResourceCard[]> {
+function extractActantsFromOmekaItem(item: Record<string, any>): StudentResourceCard['actants'] {
+  const actants: StudentResourceCard['actants'] = [];
+  const seen = new Set<string>();
+
+  for (const prop of ['dcterms:creator', 'schema:contributor', 'schema:agent']) {
+    const values = item[prop];
+    if (!Array.isArray(values)) continue;
+
+    for (const v of values) {
+      if (v?.type !== 'resource') continue;
+      const id = v.value_resource_id ?? v['o:id'];
+      if (id == null || seen.has(String(id))) continue;
+      seen.add(String(id));
+      actants.push({
+        id,
+        title: v.display_title || `Item ${id}`,
+        name: v.display_title || `Item ${id}`,
+        picture: normalizeOmekaMediaUrl(v.thumbnail_url),
+      });
+    }
+  }
+
+  return actants;
+}
+
+const OMEKA_DATE_PROPERTIES = ['dcterms:issued', 'dcterms:date', 'schema:eventDate'];
+
+function extractDateFromOmekaItem(item: Record<string, any>): string | null {
+  for (const prop of OMEKA_DATE_PROPERTIES) {
+    const values = item[prop];
+    if (!Array.isArray(values) || values.length === 0) continue;
+    const value = values[0]?.['@value'];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+/**
+ * Convertit un item Omeka S en StudentResourceCard (ignore les templates inconnus)
+ */
+function mapOmekaItemToStudentCard(item: Record<string, any>): StudentResourceCard | null {
+  const templateId = item['o:resource_template']?.['o:id'];
+  if (!templateId) return null;
+
+  const type = TEMPLATE_ID_TO_TYPE[Number(templateId)];
+  if (!type || isParentLinkedOnlyResourceType(type)) return null;
+
+  return {
+    id: item['o:id'],
+    title: item['o:title'] || item['dcterms:title']?.[0]?.['@value'] || 'Sans titre',
+    thumbnail: extractThumbnailFromOmekaItem(item),
+    url: extractExternalUrlFromOmekaItem(item),
+    type: type as StudentResourceCard['type'],
+    actants: extractActantsFromOmekaItem(item),
+    date: extractDateFromOmekaItem(item),
+    created: item['o:modified']?.['@value'] || item['o:created']?.['@value'],
+  };
+}
+
+/**
+ * Récupère toutes les ressources dont l'utilisateur Omeka S est propriétaire (o:owner)
+ */
+export async function fetchUserResourcesByOwnerFromOmeka(omekaUserId: number): Promise<StudentResourceCard[]> {
+  const allItems: Record<string, any>[] = [];
+  let page = 1;
+  const perPage = 100;
+
+  while (page <= 10) {
+    const url = omekaApiUrl(
+      `${OMEKA_API_BASE}items?owner_id=${omekaUserId}&per_page=${perPage}&page=${page}&sort_by=modified&sort_order=desc`,
+    );
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Erreur Omeka S (${response.status}) lors de la récupération des ressources par owner`);
+    }
+
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) break;
+
+    allItems.push(...data);
+    if (data.length < perPage) break;
+    page++;
+  }
+
+  const cards = allItems
+    .map(mapOmekaItemToStudentCard)
+    .filter((card): card is StudentResourceCard => card !== null);
+
+  // Conférences / séminaires : la liste API omet parfois thumbnail_display_urls → charger o:media
+  await Promise.all(
+    cards.map(async (card, index) => {
+      if (card.thumbnail && !isOmekaPlaceholderThumbnail(card.thumbnail)) return;
+      const rawItem = allItems.find((i) => i['o:id'] === card.id);
+      if (!rawItem?.['o:media']?.length) return;
+      const enriched = await enrichThumbnailFromMedia(rawItem);
+      if (enriched) {
+        cards[index] = { ...card, thumbnail: enriched };
+      }
+    }),
+  );
+
+  return cards.map(normalizeStudentResourceCard);
+}
+
+/**
+ * Récupère les ressources créées par un utilisateur
+ * Priorité : filtre par o:owner (omekaUserId) via l'API Omeka S
+ * Fallback : endpoint PHP legacy (userId = item étudiant)
+ */
+export async function getUserResources(userId: number, omekaUserId?: number | null): Promise<StudentResourceCard[]> {
+  if (omekaUserId && omekaUserId > 0) {
+    try {
+      return await fetchUserResourcesByOwnerFromOmeka(omekaUserId);
+    } catch (error) {
+      console.error('Error fetching user resources by o:owner from Omeka:', error);
+    }
+  }
+
+  if (!userId) {
+    return [];
+  }
+
   try {
-    const response = await fetch(`${API_BASE}&action=getUserResources&userId=${userId}&json=1`);
+    const params = new URLSearchParams({
+      action: 'getUserResources',
+      userId: String(userId),
+      json: '1',
+    });
+    if (omekaUserId && omekaUserId > 0) {
+      params.set('ownerId', String(omekaUserId));
+    }
+
+    const response = await fetch(`${API_BASE}&${params.toString()}`);
 
     if (!response.ok) {
       throw new Error('Erreur lors de la récupération des ressources utilisateur');
     }
 
-    return await response.json();
+    return normalizeLegacyResourceCards(await response.json());
   } catch (error) {
     console.error('Error fetching user resources:', error);
     throw error;
   }
+}
+
+function normalizeLegacyResourceCards(cards: StudentResourceCard[]): StudentResourceCard[] {
+  if (!Array.isArray(cards)) return [];
+  return filterMonEspaceResources(cards.map(normalizeStudentResourceCard));
 }
 
 /**
@@ -351,6 +630,51 @@ export async function deleteCourse(id: number): Promise<{ success: boolean }> {
   }
 
   return result;
+}
+
+async function isOmekaItemDeleted(itemId: number): Promise<boolean> {
+  try {
+    const response = await fetch(omekaApiUrl(`${OMEKA_API_BASE}items/${itemId}`));
+    return response.status === 404;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Supprime définitivement une ressource Omeka S (DELETE via ApiProxy).
+ * Le backend peut renvoyer une 500 Doctrine après suppression réussie : on vérifie l'absence de l'item.
+ */
+export async function deleteUserResource(id: string | number): Promise<{ success: boolean; message?: string }> {
+  const itemId = Number(id);
+  if (!itemId) {
+    throw new Error('ID de ressource invalide');
+  }
+
+  let proxyError: string | undefined;
+
+  try {
+    const result = await ApiProxy.deleteItem(itemId);
+
+    if (result?.error) {
+      proxyError = typeof result.error === 'string' ? result.error : 'Erreur lors de la suppression';
+    } else if (result?.success === false) {
+      proxyError = typeof result.message === 'string' ? result.message : 'Erreur lors de la suppression';
+    } else {
+      return {
+        success: true,
+        message: typeof result?.message === 'string' ? result.message : undefined,
+      };
+    }
+  } catch (error) {
+    proxyError = error instanceof Error ? error.message : 'Erreur lors de la suppression';
+  }
+
+  if (await isOmekaItemDeleted(itemId)) {
+    return { success: true };
+  }
+
+  throw new Error(proxyError || 'Erreur lors de la suppression');
 }
 
 /**

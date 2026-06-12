@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button, Input, Divider, Breadcrumbs, BreadcrumbItem, Alert } from '@heroui/react';
 import { FilterGroup, FilterCondition, ITEM_TYPES, ITEM_PROPERTIES, storeSearchHistory } from './FilterPopup';
-import { CrossIcon, PlusIcon, SearchIcon } from '@/components/ui/icons';
+import { CrossIcon, AddIcon, SearchIcon } from '@/components/ui/icons';
 import { ChevronLeft } from 'lucide-react';
 
 // Types disponibles avec leurs images et labels
@@ -417,7 +417,7 @@ export default function VisualFilterOverlay({ onSelect, renderBreadcrumb, onNavi
                   Afficher tout
                 </Button>
                 <Button size='sm' variant='bordered' className='border-c3 text-c6 hover:bg-c3' onPress={() => setCurrentStep('advanced')}>
-                  <PlusIcon size={12} />
+                  <AddIcon size={12} />
                   Filtrage avancé
                 </Button>
               </div>
@@ -444,7 +444,7 @@ export default function VisualFilterOverlay({ onSelect, renderBreadcrumb, onNavi
                 <div className='flex items-center justify-between mb-2.5'>
                   <p className='text-sm text-c6 font-medium'>Conditions</p>
                   <Button size='sm' variant='light' className='text-c6 h-[28px]' onPress={addCondition}>
-                    <PlusIcon size={12} />
+                    <AddIcon size={12} />
                     Ajouter
                   </Button>
                 </div>

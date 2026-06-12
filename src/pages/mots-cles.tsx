@@ -58,6 +58,23 @@ type DeleteResult = {
   not_found: number[];
 };
 
+type ReplaceDryRun = {
+  from_keyword: Keyword;
+  to_keyword: Keyword;
+  total_refs: number;
+  refs_to_update: number;
+  refs_to_remove_dup: number;
+  distinct_items: number;
+};
+
+type ReplaceResult = {
+  from_keyword: Keyword;
+  to_keyword: Keyword;
+  updated_refs: number;
+  removed_dupes: number;
+  distinct_items: number;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Utilitaires
 // ─────────────────────────────────────────────────────────────────────────────
@@ -200,6 +217,16 @@ const KeywordExplorerSection: React.FC = () => {
   const [result, setResult]         = useState<KeywordResult | null>(null);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
   const [error, setError]           = useState('');
+  const [replaceTargetId, setReplaceTargetId] = useState('');
+  const [replacePreview, setReplacePreview] = useState<ReplaceDryRun | null>(null);
+  const [isReplacing, setIsReplacing] = useState(false);
+  const [replaceSuccess, setReplaceSuccess] = useState<string | null>(null);
+  const [originDeleteProposal, setOriginDeleteProposal] = useState<{
+    from: Keyword;
+    to: Keyword;
+  } | null>(null);
+  const [originDeleteDryRun, setOriginDeleteDryRun] = useState<DryRunResult | null>(null);
+  const [isDeletingOrigin, setIsDeletingOrigin] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   /** Évite de rouvrir le dropdown après sélection : setQuery relance le fetch qui faisait setShowSugg(true). */
@@ -230,10 +257,17 @@ const KeywordExplorerSection: React.FC = () => {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
 
-  const loadItems = useCallback(async (kw: Keyword) => {
+  const loadItems = useCallback(async (kw: Keyword, opts?: { keepPostReplaceUi?: boolean }) => {
     suppressNextSuggestOpenRef.current = true;
     setResult(null);
     setError('');
+    if (!opts?.keepPostReplaceUi) {
+      setReplaceTargetId('');
+      setReplacePreview(null);
+      setReplaceSuccess(null);
+      setOriginDeleteProposal(null);
+      setOriginDeleteDryRun(null);
+    }
     setShowSugg(false);
     setQuery(kw.title);
     setIsLoadingItems(true);
@@ -254,9 +288,119 @@ const KeywordExplorerSection: React.FC = () => {
     setQuery('');
     setResult(null);
     setError('');
+    setReplaceTargetId('');
+    setReplacePreview(null);
+    setReplaceSuccess(null);
+    setOriginDeleteProposal(null);
+    setOriginDeleteDryRun(null);
     setSuggestions([]);
     setShowSugg(false);
     inputRef.current?.focus();
+  };
+
+  const replaceToId = parseInt(replaceTargetId.trim(), 10);
+
+  const handleReplaceDryRun = async () => {
+    if (!result) return;
+    setError('');
+    setReplaceSuccess(null);
+    setReplacePreview(null);
+    setOriginDeleteProposal(null);
+    setOriginDeleteDryRun(null);
+    if (!replaceToId || replaceToId <= 0) {
+      setError('Indiquez un ID de mot-clé de remplacement valide.');
+      return;
+    }
+    if (replaceToId === result.keyword.id) {
+      setError('Le mot-clé de remplacement doit être différent du mot-clé actuel.');
+      return;
+    }
+    setIsReplacing(true);
+    try {
+      const res = await fetch(
+        `${BASE_URL}&action=replaceKeyword&from_id=${result.keyword.id}&to_id=${replaceToId}&dryRun=1&json=1`,
+      );
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error ?? 'Erreur serveur');
+      setReplacePreview(data as ReplaceDryRun);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue');
+    } finally {
+      setIsReplacing(false);
+    }
+  };
+
+  const handleReplaceConfirm = async () => {
+    if (!result) return;
+    setError('');
+    setIsReplacing(true);
+    try {
+      const res = await fetch(
+        `${BASE_URL}&action=replaceKeyword&from_id=${result.keyword.id}&to_id=${replaceToId}&json=1`,
+      );
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error ?? 'Erreur serveur');
+      const r = data as ReplaceResult;
+      setReplaceSuccess(
+        `${r.updated_refs} lien(s) mis à jour, ${r.removed_dupes} doublon(s) supprimé(s) sur ${r.distinct_items} item(s).`,
+      );
+      setReplacePreview(null);
+      setReplaceTargetId('');
+      setOriginDeleteProposal({ from: r.from_keyword, to: r.to_keyword });
+      setOriginDeleteDryRun(null);
+      await loadItems(result.keyword, { keepPostReplaceUi: true });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue');
+    } finally {
+      setIsReplacing(false);
+    }
+  };
+
+  const handleDeleteOriginCheck = async () => {
+    if (!originDeleteProposal) return;
+    setError('');
+    setIsDeletingOrigin(true);
+    try {
+      const res = await fetch(
+        `${BASE_URL}&action=deleteKeywords&dryRun=1&ids=${originDeleteProposal.from.id}&json=1`,
+      );
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error ?? 'Erreur serveur');
+      setOriginDeleteDryRun(data as DryRunResult);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue');
+    } finally {
+      setIsDeletingOrigin(false);
+    }
+  };
+
+  const handleDeleteOriginConfirm = async () => {
+    if (!originDeleteProposal) return;
+    setError('');
+    setIsDeletingOrigin(true);
+    try {
+      const res = await fetch(
+        `${BASE_URL}&action=deleteKeywords&dryRun=0&ids=${originDeleteProposal.from.id}&json=1`,
+      );
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error ?? 'Erreur serveur');
+      setReplaceSuccess(
+        `Mot-clé « ${originDeleteProposal.from.title} » (ID ${originDeleteProposal.from.id}) supprimé.`,
+      );
+      setOriginDeleteProposal(null);
+      setOriginDeleteDryRun(null);
+      setResult(null);
+      setQuery('');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erreur inconnue');
+    } finally {
+      setIsDeletingOrigin(false);
+    }
+  };
+
+  const dismissOriginDelete = () => {
+    setOriginDeleteProposal(null);
+    setOriginDeleteDryRun(null);
   };
 
   return (
@@ -341,6 +485,135 @@ const KeywordExplorerSection: React.FC = () => {
               <span className='text-xs text-c4'>item{result.total > 1 ? 's' : ''} lié{result.total > 1 ? 's' : ''}</span>
             </div>
           </div>
+
+          {/* Remplacement de mot-clé sur tous les items liés */}
+          <div className='flex flex-col gap-3 bg-c2 border border-c3 rounded-xl px-5 py-4'>
+            <div className='flex flex-col gap-1'>
+              <h3 className='text-base font-medium text-c6'>Remplacer ce mot-clé</h3>
+              <p className='text-c4 text-sm'>
+                Sur tous les items listés ci-dessous, remplace la référence{' '}
+                <span className='font-mono text-c5'>ID {result.keyword.id}</span> par un autre mot-clé.
+              </p>
+            </div>
+            <div className='flex flex-wrap items-end gap-3'>
+              <div className='flex flex-col gap-1.5 min-w-[200px] flex-1'>
+                <label className='text-xs text-c5 font-medium'>ID du mot-clé de remplacement</label>
+                <input
+                  type='text'
+                  inputMode='numeric'
+                  value={replaceTargetId}
+                  onChange={e => {
+                    setReplaceTargetId(e.target.value.replace(/\D/g, ''));
+                    setReplacePreview(null);
+                    setReplaceSuccess(null);
+                  }}
+                  placeholder='ex. 15035'
+                  className='bg-c1 border border-c3 rounded-lg px-3 py-2 text-sm text-c6 font-mono focus:outline-none focus:border-c4'
+                />
+              </div>
+              <Button
+                type='button'
+                variant='bordered'
+                isLoading={isReplacing && !replacePreview}
+                isDisabled={!replaceTargetId.trim() || isReplacing}
+                onPress={handleReplaceDryRun}>
+                Prévisualiser
+              </Button>
+              <Button
+                type='button'
+                color='primary'
+                isLoading={isReplacing && !!replacePreview}
+                isDisabled={!replacePreview || isReplacing}
+                onPress={handleReplaceConfirm}>
+                Remplacer par
+              </Button>
+            </div>
+            {replacePreview && (
+              <div className='text-sm text-c5 bg-c1 border border-c3 rounded-lg px-4 py-3 flex flex-col gap-1'>
+                <p>
+                  <strong className='text-c6'>{replacePreview.from_keyword.title}</strong>
+                  {' '}(ID {replacePreview.from_keyword.id}) →{' '}
+                  <strong className='text-c6'>{replacePreview.to_keyword.title}</strong>
+                  {' '}(ID {replacePreview.to_keyword.id})
+                </p>
+                <p>
+                  {replacePreview.refs_to_update} lien(s) seront mis à jour
+                  {replacePreview.refs_to_remove_dup > 0 && (
+                    <>, {replacePreview.refs_to_remove_dup} doublon(s) seront retirés (cible déjà présente)</>
+                  )}
+                  {' '}sur {replacePreview.distinct_items} item(s).
+                </p>
+                <p className='text-c4 text-xs'>Cliquez sur « Remplacer par » pour appliquer.</p>
+              </div>
+            )}
+            {replaceSuccess && (
+              <p className='text-sm text-green-400 bg-green-500/10 border border-green-500/20 rounded-lg px-4 py-2'>
+                {replaceSuccess}
+              </p>
+            )}
+          </div>
+
+          {/* Proposition suppression — bloc distinct, visible après remplacement */}
+          {originDeleteProposal && (
+            <div className='flex flex-col gap-3 border-2 border-red-500/40 bg-red-500/10 rounded-xl px-5 py-4'>
+              <div className='flex flex-col gap-1'>
+                <p className='text-base font-medium text-c6'>Supprimer le mot-clé d&apos;origine ?</p>
+                <p className='text-c4 text-sm'>
+                  Les items pointent maintenant vers{' '}
+                  <strong className='text-c5'>{originDeleteProposal.to.title}</strong> (ID{' '}
+                  {originDeleteProposal.to.id}). Vous pouvez supprimer{' '}
+                  <strong className='text-c5'>{originDeleteProposal.from.title}</strong> (ID{' '}
+                  {originDeleteProposal.from.id}) s&apos;il n&apos;est plus utile.
+                </p>
+              </div>
+
+              {!originDeleteDryRun ? (
+                <div className='flex flex-wrap items-center gap-3'>
+                  <Button
+                    type='button'
+                    className='h-9 px-4 text-sm rounded-lg bg-red-600 hover:bg-red-600 text-white font-medium'
+                    isLoading={isDeletingOrigin}
+                    onPress={handleDeleteOriginCheck}>
+                    Supprimer le mot-clé d&apos;origine
+                  </Button>
+                  <button
+                    type='button'
+                    onClick={dismissOriginDelete}
+                    className='text-sm text-c4 hover:text-c5 transition-colors px-2'>
+                    Non, garder ce mot-clé
+                  </button>
+                </div>
+              ) : (
+                <div className='flex flex-col gap-3'>
+                  {originDeleteDryRun.incoming_refs > 0 ? (
+                    <p className='text-sm text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2'>
+                      Attention : {originDeleteDryRun.incoming_refs} lien(s) pointent encore vers ce mot-clé.
+                      La suppression retirera aussi ces références.
+                    </p>
+                  ) : (
+                    <p className='text-sm text-c5'>
+                      Aucun item ne référence plus ce mot-clé — suppression sans impact sur les contenus.
+                    </p>
+                  )}
+                  <div className='flex flex-wrap items-center gap-3'>
+                    <Button
+                      type='button'
+                      className='h-9 px-4 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium'
+                      isLoading={isDeletingOrigin}
+                      onPress={handleDeleteOriginConfirm}>
+                      Confirmer la suppression
+                    </Button>
+                    <button
+                      type='button'
+                      onClick={dismissOriginDelete}
+                      className='text-sm text-c4 hover:text-c5 transition-colors px-2'>
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {result.total === 0 ? (
             <p className='text-c4 text-sm italic'>Aucun item ne référence ce mot-clé.</p>

@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Button, Tooltip } from '@heroui/react';
-import { CrossIcon, PlusIcon } from '@/components/ui/icons';
+import { CrossIcon, AddIcon } from '@/components/ui/icons';
 import { AlertModal } from '@/components/ui/AlertModal';
 import { GenericDetailPage } from '@/pages/generic/GenericDetailPage';
 import { FormTabConfig, GenericDetailPageConfig } from '@/pages/generic/config';
@@ -211,7 +211,7 @@ export const FormTabManager: React.FC<FormTabManagerProps> = ({ initialTabs = []
             // This could open a modal to select which resource type to create
             console.log('Add new tab clicked');
           }}>
-          <PlusIcon size={14} />
+          <AddIcon size={14} />
         </Button>
       </div>
 

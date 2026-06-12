@@ -61,7 +61,7 @@ export const experimentationConfigSimplified: SimplifiedDetailConfig = {
       property: 'theatre:credit',
       renderType: 'items',
       urlPattern: '/corpus/outil/:id',
-      resourceTemplateIds: [114, 129],
+      resourceTemplateId: 114,
     },
     {
       key: 'Feedbacks',
@@ -100,6 +100,10 @@ export const experimentationConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'experimentation',
   defaultView: 'ElementsNarratifs',
   formEnabled: true,
+
+  contributorButtons: [
+    { label: 'Ajouter Intervenant', templateId: 72, property: 'schema:agent' },
+  ],
 };
 
 export const experimentationConfig = convertToGenericConfig(experimentationConfigSimplified);

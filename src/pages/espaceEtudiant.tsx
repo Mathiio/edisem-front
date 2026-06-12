@@ -2,7 +2,7 @@ import { Layouts } from '@/components/layout/Layouts';
 import { PageBanner } from '@/components/ui/PageBanner';
 import { UniversityIcon, ExperimentationIcon, SettingsIcon, CitationIcon, SchoolIcon } from '@/components/ui/icons';
 import { motion, Variants } from 'framer-motion';
-import { StudentCard, StudentCardSkeleton } from '@/components/features/espaceEtudiant/StudentCard';
+import { MySpaceResourceCard, MySpaceResourceCardSkeleton } from '@/components/features/espaceEtudiant/MySpaceResourceCard';
 import { useEffect, useState } from 'react';
 import { getCourses, getResourcesByCourse, getTeacherResources, type AllStudentResources, type StudentResourceCard, type Course } from '@/services/StudentSpace';
 import { CorpusSection } from '@/components/features/home/CorpusSection';
@@ -241,7 +241,7 @@ export const EspaceEtudiant: React.FC = () => {
           <div className='grid grid-cols-4 w-full gap-6'>
             {getFilteredTeacherResources().map((item, index) => (
               <motion.div key={`teacher-${item.type}-${item.id}`} initial='hidden' animate='visible' variants={fadeIn} custom={index}>
-                <StudentCard
+                <MySpaceResourceCard
                   id={String(item.id)}
                   title={item.title}
                   thumbnail={item.thumbnail || undefined}
@@ -266,7 +266,7 @@ export const EspaceEtudiant: React.FC = () => {
               <div className='h-[60px] w-[300px] bg-c3 rounded-3xl animate-pulse' />
               <div className='grid grid-cols-4 w-full gap-6'>
                 {Array.from({ length: 4 }).map((_, index) => (
-                  <StudentCardSkeleton key={index} />
+                  <MySpaceResourceCardSkeleton key={index} />
                 ))}
               </div>
             </div>
@@ -332,7 +332,7 @@ export const EspaceEtudiant: React.FC = () => {
                 {/* Grille des ressources */}
                 <div className='grid grid-cols-4 w-full gap-6'>
                   {course.loading ? (
-                    Array.from({ length: 4 }).map((_, index) => <StudentCardSkeleton key={index} />)
+                    Array.from({ length: 4 }).map((_, index) => <MySpaceResourceCardSkeleton key={index} />)
                   ) : !hasResources ? (
                     <div className='col-span-4 flex items-center justify-center py-10 text-c4 rounded-3xl border-2 border-c3'>
                       <p className='text-base'>Aucune ressource pour ce cours</p>
@@ -340,7 +340,7 @@ export const EspaceEtudiant: React.FC = () => {
                   ) : (
                     filteredResources.map((item, index) => (
                       <motion.div key={`${item.type}-${item.id}`} initial='hidden' animate='visible' variants={fadeIn} custom={index}>
-                        <StudentCard
+                        <MySpaceResourceCard
                           id={String(item.id)}
                           title={item.title}
                           thumbnail={item.thumbnail || undefined}

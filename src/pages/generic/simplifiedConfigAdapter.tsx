@@ -15,9 +15,10 @@
  */
 
 import React from 'react';
-import { Button } from '@heroui/react';
-import { PlusIcon, CrossIcon } from '@/components/ui/icons';
+import { AddIcon } from '@/components/ui/icons';
+import { modalCloseButtonClasses, ModalCloseIcon } from '@/theme/components/modal';
 import { getTemplatePropertiesMap } from '@/services/Items';
+import { OMEKA_API_BASE as API_BASE, omekaApiUrl } from '@/utils/omekaApi';
 import { GenericDetailPageConfig, FetchResult, ViewOption, ProgressiveDataFetcher, ProgressCallback, FormFieldConfig, FormFieldType } from './config';
 import { SimplifiedDetailConfig, SimplifiedViewConfig, InternalFieldConfig, FieldType, extractFieldsFromConfig } from './simplifiedConfig';
 import { SimpleOverviewCard, SimpleDetailsCard, SimpleOverviewSkeleton, SimpleDetailsSkeleton } from './SimpleComponents';
@@ -69,7 +70,7 @@ const MicroresumesView: React.FC<{ itemId: string | number; onTimeChange?: (time
   if (!loading && microresumes.length === 0) return null;
   return <Microresumes microresumes={microresumes} loading={loading} onTimeChange={onTimeChange ?? (() => {})} />;
 };
-import { AddResourceCard } from '@/components/features/forms/AddResourceCard';
+import { ReferenceAddButtons } from '@/components/features/forms/AddResourceCard';
 import { GenericDetailPage } from './GenericDetailPage';
 
 // ========================================
@@ -90,6 +91,14 @@ const parseTimecode = (str: string): number => {
   return parts[0] || 0;
 };
 
+const inlineFieldClass =
+  'w-full bg-c2 border-2 border-c3 rounded-lg px-3 py-2 text-c6 text-sm resize-none focus:outline-none focus:border-c3';
+const inlineTimeFieldClass =
+  'bg-c2 border-2 border-c3 rounded-lg px-3 py-2 text-c6 text-sm w-28 focus:outline-none focus:border-c3';
+const inlineRemoveButtonClass = [modalCloseButtonClasses, 'inline-flex items-center justify-center shrink-0 p-1.5 text-xl'].join(' ');
+const inlineAddButtonClass =
+  'flex items-center gap-1.5 h-12 px-4 rounded-lg border-2 border-c3 bg-c2 hover:bg-c3 text-c6 text-sm font-medium transition-all duration-200 cursor-pointer';
+
 // ========================================
 // Inline form: Ajouter des citations
 // ========================================
@@ -107,47 +116,44 @@ const InlineCitationForm: React.FC<{
   const remove = (i: number) => onChange(items.filter((_, idx) => idx !== i));
 
   return (
-    <div className='flex flex-col gap-[10px]'>
+    <div className='flex flex-col gap-2.5'>
       {items.map((item, i) => (
-        <div key={i} className='flex flex-col gap-[8px] p-[12px] bg-c2 rounded-[10px] border border-c3'>
+        <div key={i} className='relative flex flex-col gap-2 p-3 bg-c2 rounded-lg border-2 border-c3'>
+          <button
+            type='button'
+            onClick={() => remove(i)}
+            className={`absolute top-2 right-2 ${inlineRemoveButtonClass}`}
+            aria-label='Supprimer la citation'>
+            <ModalCloseIcon />
+          </button>
+          <div className='flex gap-2 items-center pr-8'>
+            <input
+              type='text'
+              value={formatTimecode(item.startTime || 0)}
+              onChange={(e) => update(i, 'startTime', parseTimecode(e.target.value))}
+              placeholder='00:00:00'
+              className={inlineTimeFieldClass}
+            />
+            <p className='text-c4'> : </p>
+            <input
+              type='text'
+              value={formatTimecode(item.endTime || 0)}
+              onChange={(e) => update(i, 'endTime', parseTimecode(e.target.value))}
+              placeholder='00:00:00'
+              className={inlineTimeFieldClass}
+            />
+          </div>
           <textarea
             value={item.citation}
             onChange={(e) => update(i, 'citation', e.target.value)}
             placeholder='Contenu de la citation...'
-            className='bg-c1 border border-c3 rounded-[8px] px-[12px] py-[8px] text-c6 text-[14px] resize-none focus:outline-none focus:border-action'
+            className={inlineFieldClass}
             rows={3}
           />
-          <div className='flex gap-[8px] items-center'>
-            <div className='flex flex-col gap-[2px]'>
-              <label className='text-[12px] text-c4'>Début</label>
-              <input
-                type='text'
-                value={formatTimecode(item.startTime || 0)}
-                onChange={(e) => update(i, 'startTime', parseTimecode(e.target.value))}
-                placeholder='00:00:00'
-                className='bg-c1 border border-c3 rounded-[8px] px-[12px] py-[8px] text-c6 text-[14px] w-[110px] focus:outline-none focus:border-action'
-              />
-            </div>
-            <div className='flex flex-col gap-[2px]'>
-              <label className='text-[12px] text-c4'>Fin</label>
-              <input
-                type='text'
-                value={formatTimecode(item.endTime || 0)}
-                onChange={(e) => update(i, 'endTime', parseTimecode(e.target.value))}
-                placeholder='00:00:00'
-                className='bg-c1 border border-c3 rounded-[8px] px-[12px] py-[8px] text-c6 text-[14px] w-[110px] focus:outline-none focus:border-action'
-              />
-            </div>
-            <button onClick={() => remove(i)} className='ml-auto mt-auto p-[6px] text-c4 hover:text-red-500 transition-colors'>
-              <CrossIcon size={14} />
-            </button>
-          </div>
         </div>
       ))}
-      <button
-        onClick={add}
-        className='flex items-center gap-[6px] px-[12px] py-[10px] border-2 border-dashed border-c4 rounded-[8px] text-c5 text-[14px] hover:border-action hover:bg-c2 transition-all duration-200'>
-        <PlusIcon size={14} />
+      <button type='button' onClick={add} className={inlineAddButtonClass}>
+        <AddIcon size={14} className='text-c4' />
         Ajouter une citation
       </button>
     </div>
@@ -171,77 +177,67 @@ const InlineMicroresumeForm: React.FC<{
   const remove = (i: number) => onChange(items.filter((_, idx) => idx !== i));
 
   return (
-    <div className='flex flex-col gap-[10px]'>
+    <div className='flex flex-col gap-2.5'>
       {items.map((item, i) => (
-        <div key={i} className='flex flex-col gap-[8px] p-[12px] bg-c2 rounded-[10px] border border-c3'>
+        <div key={i} className='relative flex flex-col gap-2 p-3 bg-c2 rounded-lg border-2 border-c3'>
+          <button
+            type='button'
+            onClick={() => remove(i)}
+            className={`absolute top-2 right-2 ${inlineRemoveButtonClass}`}
+            aria-label='Supprimer le micro-résumé'>
+            <ModalCloseIcon />
+          </button>
+          <div className='flex gap-2 items-center pr-8'>
+            <input
+              type='text'
+              value={formatTimecode(item.startTime || 0)}
+              onChange={(e) => update(i, 'startTime', parseTimecode(e.target.value))}
+              placeholder='00:00:00'
+              className={inlineTimeFieldClass}
+            />
+            <p className='text-c4'> : </p>
+            <input
+              type='text'
+              value={formatTimecode(item.endTime || 0)}
+              onChange={(e) => update(i, 'endTime', parseTimecode(e.target.value))}
+              placeholder='00:00:00'
+              className={inlineTimeFieldClass}
+            />
+          </div>
           <input
             type='text'
             value={item.title}
             onChange={(e) => update(i, 'title', e.target.value)}
             placeholder='Titre du micro-résumé'
-            className='bg-c1 border border-c3 rounded-[8px] px-[12px] py-[8px] text-c6 text-[14px] focus:outline-none focus:border-action'
+            className={inlineFieldClass}
           />
           <textarea
             value={item.description}
             onChange={(e) => update(i, 'description', e.target.value)}
             placeholder='Description...'
-            className='bg-c1 border border-c3 rounded-[8px] px-[12px] py-[8px] text-c6 text-[14px] resize-none focus:outline-none focus:border-action'
+            className={inlineFieldClass}
             rows={3}
           />
-          <div className='flex gap-[8px] items-center'>
-            <div className='flex flex-col gap-[2px]'>
-              <label className='text-[12px] text-c4'>Début</label>
-              <input
-                type='text'
-                value={formatTimecode(item.startTime || 0)}
-                onChange={(e) => update(i, 'startTime', parseTimecode(e.target.value))}
-                placeholder='00:00:00'
-                className='bg-c1 border border-c3 rounded-[8px] px-[12px] py-[8px] text-c6 text-[14px] w-[110px] focus:outline-none focus:border-action'
-              />
-            </div>
-            <div className='flex flex-col gap-[2px]'>
-              <label className='text-[12px] text-c4'>Fin</label>
-              <input
-                type='text'
-                value={formatTimecode(item.endTime || 0)}
-                onChange={(e) => update(i, 'endTime', parseTimecode(e.target.value))}
-                placeholder='00:00:00'
-                className='bg-c1 border border-c3 rounded-[8px] px-[12px] py-[8px] text-c6 text-[14px] w-[110px] focus:outline-none focus:border-action'
-              />
-            </div>
-            <button onClick={() => remove(i)} className='ml-auto mt-auto p-[6px] text-c4 hover:text-red-500 transition-colors'>
-              <CrossIcon size={14} />
-            </button>
-          </div>
         </div>
       ))}
-      <button
-        onClick={add}
-        className='flex items-center gap-[6px] px-[12px] py-[10px] border-2 border-dashed border-c4 rounded-[8px] text-c5 text-[14px] hover:border-action hover:bg-c2 transition-all duration-200'>
-        <PlusIcon size={14} />
+      <button type='button' onClick={add} className={inlineAddButtonClass}>
+        <AddIcon size={14} className='text-c4' />
         Ajouter un micro-résumé
       </button>
     </div>
   );
 };
-import { getResourceUrl, getResourceConfigByTemplateId } from '@/config/resourceConfig';
-import AutoResizingField from '@/components/features/database/AutoResizingTextarea';
-
-const getResourceFallbackTitle = (id: number | string, templateId?: number | string): string => {
-  if (templateId) {
-    const config = getResourceConfigByTemplateId(templateId);
-    if (config) return `${config.label} #${id}`;
-  }
-  return `Item #${id}`;
-};
-
-// ========================================
-// API Constants
-// ========================================
-
-const API_BASE = '/omk/api/';
-const API_KEY = import.meta.env.VITE_API_KEY;
-const API_IDENT = 'NUO2yCjiugeH7XbqwUcKskhE8kXg0rUj';
+import { getResourceUrl, getResourceConfigByTemplateId, isFormOnlyResourceType } from '@/config/resourceConfig';
+import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/features/database/AutoResizingTextarea';
+import {
+  CREATE_ONLY_TEMPLATE_IDS,
+  getLinkedResourceId,
+  getLinkedResourceTitle,
+  getResourceFallbackTitle,
+  getResourceOwnerId,
+  shouldHardDeleteLinkedResource,
+  canUnlinkLinkedResource,
+} from './resourceHelpers';
 
 // ========================================
 // Helpers pour extraire les valeurs Omeka S
@@ -363,7 +359,7 @@ export const fieldToFormField = (field: InternalFieldConfig): FormFieldConfig =>
         ? {
             resourceType: field.label,
             itemSetId: field.itemSetId,
-            multiple: false,
+            multiple: field.multiSelect ?? false,
           }
         : undefined,
   };
@@ -407,7 +403,7 @@ async function fetchWithRetry(url: string, retries = 2, delay = 500): Promise<Re
  * Uploader un nouveau média vers Omeka S
  */
 export const uploadMedia = async (file: File, itemId: string): Promise<boolean> => {
-  const url = `${API_BASE}media?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
+  const url = omekaApiUrl(`${API_BASE}media`);
 
   const formData = new FormData();
   const mediaData = {
@@ -434,7 +430,7 @@ export const uploadMedia = async (file: File, itemId: string): Promise<boolean> 
  * Supprimer un média depuis Omeka S
  */
 export const deleteMedia = async (mediaId: number): Promise<boolean> => {
-  const url = `${API_BASE}media/${mediaId}?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
+  const url = omekaApiUrl(`${API_BASE}media/${mediaId}`);
 
   try {
     const response = await fetch(url, { method: 'DELETE' });
@@ -762,6 +758,7 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
               type: templateId === 96 ? 'actant' : templateId === 72 ? 'student' : 'personne',
               template: templateId,
               resource_template_id: templateId,
+              ownerId: resourceData['o:owner']?.['o:id'],
             };
           } catch (err) {
             console.error(`Erreur chargement contributeur ${resourceId}:`, err);
@@ -884,6 +881,7 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
                 number: resourceData['bibo:number']?.[0]?.['@value'] || null,
                 mediagraphyType: resourceData['edisem:typeMediagraphie']?.[0]?.['@value'] || null,
                 url: resourceData['bibo:uri']?.[0]?.['@id'] || externalUrl || internalUrl,
+                ownerId: resourceData['o:owner']?.['o:id'],
               };
             } catch (err) {
               console.error(`Erreur chargement ressource ${resourceId}:`, err);
@@ -1161,6 +1159,7 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
                 number: resourceData['bibo:number']?.[0]?.['@value'] || null,
                 mediagraphyType: resourceData['edisem:typeMediagraphie']?.[0]?.['@value'] || null,
                 url: externalUrl || internalUrl,
+                ownerId: resourceData['o:owner']?.['o:id'],
               };
             } catch (err) {
               console.error(`Erreur chargement ressource ${resourceId}:`, err);
@@ -1284,6 +1283,10 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
     key: view.key,
     title: view.title,
     editable: view.editable !== false,
+    hiddenInForm: view.hiddenInForm,
+    createOnly:
+      view.createOnly ??
+      (view.resourceTemplateId != null && CREATE_ONLY_TEMPLATE_IDS.has(view.resourceTemplateId)),
     resourceLabel: view.title,
     resourceTemplateId: view.resourceTemplateId,
     resourceTemplateIds: view.resourceTemplateIds,
@@ -1291,43 +1294,82 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
     viewKind,
     getItemCount,
     renderContent: (context) => {
-      const { itemDetails, loadingViews, isEditing, onLinkExisting, onCreateNew, onRemoveItem, onItemsChange, onEditResource, updatedResources, onTimeChange, formData } = context;
+      const {
+        itemDetails,
+        loadingViews,
+        isEditing,
+        onLinkExisting,
+        onCreateNew,
+        onRemoveItem,
+        onItemsChange,
+        onEditResource,
+        updatedResources,
+        onTimeChange,
+        formData,
+        userCreatedResourceIds,
+        currentOmekaUserId,
+      } = context;
       switch (view.renderType) {
         case 'items': {
           let resourceIds = getResourceIds(itemDetails, view.property || '');
-          const resourceCache = itemDetails.resourceCache || {};
+          const resourceCache = { ...(itemDetails.resourceCache || {}) };
+          const formDataItems: any[] = isEditing && Array.isArray(itemDetails[view.key]) ? itemDetails[view.key] : [];
 
-          // En mode édition, vérifier les ressources ajoutées via formData
-          if (isEditing && itemDetails[view.key] && Array.isArray(itemDetails[view.key])) {
-            const formDataItems = itemDetails[view.key];
-            const formDataIds = formDataItems.map((item: any) => item['o:id'] || item.id).filter((id: any) => id && !resourceIds.includes(id));
-            resourceIds = [...resourceIds, ...formDataIds];
-
+          if (isEditing && formData?.[view.key] !== undefined && Array.isArray(formData[view.key])) {
+            // formData[view.key] fait autorité sur les IDs (reflète ajouts et suppressions)
+            resourceIds = formData[view.key]
+              .map((item: any) => getLinkedResourceId(item))
+              .filter((id: string | number | undefined): id is string | number => id != null)
+              .map((id: string | number) => (Number.isFinite(Number(id)) ? Number(id) : id)) as number[];
+            formData[view.key].forEach((item: any) => {
+              const id = getLinkedResourceId(item);
+              if (id == null || resourceCache[id]) return;
+              resourceCache[id] = {
+                title: getLinkedResourceTitle(item, view.resourceTemplateId),
+                thumbnailUrl: item['thumbnail_display_urls']?.square || item.thumbnail || item.thumbnailUrl,
+              };
+            });
+          } else if (isEditing && formDataItems.length > 0) {
             formDataItems.forEach((item: any) => {
-              const id = item['o:id'] || item.id;
-              if (id && !resourceCache[id]) {
+              const id = getLinkedResourceId(item);
+              if (id == null) return;
+              if (!resourceIds.includes(Number(id)) && !resourceIds.includes(id as number)) {
+                resourceIds = [...resourceIds, id as number];
+              }
+              if (!resourceCache[id]) {
                 resourceCache[id] = {
-                  title: item['dcterms:title']?.[0]?.['@value'] || item['o:title'] || item.title || getResourceFallbackTitle(id, item['o:resource_template']?.['o:id'] || item.resource_template_id),
-                  thumbnailUrl: item['thumbnail_display_urls']?.square || item.thumbnail,
+                  title: getLinkedResourceTitle(item, view.resourceTemplateId),
+                  thumbnailUrl: item['thumbnail_display_urls']?.square || item.thumbnail || item.thumbnailUrl,
                 };
               }
             });
           }
 
-          const items = resourceIds.map((id) => {
-            const cached = resourceCache[id];
-            // Check for updates first
-            const update = updatedResources?.[id];
+          const items = resourceIds
+            .map((id) => {
+              const cached = resourceCache[id];
+              const update = updatedResources?.[String(id)];
+              const formItem = formDataItems.find((item) => String(getLinkedResourceId(item)) === String(id));
 
-            const cachedTemplateId = cached?.resource_template_id || cached?.template || cached?.class;
-            const cachedTitle = cached?.title?.startsWith('Item #') ? undefined : cached?.title;
-            return {
-              id,
-              title: update?.title || cachedTitle || getResourceFallbackTitle(id, cachedTemplateId),
-              thumbnail: update?.thumbnail || cached?.thumbnailUrl,
-              url: cached?.url,
-            };
-          });
+              if (loadingViews && !cached && !update && !formItem) {
+                return null;
+              }
+
+              const cachedTemplateId = cached?.resource_template_id || cached?.template || cached?.class || view.resourceTemplateId;
+              const cachedTitle = cached?.title?.startsWith('Item #') ? undefined : cached?.title;
+              return {
+                id,
+                title:
+                  update?.title ||
+                  (formItem ? getLinkedResourceTitle(formItem, view.resourceTemplateId) : undefined) ||
+                  cachedTitle ||
+                  getResourceFallbackTitle(id, cachedTemplateId),
+                thumbnail: update?.thumbnail || cached?.thumbnailUrl || formItem?.thumbnail || formItem?.thumbnailUrl,
+                url: cached?.url,
+                ownerId: getResourceOwnerId(cached) ?? getResourceOwnerId(formItem),
+              };
+            })
+            .filter(Boolean) as { id: string | number; title: string; thumbnail?: string; url?: string }[];
 
           // Extraire aussi les URIs (liens externes) de la propriété
           const propData = itemDetails[view.property || ''];
@@ -1345,6 +1387,10 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
 
           const mapUrl = view.urlPattern ? (item: any) => view.urlPattern!.replace(':id', item.id) : undefined;
 
+          const viewCreateOnly =
+            view.createOnly ??
+            (view.resourceTemplateId != null && CREATE_ONLY_TEMPLATE_IDS.has(view.resourceTemplateId));
+
           return (
             <ItemsList
               items={allItems}
@@ -1352,10 +1398,27 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
               loading={loadingViews}
               isEditing={isEditing}
               resourceLabel={view.title}
-              onLinkExisting={onLinkExisting ? () => onLinkExisting(view.key) : undefined}
-              onCreateNew={onCreateNew ? () => onCreateNew(view.key) : undefined}
+              userCreatedResourceIds={userCreatedResourceIds}
+              currentOmekaUserId={currentOmekaUserId}
+              onAdd={
+                isEditing
+                  ? viewCreateOnly
+                    ? () => {
+                        if (onCreateNew) onCreateNew(view.key);
+                        else onLinkExisting?.(view.key);
+                      }
+                    : onLinkExisting
+                      ? () => onLinkExisting(view.key)
+                      : undefined
+                  : undefined
+              }
               onRemoveItem={onRemoveItem ? (id: string | number) => onRemoveItem(view.key, id) : undefined}
-              onEdit={onEditResource ? (id: string | number) => onEditResource(view.key, id) : undefined}
+              resourceTemplateId={view.resourceTemplateId}
+              onEdit={
+                onEditResource
+                  ? (id: string | number) => onEditResource(view.key, id, view.resourceTemplateId)
+                  : undefined
+              }
             />
           );
         }
@@ -1373,16 +1436,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
             return (
               <div className='w-full'>
                 <AutoResizingField
-                  textareaProps={{
-                    className:
-                      'w-full min-h-[150px] !bg-c1 hover:!bg-c1 border-2 border-c3 rounded-[12px] text-c6 !text-[16px] resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0 data-[focus=true]:outline-none',
-                    classNames: {
-                      inputWrapper: 'bg-c1 rounded-[12px] text-c6 text-[16px] resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0',
-                      input: 'text-c6 !text-[16px] resize-y !outline-none data-[focus=true]:outline-none',
-                      innerWrapper: 'px-[20px] py-[20px] data-[focus=true]:border-0 data-[focus=true]:outline-none !focus-visible:outline-hidden',
-                      base: 'bg-c1 rounded-[12px] text-c6 text-[16px] resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0 data-[focus=true]:outline-none',
-                    },
-                  }}
+                  textareaProps={getAutoResizeTextareaProps()}
                   value={text || ''}
                   onChange={(e) => onItemsChange?.(view.key, [{ value: e.target.value, dataPath: view.property }])}
                   placeholder={view.emptyMessage || 'Saisissez du contenu...'}
@@ -1454,13 +1508,19 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
             if (!canEdit || !onRemoveItem) return null;
             const refId = ref.id || ref['o:id'];
             if (!refId) return null;
+            const refTemplateId = ref.resource_template_id ?? ref.template ?? view.resourceTemplateId;
+            const removeLabel = shouldHardDeleteLinkedResource(Number(refTemplateId) || view.resourceTemplateId)
+              ? 'Supprimer'
+              : 'Délier';
+            if (!canUnlinkLinkedResource(ref, view.resourceTemplateId, currentOmekaUserId, userCreatedResourceIds)) return null;
             return (
               <button
                 key={`remove-${refId}-${index}`}
                 onClick={() => onRemoveItem(view.key, refId)}
-                className='ml-2 p-1 text-c5 hover:text-danger/80 rounded transition-all inline-flex items-center'
-                title='Retirer'>
-                <CrossIcon size={14} />
+                className={`ml-2 ${inlineRemoveButtonClass}`}
+                title={removeLabel}
+                aria-label={removeLabel}>
+                <ModalCloseIcon />
               </button>
             );
           };
@@ -1495,12 +1555,18 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                         const refId = String(ref.id || ref['o:id'] || ref['value_resource_id']);
                         return {
                           id: refId,
-                          title: updatedResources?.[refId]?.title || ref.title || ref['o:title'] || ref['dcterms:title']?.[0]?.['@value'] || 'Bibliographie',
+                          title:
+                            updatedResources?.[refId]?.title ||
+                            getLinkedResourceTitle(ref) ||
+                            'Bibliographie',
                           url: '#',
+                          ownerId: getResourceOwnerId(ref),
                         };
                       })}
                       isEditing={canEdit}
-                      onEdit={(id) => onEditResource?.(view.key, id)}
+                      userCreatedResourceIds={userCreatedResourceIds}
+                      currentOmekaUserId={currentOmekaUserId}
+                      onEdit={(id) => onEditResource?.(view.key, id, view.resourceTemplateIds?.[0])}
                       onRemoveItem={onRemoveItem ? (id) => onRemoveItem(view.key, id) : undefined}
                     />
                   ) : (
@@ -1508,8 +1574,12 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                   )}
                 </div>
               )}
-              {canEdit && onLinkExisting && (
-                <AddResourceCard resourceLabel={view.title} onLinkExisting={() => onLinkExisting(view.key)} onCreateNew={() => onCreateNew?.(view.key)} />
+              {canEdit && (
+                <ReferenceAddButtons
+                  viewKey={view.key}
+                  templateIds={view.resourceTemplateIds}
+                  onLinkExisting={onLinkExisting}
+                />
               )}
             </div>
           );
@@ -1538,7 +1608,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
           const showCategoryTitle = view.categories.length > 1;
 
           return (
-            <div className='flex flex-col gap-[25px]'>
+            <div className='flex flex-col gap-6'>
               {view.categories.map((category) => {
                 if (!canEdit) {
                   const categoryHasContent = category.subcategories.some((sub) => {
@@ -1549,9 +1619,9 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                 }
 
                 return (
-                  <div key={category.key} className='flex flex-col gap-[15px]'>
-                    {showCategoryTitle && <h2 className='text-[20px] font-semibold text-c6'>{category.title}</h2>}
-                    <div className='flex flex-col gap-[20px]'>
+                  <div key={category.key} className='flex flex-col gap-4'>
+                    {showCategoryTitle && <h2 className='text-xl font-semibold text-c6'>{category.title}</h2>}
+                    <div className='flex flex-col gap-5'>
                       {category.subcategories.map((subcategory) => {
                         const allValues = getAllOmekaValues(itemDetails, subcategory.property);
 
@@ -1564,60 +1634,62 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                         }
 
                         if (canEdit) {
-                          const displayValues = editValues.length > 0 ? editValues : [''];
+                          const allowMultiple = subcategory.allowMultipleInputs !== false;
+                          const displayValues = allowMultiple
+                            ? editValues.length > 0
+                              ? editValues
+                              : ['']
+                            : [editValues[0] ?? ''];
 
                           return (
-                            <div key={subcategory.key} className='flex flex-col gap-[10px]'>
-                              <h3 className='text-c6 font-semibold text-[16px]'>{subcategory.label}</h3>
+                            <div key={subcategory.key} className='flex flex-col gap-2.5'>
+                              <h3 className='text-c6 font-semibold text-base'>{subcategory.label}</h3>
 
                               {displayValues.map((value, index) => (
-                                <div key={index} className='flex gap-[8px] items-start'>
-                                  <AutoResizingField
-                                    textareaProps={{
-                                      className:
-                                        'w-full min-h-[80px] !bg-c1 hover:!bg-c1 border-2 border-c3 rounded-[12px] text-c6 !text-[14px] resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0 data-[focus=true]:outline-none',
-                                      classNames: {
-                                        inputWrapper: 'bg-c1 rounded-[12px] text-c6 text-[14px] resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0',
-                                        input: 'text-c6 !text-[14px] resize-y !outline-none data-[focus=true]:outline-none',
-                                        innerWrapper: 'px-[15px] py-[15px] data-[focus=true]:border-0 data-[focus=true]:outline-none !focus-visible:outline-hidden',
-                                        base: 'bg-c1 rounded-[12px] text-c6 text-[14px] resize-y data-[hover=true]:bg-c2 data-[focus=true]:border-0 data-[focus=true]:outline-none',
-                                      },
-                                    }}
-                                    value={value}
-                                    onChange={(e) => {
-                                      const newValues = [...displayValues];
-                                      newValues[index] = e.target.value;
-                                      onItemsChange?.(subcategory.property, newValues);
-                                    }}
-                                    placeholder={`Saisissez ${subcategory.label.toLowerCase()}...`}
-                                    isReadOnly={false}
-                                  />
-                                  {(displayValues.length > 1 || value.trim() !== '') && (
-                                    <Button
-                                      isIconOnly
-                                      size='sm'
-                                      variant='light'
-                                      className='mt-2 text-c4 hover:text-red-500'
-                                      onPress={() => {
+                                <div key={index} className='flex gap-2 items-center'>
+                                  <div className='flex-1 min-w-0'>
+                                    <AutoResizingField
+                                      textareaProps={getAutoResizeTextareaProps({ size: 'sm' })}
+                                      value={value}
+                                      onChange={(e) => {
+                                        if (allowMultiple) {
+                                          const newValues = [...displayValues];
+                                          newValues[index] = e.target.value;
+                                          onItemsChange?.(subcategory.property, newValues);
+                                        } else {
+                                          onItemsChange?.(subcategory.property, [e.target.value]);
+                                        }
+                                      }}
+                                      placeholder={`Saisissez ${subcategory.label.toLowerCase()}...`}
+                                      isReadOnly={false}
+                                    />
+                                  </div>
+                                  {allowMultiple && (displayValues.length > 1 || value.trim() !== '') && (
+                                    <button
+                                      type='button'
+                                      className={inlineRemoveButtonClass}
+                                      aria-label={`Retirer ${subcategory.label}`}
+                                      onClick={() => {
                                         const newValues = displayValues.filter((_, i) => i !== index);
                                         onItemsChange?.(subcategory.property, newValues.length > 0 ? newValues : ['']);
                                       }}>
-                                      <CrossIcon size={16} />
-                                    </Button>
+                                      <ModalCloseIcon />
+                                    </button>
                                   )}
                                 </div>
                               ))}
 
-                              <Button
-                                size='sm'
-                                variant='flat'
-                                className='w-fit bg-c2 text-c5 hover:bg-c3'
-                                startContent={<PlusIcon size={16} />}
-                                onPress={() => {
-                                  onItemsChange?.(subcategory.property, [...displayValues, '']);
-                                }}>
-                                Ajouter
-                              </Button>
+                              {allowMultiple && (
+                                <button
+                                  type='button'
+                                  className={`w-fit ${inlineAddButtonClass}`}
+                                  onClick={() => {
+                                    onItemsChange?.(subcategory.property, [...displayValues, '']);
+                                  }}>
+                                  <AddIcon size={14} className='text-c4' />
+                                  Ajouter
+                                </button>
+                              )}
                             </div>
                           );
                         }
@@ -1629,18 +1701,18 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                         const isUri = isUriProperty(itemDetails, subcategory.property);
 
                         return (
-                          <div key={subcategory.key} className='flex flex-col gap-[10px]'>
-                            <h3 className='text-c6 font-semibold text-[16px]'>{subcategory.label}</h3>
+                          <div key={subcategory.key} className='flex flex-col gap-2.5'>
+                            <h3 className='text-c6 font-semibold text-base'>{subcategory.label}</h3>
                             {allValues.map(
                               (val, i) =>
                                 val.trim() !== '' && (
-                                  <div key={i} className='bg-c1 rounded-[8px] p-[25px] border-2 border-c3'>
+                                  <div key={i} className='bg-c2 rounded-xl p-6 border-2 border-c3'>
                                     {isUri ? (
-                                      <a href={val} target='_blank' rel='noopener noreferrer' className='text-action text-[14px] leading-[125%] hover:underline break-all'>
+                                      <a href={val} target='_blank' rel='noopener noreferrer' className='text-action text-sm leading-snug hover:underline break-all'>
                                         {val}
                                       </a>
                                     ) : (
-                                      <p className='text-c5 text-[14px] leading-[125%]'>{val}</p>
+                                      <p className='text-c5 text-sm leading-snug'>{val}</p>
                                     )}
                                   </div>
                                 ),
@@ -1661,7 +1733,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
           const canEditCitations = isEditing && view.editable !== false;
           const newCitations = (formData?.[view.key] as any[]) || [];
           return (
-            <div className='flex flex-col gap-[15px]'>
+            <div className='flex flex-col gap-4'>
               {itemId && <CitationsView itemId={itemId} onTimeChange={onTimeChange} />}
               {canEditCitations && onItemsChange && (
                 <InlineCitationForm items={newCitations} onChange={(items) => onItemsChange(view.key, items)} />
@@ -1675,7 +1747,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
           const canEditMicroresumes = isEditing && view.editable !== false;
           const newMicroresumes = (formData?.[view.key] as any[]) || [];
           return (
-            <div className='flex flex-col gap-[15px]'>
+            <div className='flex flex-col gap-4'>
               {itemId && <MicroresumesView itemId={itemId} onTimeChange={onTimeChange} />}
               {canEditMicroresumes && onItemsChange && (
                 <InlineMicroresumeForm items={newMicroresumes} onChange={(items) => onItemsChange(view.key, items)} />
@@ -1824,10 +1896,15 @@ export const convertToGenericConfig = (config: SimplifiedDetailConfig): GenericD
 
     // Type
     type: config.resourceType,
+    resourceType: config.resourceType,
+    formOnly: isFormOnlyResourceType(config.resourceType),
 
     // Formulaire
     formEnabled: config.formEnabled ?? false,
     editSingleColumn: config.editSingleColumn ?? false,
+    mediaUploadMode: config.mediaUploadMode ?? 'gallery',
+    resourcePickerDisplay: config.resourcePickerDisplay ?? 'grid',
+    contributorButtons: config.contributorButtons,
     resourceTemplateId: config.templateId,
     formFields,
 
@@ -1955,6 +2032,19 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
         'thumbnail_display_urls',
       ]);
 
+      // Mapping viewKey → propriété Omeka (pour délier / lier sans écrasement)
+      const viewKeyToPropertyMap: Record<string, string> = {};
+      if (config.views) {
+        config.views.forEach((view) => {
+          if (view.key && view.property) {
+            viewKeyToPropertyMap[view.key] = view.property;
+          }
+        });
+      }
+      const linkedViewKeys = new Set(Object.keys(viewKeyToPropertyMap));
+      const linkedOmekaProperties = new Set(Object.values(viewKeyToPropertyMap));
+      const writtenOmekaProperties = new Set<string>();
+
       // 5. Appliquer les modifications
       Object.entries(data).forEach(([key, value]) => {
         if (ignoredKeys.has(key) || value === undefined || value === null) {
@@ -1963,6 +2053,41 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
 
         // Trouver la propriété Omeka S correspondante
         const omekaProperty = keyToProperty[key] || key;
+
+        const isLinkedResourceArray =
+          Array.isArray(value) &&
+          (linkedViewKeys.has(key) ||
+            linkedOmekaProperties.has(key) ||
+            (value.length > 0 &&
+              (value[0].id || value[0]['o:id'] || value[0].value_resource_id)));
+
+        if (isLinkedResourceArray) {
+          if (writtenOmekaProperties.has(omekaProperty)) {
+            return;
+          }
+
+          const propertyId = propMap[omekaProperty] ?? updatedItem[omekaProperty]?.[0]?.property_id;
+          if (!propertyId) {
+            console.warn(`[handleSave] Property ID non trouvé pour: ${omekaProperty} (clé: ${key})`);
+            return;
+          }
+
+          updatedItem[omekaProperty] =
+            value.length === 0
+              ? []
+              : value
+                  .map((item: any) => item.id || item['o:id'] || item.value_resource_id)
+                  .filter(Boolean)
+                  .map((resourceId: number) => ({
+                    type: 'resource',
+                    property_id: propertyId,
+                    value_resource_id: resourceId,
+                    is_public: true,
+                  }));
+          writtenOmekaProperties.add(omekaProperty);
+          return;
+        }
+
         const propertyId = propMap[omekaProperty];
 
         if (!propertyId) {
@@ -2017,7 +2142,7 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
       console.log('[handleSave] Item data to send:', updatedItem);
 
       // 7. Sauvegarder
-      const url = `${API_BASE}items/${itemId}?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
+      const url = omekaApiUrl(`${API_BASE}items/${itemId}`);
       const saveResponse = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

@@ -33,15 +33,15 @@ export const elementEsthetiqueConfigSimplified: SimplifiedDetailConfig = {
           key: 'characteristics',
           title: 'Caractéristiques',
           subcategories: [
-            { key: 'genre', label: "Genre de l'œuvre", property: 'schema:genre' },
-            { key: 'duration', label: "Durée de l'œuvre", property: 'schema:duration' },
-            { key: 'imageCharacteristic', label: 'Style visuel', property: 'schema:imageCharacteristic' },
-            { key: 'colorCharacteristic', label: 'Esthétique chromatique dominante', property: 'schema:colorCharacteristic' },
-            { key: 'formCharacteristic', label: 'Textures dominantes', property: 'schema:formCharacteristic' },
-            { key: 'soundCharacteristic', label: 'Style sonore', property: 'schema:soundCharacteristic' },
-            { key: 'language', label: 'Présence/Absence de texte', property: 'dcterms:language' },
-            { key: 'audience', label: 'Relation aux spectateur·ices', property: 'dcterms:audience' },
-            { key: 'temporal', label: "Temporalité de l'œuvre", property: 'schema:temporal' },
+            { key: 'genre', label: "Genre de l'œuvre", property: 'schema:genre', allowMultipleInputs: false  },
+            { key: 'duration', label: "Durée de l'œuvre", property: 'schema:duration', allowMultipleInputs: false },
+            { key: 'imageCharacteristic', label: 'Style visuel', property: 'schema:imageCharacteristic', allowMultipleInputs: false },
+            { key: 'colorCharacteristic', label: 'Esthétique chromatique dominante', property: 'schema:colorCharacteristic', allowMultipleInputs: false },
+            { key: 'formCharacteristic', label: 'Textures dominantes', property: 'schema:formCharacteristic', allowMultipleInputs: false },
+            { key: 'soundCharacteristic', label: 'Style sonore', property: 'schema:soundCharacteristic', allowMultipleInputs: false },
+            { key: 'language', label: 'Présence/Absence de texte', property: 'dcterms:language', allowMultipleInputs: false },
+            { key: 'audience', label: 'Relation aux spectateur·ices', property: 'dcterms:audience', allowMultipleInputs: false },
+            { key: 'temporal', label: "Temporalité de l'œuvre", property: 'schema:temporal', allowMultipleInputs: false },
           ],
         },
       ],
@@ -55,6 +55,11 @@ export const elementEsthetiqueConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'element_esthetique',
   defaultView: 'Analyse',
   formEnabled: true,
+
+  contributorButtons: [
+    { label: 'Ajouter Intervenant', templateId: 72, property: 'dcterms:creator' },
+    { label: 'Ajouter Étudiant', templateId: 96, property: 'dcterms:creator' },
+  ],
 
   smartRecommendations: {
     maxRecommendations: 5,

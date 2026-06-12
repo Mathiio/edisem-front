@@ -3,32 +3,45 @@ import React from 'react';
 import { Dropdown, DropdownItem, DropdownMenu, DropdownTrigger } from '@heroui/react';
 import { Conference } from '@/types/ui';
 import { EyeIcon, TrashIcon, UserIcon, ThumbnailIcon, SeminaireIcon } from '@/components/ui/icons';
-import { getResourceAuthors, getResourceSubtitle, getSafeResourceUrl, getResourceThumbnail } from '@/lib/resourceUtils';
-import { getRessourceLabel, getResourceIcon } from '@/config/resourceConfig';
+import { getResourceAuthors, getResourceSubtitle, getSafeResourceUrl, getResourceThumbnail, resolveOmekaThumbnail } from '@/lib/resourceUtils';
+import { getRessourceLabel, getResourceIcon, isFormOnlyResourceType, getResourceEditUrl } from '@/config/resourceConfig';
 import { useNavigate } from 'react-router-dom';
 
-interface ExpCardProps extends Omit<Conference, 'type'> {
+interface MySpaceResourceCardProps extends Omit<Conference, 'type'> {
   type?: string;
+  url?: string | null;
+  date?: string | null;
   showActions?: boolean;
   onEdit?: (id: string, type?: string) => void;
   onDelete?: (id: string) => void;
   onCardClick?: (id: string, type?: string) => void;
 }
 
-export const StudentCard: React.FC<ExpCardProps> = (props) => {
+export const MySpaceResourceCard: React.FC<MySpaceResourceCardProps> = (props) => {
   const { type = 'experimentation_etudiant', showActions = false, onEdit, onDelete, onCardClick, ...experimentation } = props;
   const navigate = useNavigate();
+  const resourceId = experimentation.id != null ? String(experimentation.id) : '';
 
   const handleDelete = () => {
-    if (onDelete && experimentation.id) {
-      onDelete(experimentation.id);
+    if (onDelete && resourceId) {
+      onDelete(resourceId);
     }
   };
 
   const handleNavigateToView = () => {
+    if (isFormOnlyResourceType(type)) {
+      if (onEdit && resourceId) {
+        onEdit(resourceId, type);
+        return;
+      }
+      navigate(getResourceEditUrl(type, resourceId));
+      return;
+    }
     const url = getSafeResourceUrl(item);
     if (url && url !== '#') navigate(url);
   };
+
+  const isFormOnly = isFormOnlyResourceType(type);
 
   // Actions Dropdown
   const actionsContent = showActions ? (
@@ -45,20 +58,32 @@ export const StudentCard: React.FC<ExpCardProps> = (props) => {
         </button>
       </DropdownTrigger>
       <DropdownMenu aria-label='Actions' className='bg-c2 rounded-[12px] border-2 border-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] p-2 min-w-[140px]'>
-        <DropdownItem
-          key='view'
-          className='hover:bg-c3 text-c6 px-3 py-2 rounded-[8px] transition-all duration-200'
-          startContent={<EyeIcon size={14} className='text-c5' />}
-          onPress={handleNavigateToView}>
-          Voir la ressource
-        </DropdownItem>
-        <DropdownItem
-          key='delete'
-          className='hover:bg-c3 text-c6 px-3 py-2 rounded-[8px] transition-all duration-200'
-          startContent={<TrashIcon size={14} className='text-c5' />}
-          onPress={handleDelete}>
-          Supprimer
-        </DropdownItem>
+        {isFormOnly ? (
+          <DropdownItem
+            key='delete'
+            className='hover:bg-c3 text-c6 px-3 py-2 rounded-[8px] transition-all duration-200'
+            startContent={<TrashIcon size={14} className='text-c5' />}
+            onPress={handleDelete}>
+            Supprimer
+          </DropdownItem>
+        ) : (
+          <>
+            <DropdownItem
+              key='view'
+              className='hover:bg-c3 text-c6 px-3 py-2 rounded-[8px] transition-all duration-200'
+              startContent={<EyeIcon size={14} className='text-c5' />}
+              onPress={handleNavigateToView}>
+              Voir la ressource
+            </DropdownItem>
+            <DropdownItem
+              key='delete'
+              className='hover:bg-c3 text-c6 px-3 py-2 rounded-[8px] transition-all duration-200'
+              startContent={<TrashIcon size={14} className='text-c5' />}
+              onPress={handleDelete}>
+              Supprimer
+            </DropdownItem>
+          </>
+        )}
       </DropdownMenu>
     </Dropdown>
   ) : undefined;
@@ -66,7 +91,8 @@ export const StudentCard: React.FC<ExpCardProps> = (props) => {
   // --- ResourceCard Logic ---
   const item: any = { ...experimentation, type };
   const finalTitle = experimentation.title || '';
-  const finalThumbnail = experimentation.thumbnail || getResourceThumbnail(item) || '';
+  const candidate = experimentation.thumbnail || getResourceThumbnail(item) || '';
+  const finalThumbnail = resolveOmekaThumbnail(candidate) || '';
   const finalAuthors = getResourceAuthors(item);
   const finalSubtitle = getResourceSubtitle(item);
   const finalType = type;
@@ -75,16 +101,16 @@ export const StudentCard: React.FC<ExpCardProps> = (props) => {
   const FinalTypeIcon = getResourceIcon(finalType) || SeminaireIcon;
 
   const handleClick = () => {
-    if (onCardClick && experimentation.id) {
-      onCardClick(experimentation.id, type);
+    if (onCardClick && resourceId) {
+      onCardClick(resourceId, type);
       return;
     }
     // En mode actions (mon-espace), le clic ouvre l'édition
-    if (showActions && onEdit && experimentation.id) {
-      onEdit(experimentation.id, type);
+    if (showActions && onEdit && resourceId) {
+      onEdit(resourceId, type);
       return;
     }
-    const url = getSafeResourceUrl(item);
+    const url = isFormOnly ? getResourceEditUrl(type, resourceId) : getSafeResourceUrl(item);
     if (url && url !== '#') {
       navigate(url);
       return;
@@ -176,13 +202,17 @@ export const StudentCard: React.FC<ExpCardProps> = (props) => {
           <FinalTypeIcon size={14} className={`shrink-0 ${typeColor ? '' : 'text-c4/60'}`} style={typeColor ? { color: typeColor } : {}} />
           <p className='text-[14px] text-c4/60 font-medium truncate'>{finalTypeLabel}</p>
         </div>
-        {actionsContent && <div className='flex shrink-0 opacity-20 group-hover:opacity-100 transition-opacity duration-200'>{actionsContent}</div>}
+        {actionsContent && (
+          <div className='flex shrink-0 opacity-20 group-hover:opacity-100 transition-opacity duration-200' onClick={(e) => e.stopPropagation()}>
+            {actionsContent}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export const StudentCardSkeleton: React.FC = () => {
+export const MySpaceResourceCardSkeleton: React.FC = () => {
   return (
     <div className='shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 p-[20px] rounded-[18px] flex flex-col gap-[20px] h-full animate-pulse'>
       <div className='flex flex-col gap-[10px] justify-between'>

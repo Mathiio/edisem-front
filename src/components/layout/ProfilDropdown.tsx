@@ -1,7 +1,19 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useCallback, useMemo } from 'react';
-import { UserIcon, Logout, SunIcon, MoonIcon, SettingsIcon, PlusIcon, KeywordIcon } from '@/components/ui/icons';
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownSection, DropdownItem, User } from '@heroui/react';
+import { UserIcon, Logout, SunIcon, MoonIcon, SettingsIcon, KeywordIcon } from '@/components/ui/icons';
+import { User } from '@heroui/react';
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownSection,
+  DropdownItem,
+  dropdownContentClassNames,
+  dropdownTriggerButtonClass,
+  dropdownMenuClassNames,
+  dropdownMenuItemClass,
+  dropdownItemInnerPadding,
+} from '@/theme/components/dropdown';
 import { useThemeMode } from '@/hooks/useThemeMode';
 import { useAuth } from '@/hooks/useAuth';
 import { getRoleLabel } from '@/config/permissions';
@@ -36,20 +48,13 @@ export const ProfilDropdown = () => {
     [userData?.role, userData?.type],
   );
 
-  const canCreate = can('create');
   const canAdmin = can('admin');
 
-  const menuItemClass = 'p-0 cursor-pointer text-c5 data-[hover=true]:!bg-c3 data-[selectable=true]:focus:!bg-c3 rounded-lg';
-  const itemInnerPadding = 'py-2 px-3';
-
   return (
-    <Dropdown
-      classNames={{
-        content: 'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] bg-c2 rounded-xl border-2 border-c3',
-      }}>
+    <Dropdown classNames={dropdownContentClassNames}>
       {/* Button trigger for opening the dropdown */}
       <DropdownTrigger className='p-3'>
-        <div className='hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 flex flex-row rounded-lg border-2 border-c3 items-center justify-center px-4 py-2.5 text-base gap-2.5 text-c6 transition-all ease-in-out duration-200'>
+        <div className={dropdownTriggerButtonClass}>
           {/* User avatar if authenticated, otherwise fallback icon */}
           {isAuthenticated && userData?.picture ? (
             <img src={userData.picture} alt='Avatar' className='w-6 h-6 rounded-md object-cover' />
@@ -62,13 +67,7 @@ export const ProfilDropdown = () => {
       </DropdownTrigger>
 
       {/* Main dropdown menu content */}
-      <DropdownMenu
-        aria-label='User menu'
-        className='p-2'
-        classNames={{
-          base: 'bg-transparent shadow-none border-0',
-          list: 'bg-transparent',
-        }}>
+      <DropdownMenu aria-label='User menu' className='p-2' classNames={dropdownMenuClassNames}>
         {isAuthenticated ? (
           // When the user is authenticated
           <>
@@ -95,43 +94,36 @@ export const ProfilDropdown = () => {
             </DropdownSection>
 
             <DropdownSection className='mb-0'>
-              <DropdownItem key='mon-espace' className={menuItemClass}>
-                <Link to={userData?.type === 'actant' ? '/mon-espace-3' : '/mon-espace'} className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${itemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
+              <DropdownItem key='mon-espace' className={dropdownMenuItemClass}>
+                <Link to={userData?.type === 'actant' ? '/mon-espace-4' : '/mon-espace'} className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
                   <UserIcon size={16} />
                   <p className='text-base font-normal'>Mon espace</p>
                 </Link>
               </DropdownItem>
 
-              <DropdownItem key='create' className={`${menuItemClass} ${canCreate ? '' : 'hidden'}`}>
-                <Link to='/creer' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${itemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
-                  <PlusIcon size={16} />
-                  <p className='text-base font-normal'>Créer</p>
-                </Link>
-              </DropdownItem>
-
-              <DropdownItem key='adminStudent' className={`${menuItemClass} ${canAdmin ? '' : 'hidden'}`}>
-                <Link to='/admin' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${itemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
+              <DropdownItem key='adminStudent' className={`${dropdownMenuItemClass} ${canAdmin ? '' : 'hidden'}`}>
+                <Link to='/admin' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
                   <SettingsIcon size={16} />
                   <p className='text-base font-normal'>Administration</p>
                 </Link>
               </DropdownItem>
 
-              <DropdownItem key='mots-cles' className={`${menuItemClass} ${canAdmin ? '' : 'hidden'}`}>
-                <Link to='/mots-cles' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${itemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
+              <DropdownItem key='mots-cles' className={`${dropdownMenuItemClass} ${canAdmin ? '' : 'hidden'}`}>
+                <Link to='/mots-cles' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
                   <KeywordIcon size={16} />
                   <p className='text-base font-normal'>Mots-clés</p>
                 </Link>
               </DropdownItem>
 
-              <DropdownItem key='theme' className={menuItemClass}>
-                <button onClick={toggleThemeMode} className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${itemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
+              <DropdownItem key='theme' className={dropdownMenuItemClass}>
+                <button onClick={toggleThemeMode} className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
                   {isDark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
                   <span className='text-base font-normal'>{isDark ? 'Thème clair' : 'Thème sombre'}</span>
                 </button>
               </DropdownItem>
 
-              <DropdownItem key='logout' className={menuItemClass}>
-                <button onClick={handleLogout} className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${itemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
+              <DropdownItem key='logout' className={dropdownMenuItemClass}>
+                <button onClick={handleLogout} className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
                   <Logout size={16} />
                   <p className='text-base font-normal'>Se déconnecter</p>
                 </button>
@@ -142,16 +134,16 @@ export const ProfilDropdown = () => {
           // When the user is not authenticated
           <DropdownSection className='mb-0'>
             {/* Link to Login page */}
-            <DropdownItem key='login' className={menuItemClass}>
-              <Link to='/login' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${itemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
+            <DropdownItem key='login' className={dropdownMenuItemClass}>
+              <Link to='/login' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
                 <UserIcon size={16} />
                 <p className='text-base font-normal'>Connexion</p>
               </Link>
             </DropdownItem>
 
             {/* Theme toggle for unauthenticated users */}
-            <DropdownItem key='theme' className={menuItemClass}>
-              <button onClick={toggleThemeMode} className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${itemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
+            <DropdownItem key='theme' className={dropdownMenuItemClass}>
+              <button onClick={toggleThemeMode} className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
                 {isDark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
                 <span className='text-base font-normal'>{isDark ? 'Thème clair' : 'Thème sombre'}</span>
               </button>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { GenericDetailPage } from './GenericDetailPage';
 import { GenericDetailPageConfig, PageMode } from './config';
 import { StudentFormWrapper } from '@/components/features/forms/StudentFormWrapper';
@@ -19,19 +19,24 @@ interface ConfigurableDetailPageProps {
  *
  * En mode view: affiche GenericDetailPage directement
  * En mode edit/create: utilise StudentFormWrapper pour permettre les onglets
+ * formOnly (bibliographie, organisation, etc.) : pas de vue, formulaire direct si :id
  */
 export const ConfigurableDetailPage: React.FC<ConfigurableDetailPageProps> = ({ config, initialMode = 'view' }) => {
+  const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const urlMode = searchParams.get('mode') as PageMode | null;
 
-  // Déterminer le mode effectif: priorité au paramètre URL, sinon initialMode
-  const effectiveMode = urlMode === 'edit' ? 'edit' : initialMode;
+  const effectiveMode: PageMode = (() => {
+    if (initialMode === 'create') return 'create';
+    if (config.formOnly && id) return 'edit';
+    if (urlMode === 'edit') return 'edit';
+    if (initialMode !== 'view') return initialMode;
+    return 'view';
+  })();
 
-  // Mode view: pas besoin de système d'onglets
   if (effectiveMode === 'view') {
     return <GenericDetailPage config={config} initialMode='view' />;
   }
 
-  // Mode edit/create: utiliser le wrapper avec système d'onglets
   return <StudentFormWrapper initialConfig={config} initialMode={effectiveMode} />;
 };

@@ -1,34 +1,22 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ResourceTabInfo } from './ResourceFormTabs';
 import { GenericDetailPage } from '@/pages/generic/GenericDetailPage';
 import { GenericDetailPageConfig } from '@/pages/generic/config';
-
-// Import de toutes les configs pour le registre dynamique
-import { toolConfig, toolStudentConfig } from '@/pages/generic/config/toolConfig';
-import { feedbackStudentConfig, feedbackStudentConfigSimplified } from '@/pages/generic/config/feedbackStudentConfig';
-import { experimentationStudentConfig } from '@/pages/generic/config/experimentationStudentConfig';
-import { bibliographyStudentConfig, bibliographyStudentConfigSimplified } from '@/pages/generic/config/bibliographyStudentConfig';
+import { feedbackStudentConfigSimplified } from '@/pages/generic/config/feedbackStudentConfig';
+import { bibliographyConfigSimplified } from '@/pages/generic/config/bibliographyConfig';
+import { mediagraphyConfigSimplified } from '@/pages/generic/config/mediagraphyConfig';
 import { SimplifiedDetailConfig } from '@/pages/generic/simplifiedConfig';
-import { feedbackConfig } from '@/pages/generic/config/feedbackConfig';
-import { experimentationConfig } from '@/pages/generic/config/experimentationConfig';
-import { conferenceConfig } from '@/pages/generic/config/conferenceConfig';
-import { analyseCritiqueConfig } from '@/pages/generic/config/analyseCritiqueConfig';
-import { elementEsthetiqueConfig } from '@/pages/generic/config/elementEsthetiqueConfig';
-import { elementNarratifConfig } from '@/pages/generic/config/elementNarratifConfig';
-import { recitScientifiqueConfig } from '@/pages/generic/config/recitScientifiqueConfig';
-import { recitArtitstiqueConfig } from '@/pages/generic/config/recitArtitstiqueConfig';
-import { recitTechnoConfig } from '@/pages/generic/config/recitTechnoConfig';
-import { recitCitoyenConfig } from '@/pages/generic/config/recitcitoyenConfig';
-import { recitMediatiqueConfig } from '@/pages/generic/config/recitmediatiqueConfig';
 import { createHandleSave } from '@/pages/generic/simplifiedConfigAdapter';
-import { getRessourceLabel, getResourceUrl } from '@/config/resourceConfig';
+import { resolveCreateTabConfig } from '@/pages/generic/createTabRegistry';
+import { getRessourceLabel, getResourceUrl, getMonEspacePath, getResourceLinkSaveLabel } from '@/config/resourceConfig';
+import { useAuth } from '@/hooks/useAuth';
 import { AlertModal } from '@/components/ui/AlertModal';
 
-/**
- * Configuration complète d'un onglet (interne au wrapper)
- */
-interface InternalTab extends ResourceTabInfo {
+/** Métadonnées d'un formulaire empilé (parent / enfant) — sans barre d'onglets visible */
+interface InternalTab {
+  id: string;
+  title: string;
+  isDirty: boolean;
   config: GenericDetailPageConfig;
   mode: 'edit' | 'create';
   itemId?: string;
@@ -37,67 +25,15 @@ interface InternalTab extends ResourceTabInfo {
   hasBeenActivated?: boolean;
 }
 
-/**
- * Registre automatique : templateId → GenericDetailPageConfig
- * Toutes les configs sont enregistrées ici. Quand une vue a un resourceTemplateId,
- * on retrouve la config correspondante automatiquement.
- * Pour ajouter un nouveau type : il suffit de l'importer et de l'ajouter à ALL_CONFIGS.
- */
-const ALL_CONFIGS: GenericDetailPageConfig[] = [
-  toolStudentConfig,
-  feedbackStudentConfig,
-  experimentationStudentConfig,
-  bibliographyStudentConfig,
-  toolConfig,
-  feedbackConfig,
-  experimentationConfig,
-  conferenceConfig,
-  analyseCritiqueConfig,
-  elementEsthetiqueConfig,
-  elementNarratifConfig,
-  recitScientifiqueConfig,
-  recitArtitstiqueConfig,
-  recitTechnoConfig,
-  recitCitoyenConfig,
-  recitMediatiqueConfig,
-];
-
-const TEMPLATE_ID_TO_CONFIG: Record<number, GenericDetailPageConfig> = {};
-for (const config of ALL_CONFIGS) {
-  if (config.resourceTemplateId) {
-    TEMPLATE_ID_TO_CONFIG[config.resourceTemplateId] = config;
-  }
-}
-
-/**
- * Trouve la config pour un viewKey et/ou templateId.
- * 1. Si templateId est fourni, cherche dans le registre par templateId
- * 2. Sinon, fallback sur le mapping statique legacy
- */
-const LEGACY_VIEW_KEY_MAP: Record<string, { config: GenericDetailPageConfig }> = {
-  'theatre:credit': { config: toolStudentConfig },
-  'schema:description': { config: feedbackStudentConfig },
-  'dcterms:references': { config: bibliographyStudentConfig },
-  'dcterms:bibliographicCitation': { config: bibliographyStudentConfig },
-  Bibliographie: { config: bibliographyStudentConfig },
-  outils: { config: toolStudentConfig },
-  'schema:tool': { config: toolStudentConfig },
-  projets: { config: experimentationStudentConfig },
-  'dcterms:isPartOf': { config: experimentationStudentConfig },
-};
-
 const TEMPLATE_ID_TO_SIMPLIFIED: Record<number, SimplifiedDetailConfig> = {
   [feedbackStudentConfigSimplified.templateId]: feedbackStudentConfigSimplified,
-  [bibliographyStudentConfigSimplified.templateId]: bibliographyStudentConfigSimplified,
+  [bibliographyConfigSimplified.templateId]: bibliographyConfigSimplified,
+  [mediagraphyConfigSimplified.templateId]: mediagraphyConfigSimplified,
 };
 
 const getConfigForViewKey = (viewKey: string, templateId?: number): { config: GenericDetailPageConfig } | undefined => {
-  // 1. Chercher par templateId (le plus fiable)
-  if (templateId && TEMPLATE_ID_TO_CONFIG[templateId]) {
-    return { config: TEMPLATE_ID_TO_CONFIG[templateId] };
-  }
-  // 2. Fallback legacy par viewKey
-  return LEGACY_VIEW_KEY_MAP[viewKey];
+  const config = resolveCreateTabConfig(viewKey, templateId);
+  return config ? { config } : undefined;
 };
 
 interface StudentFormWrapperProps {
@@ -113,6 +49,8 @@ interface StudentFormWrapperProps {
 export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialConfig, initialMode }) => {
   const { id: paramId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { userData } = useAuth();
+  const monEspacePath = getMonEspacePath(userData?.type);
 
   // État des onglets
   const [tabs, setTabs] = useState<InternalTab[]>([
@@ -127,37 +65,44 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
     },
   ]);
   const [activeTabId, setActiveTabId] = useState('main');
+  const activeTabIdRef = useRef(activeTabId);
+
+  useEffect(() => {
+    activeTabIdRef.current = activeTabId;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeTabId]);
 
   const generateTabId = () => `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-  const handleCreateNewResource = useCallback(
-    (viewKey: string, templateId?: number) => {
-      const mapping = getConfigForViewKey(viewKey, templateId);
-      if (!mapping) {
-        console.warn(`No config found for viewKey: ${viewKey}, templateId: ${templateId}`);
-        return;
-      }
+  const handleCreateNewResource = useCallback((viewKey: string, templateId?: number) => {
+    const mapping = getConfigForViewKey(viewKey, templateId);
+    if (!mapping) {
+      console.warn(`No config found for viewKey: ${viewKey}, templateId: ${templateId}`);
+      return;
+    }
 
-      const newTab: InternalTab = {
-        id: generateTabId(),
+    const newTabId = generateTabId();
+    const parentTabId = activeTabIdRef.current;
+
+    setTabs((prev) => [
+      ...prev,
+      {
+        id: newTabId,
         title: getRessourceLabel(mapping.config.type || 'Ressource'),
         config: mapping.config,
         mode: 'create',
         isDirty: false,
-        parentTabId: activeTabId,
+        parentTabId,
         linkedField: viewKey,
-        hasBeenActivated: true, // Will be activated immediately
-      };
-
-      setTabs((prev) => [...prev, newTab]);
-      setActiveTabId(newTab.id);
-    },
-    [activeTabId],
-  );
+        hasBeenActivated: true,
+      },
+    ]);
+    setActiveTabId(newTabId);
+  }, []);
 
   const handleEditResource = useCallback(
-    (viewKey: string, resourceId: string | number) => {
-      const mapping = getConfigForViewKey(viewKey);
+    (viewKey: string, resourceId: string | number, templateId?: number) => {
+      const mapping = getConfigForViewKey(viewKey, templateId);
       if (!mapping) {
         console.warn(`No config found for viewKey: ${viewKey} (edit mode)`);
         return;
@@ -170,22 +115,25 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
         return;
       }
 
-      const newTab: InternalTab = {
-        id: generateTabId(),
-        title: getRessourceLabel(mapping.config.type || 'Ressource'), // Ideally we would want the specific item title here
-        config: mapping.config,
-        mode: 'edit',
-        itemId: String(resourceId),
-        isDirty: false,
-        parentTabId: activeTabId,
-        linkedField: viewKey,
-        hasBeenActivated: true,
-      };
+      const newTabId = generateTabId();
 
-      setTabs((prev) => [...prev, newTab]);
-      setActiveTabId(newTab.id);
+      setTabs((prev) => [
+        ...prev,
+        {
+          id: newTabId,
+          title: getRessourceLabel(mapping.config.type || 'Ressource'),
+          config: mapping.config,
+          mode: 'edit',
+          itemId: String(resourceId),
+          isDirty: false,
+          parentTabId: activeTabIdRef.current,
+          linkedField: viewKey,
+          hasBeenActivated: true,
+        },
+      ]);
+      setActiveTabId(newTabId);
     },
-    [activeTabId, tabs],
+    [tabs],
   );
 
 
@@ -241,8 +189,22 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
 
         // Onglet principal qui vient de terminer une création
         if (tab && !tab.parentTabId && tab.mode === 'create') {
-          const resourceUrl = getResourceUrl(initialConfig.type || '', savedItemId);
-          navigationUrl = `${resourceUrl}?mode=edit`;
+          // Si ouvert depuis un picker (nouvel onglet), notifier le parent et fermer
+          const pickerParams = new URLSearchParams(window.location.search);
+          if (pickerParams.get('fromPicker') === '1' && window.opener) {
+            window.opener.postMessage(
+              { type: 'RESOURCE_CREATED', id: savedItemId, title: savedItemTitle || `Item ${savedItemId}` },
+              window.location.origin,
+            );
+            window.close();
+            return prevTabs;
+          }
+          if (initialConfig.formOnly) {
+            navigationUrl = monEspacePath;
+          } else {
+            const resourceUrl = getResourceUrl(initialConfig.type || '', savedItemId);
+            navigationUrl = `${resourceUrl}?mode=edit`;
+          }
         }
 
         return prevTabs;
@@ -252,7 +214,7 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
         navigate(navigationUrl);
       }
     },
-    [navigate, initialConfig.type],
+    [navigate, initialConfig.type, initialConfig.formOnly, monEspacePath],
   );
 
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -303,10 +265,6 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
     [tabs, performCloseTab],
   );
 
-  const handleTabChange = useCallback((tabId: string) => {
-    setActiveTabId(tabId);
-  }, []);
-
   const handleDirtyChange = useCallback((tabId: string, isDirty: boolean) => {
     setTabs((prev) => {
       const tab = prev.find((t) => t.id === tabId);
@@ -333,17 +291,6 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
       return newState;
     });
   }, []);
-
-  // Mémoriser tabsForDisplay pour éviter les re-renders
-  const tabsForDisplay: ResourceTabInfo[] = useMemo(
-    () =>
-      tabs.map((t) => ({
-        id: t.id,
-        title: t.title,
-        isDirty: t.isDirty,
-      })),
-    [tabs],
-  );
 
   // Créer des callbacks stables pour chaque tab en utilisant useMemo
   // Cela évite de recréer les callbacks à chaque render
@@ -388,10 +335,23 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
         // Cas 1: Onglet enfant -> Fermer l'onglet
         onCancelHandler = () => handleCloseTab(tab.id);
       } else if (tab.mode === 'create') {
-        // Cas 2: Onglet principal en création -> Retour arrière navigation
-        onCancelHandler = () => navigate(-1);
+        // Cas 2: Onglet principal en création
+        // Si ouvert depuis un picker (nouvel onglet), fermer l'onglet; sinon retour arrière
+        onCancelHandler = () => {
+          const pickerParams = new URLSearchParams(window.location.search);
+          if (pickerParams.get('fromPicker') === '1' && window.opener) {
+            window.close();
+          } else if (tab.config.formOnly) {
+            navigate(monEspacePath);
+          } else {
+            navigate(-1);
+          }
+        };
+      } else if (tab.mode === 'edit' && tab.config.formOnly) {
+        // Cas 3: form-only en édition → Mon espace (pas de page vue)
+        onCancelHandler = () => navigate(monEspacePath);
       }
-      // Cas 3: Onglet principal en édition -> undefined (laisser GenericDetailPage passer en mode view)
+      // Autres éditions → GenericDetailPage repasse en mode view
 
       map[tab.id] = {
         onSaveComplete: (savedId: string | number, savedTitle?: string) => handleSaveComplete(tab.id, savedId, savedTitle),
@@ -402,14 +362,9 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
       };
     });
     return map;
-  }, [tabs, handleSaveComplete, handleDirtyChange, clearPendingLinks, handleCloseTab, navigate]);
+  }, [tabs, handleSaveComplete, handleDirtyChange, clearPendingLinks, handleCloseTab, navigate, monEspacePath]);
 
-  const getLinkLabel = (resourceTitle: string): string => {
-    const lower = resourceTitle.toLowerCase();
-    if (/^[aeiouéèêëàâîïôùûü]/i.test(lower)) return `Lier l'${lower}`;
-    if (lower.endsWith('e')) return `Lier la ${lower}`;
-    return `Lier le ${lower}`;
-  };
+  const getLinkLabel = (resourceType: string): string => getResourceLinkSaveLabel(resourceType);
 
   const getResourceTree = (tabId: string): { root: string; children: { title: string; isActive: boolean }[] } | undefined => {
     const activeTab = tabs.find((t) => t.id === tabId);
@@ -433,11 +388,22 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
     };
   };
 
+  const getParentResourceContext = (tab: InternalTab) => {
+    if (!tab.parentTabId) return undefined;
+    const parent = tabs.find((t) => t.id === tab.parentTabId);
+    if (!parent?.itemId) return undefined;
+    return {
+      id: parent.itemId,
+      title: updatedResources[String(parent.itemId)]?.title,
+    };
+  };
+
   return (
     <>
       {tabs.map((tab) => {
         const isActive = tab.id === activeTabId;
         const callbacks = tabCallbacksMap[tab.id];
+        const parentResource = getParentResourceContext(tab);
 
         // Ne rendre que les tabs qui ont été activés au moins une fois
         if (!tab.hasBeenActivated) {
@@ -445,7 +411,7 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
         }
 
         return (
-          <div key={tab.id} style={isActive ? {} : { visibility: 'hidden', height: 0, overflow: 'hidden', position: 'absolute', pointerEvents: 'none' }}>
+          <div key={tab.id} style={isActive ? undefined : { display: 'none' }}>
             <GenericDetailPage
               config={tab.config}
               initialMode={tab.mode}
@@ -459,12 +425,10 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
               pendingLinks={isActive ? pendingLinksToPass[tab.id] : undefined}
               updatedResources={isActive ? updatedResources : undefined}
               onPendingLinksProcessed={callbacks?.onPendingLinksProcessed}
-              tabs={tabsForDisplay}
-              activeTabId={activeTabId}
-              onTabChange={handleTabChange}
-              onTabClose={handleCloseTab}
-              saveLabel={tab.parentTabId && tab.mode === 'create' ? getLinkLabel(tab.title) : undefined}
+              saveLabel={tab.parentTabId && tab.mode === 'create' ? getLinkLabel(tab.config.type || '') : undefined}
               resourceTree={tab.parentTabId ? getResourceTree(tab.id) : undefined}
+              parentResourceId={parentResource?.id}
+              parentResourceTitle={parentResource?.title}
             />
           </div>
         );

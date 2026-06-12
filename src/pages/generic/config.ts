@@ -52,6 +52,12 @@ export interface SmartRecommendationsStrategy {
   maxRecommendations?: number;
 }
 
+/** Options pour ouvrir un ResourcePicker ciblé sur un sous-ensemble de templates */
+export interface LinkExistingOptions {
+  resourceTemplateIds?: number[];
+  pickerTitle?: string;
+}
+
 /**
  * Context passé aux renderContent functions
  */
@@ -63,14 +69,16 @@ export interface RenderContentContext {
   onTimeChange: (newTime: number) => void;
   // Mode édition
   isEditing?: boolean;
-  onLinkExisting?: (viewKey: string) => void;
+  onLinkExisting?: (viewKey: string, options?: LinkExistingOptions) => void;
   onCreateNew?: (viewKey: string) => void;
-  onEditResource?: (viewKey: string, resourceId: string | number) => void;
+  onEditResource?: (viewKey: string, resourceId: string | number, templateId?: number) => void;
   onRemoveItem?: (viewKey: string, itemId: string | number) => void;
   onItemsChange?: (viewKey: string, items: any) => void;
   formData?: Record<string, any>; // Données du formulaire en mode édition
   onNavigate?: (path: string) => void; // Pour déclencher la navigation avec animation
   updatedResources?: Record<string, { title?: string; thumbnail?: string }>; // Titres/thumbnails mis à jour
+  userCreatedResourceIds?: Set<string>;
+  currentOmekaUserId?: number | null;
 }
 
 /**
@@ -86,8 +94,11 @@ export interface ViewOption {
   resourceTemplateIds?: number[]; // Template IDs multiples (pour references avec bibliographies et mediagraphies)
   itemSetIds?: number[]; // Item set IDs Omeka S (pour filtrer par groupe d'objets)
   editable?: boolean; // Si false, cette vue n'est pas éditable (default: true)
+  createOnly?: boolean; // Si true, seule la création est autorisée (pas de sélection existante)
   getItemCount?: (itemDetails: any, formData: any) => number; // Compte les items liés pour le résumé
   viewKind?: 'resources' | 'text'; // 'resources' = liste liée avec count, 'text' = champs texte (default: 'resources')
+  /** Masquer la vue en mode création/édition (donnée gérée automatiquement) */
+  hiddenInForm?: boolean;
 }
 
 /**
@@ -138,6 +149,21 @@ export interface GenericDetailPageConfig {
 
   /** Mode édition en une seule colonne (médias → formulaire → vues) */
   editSingleColumn?: boolean;
+
+  /** Mode upload média en édition (gallery par défaut) */
+  mediaUploadMode?: 'gallery' | 'photo' | 'none';
+
+  /** Mode du ResourcePicker pour les champs multiselection (grid par défaut) */
+  resourcePickerDisplay?: 'grid' | 'alphabetic';
+
+  /** Boutons d'ajout de contributeurs déclarés par la config */
+  contributorButtons?: import('./simplifiedConfig').ContributorButton[];
+
+  /** Type de ressource (clé RESOURCE_TYPES) */
+  resourceType?: string;
+
+  /** Pas de page vue — ouverture directe en formulaire si un :id est présent */
+  formOnly?: boolean;
 }
 
 // ============================================

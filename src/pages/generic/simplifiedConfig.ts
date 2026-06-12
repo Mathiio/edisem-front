@@ -15,6 +15,23 @@ import React from 'react';
 import { SmartRecommendationsStrategy } from './config';
 
 // ========================================
+// Bouton contributeur (mode édition)
+// ========================================
+
+/**
+ * Déclare un bouton "Ajouter un X" en mode édition.
+ * Chaque bouton ouvre un ResourcePicker pour un seul templateId.
+ */
+export interface ContributorButton {
+  /** Label affiché sur le bouton, ex: "Ajouter un Intervenant" */
+  label: string;
+  /** Template Omeka S ciblé, ex: 72 */
+  templateId: number;
+  /** Propriété Omeka S sur laquelle écrire, ex: "schema:agent" */
+  property: string;
+}
+
+// ========================================
 // Types de champs supportés
 // ========================================
 
@@ -143,6 +160,8 @@ export interface CategorySubcategory {
   label: string;
   /** Propriété Omeka S */
   property: string;
+  /** Permet d'ajouter plusieurs champs (bouton « Ajouter »). Défaut : true */
+  allowMultipleInputs?: boolean;
 }
 
 // ========================================
@@ -193,6 +212,9 @@ export interface SimplifiedViewConfig {
   /** Template ID pour créer une nouvelle ressource */
   resourceTemplateId?: number;
 
+  /** Si true, seule la création est autorisée (pas de sélection de ressources existantes) */
+  createOnly?: boolean;
+
   /** Template IDs multiples (pour les references avec bibliographies et mediagraphies) */
   resourceTemplateIds?: number[];
 
@@ -201,6 +223,9 @@ export interface SimplifiedViewConfig {
 
   /** Fonction de rendu custom (pour renderType='custom') */
   customRender?: (context: import('./config').RenderContentContext) => React.ReactNode;
+
+  /** Masquer la vue en mode création/édition (donnée gérée automatiquement, ex. oa:hasTarget) */
+  hiddenInForm?: boolean;
 }
 
 // ========================================
@@ -246,6 +271,27 @@ export interface SimplifiedDetailConfig {
 
   /** Mode édition en une seule colonne (médias → formulaire → vues) */
   editSingleColumn?: boolean;
+
+  /**
+   * Mode upload média en édition :
+   * - gallery : galerie multi-médias + YouTube (défaut)
+   * - photo : une seule image (ex. conférencier, personne)
+   * - none : pas de zone média
+   */
+  mediaUploadMode?: 'gallery' | 'photo' | 'none';
+
+  /**
+   * Mode du sélecteur de ressources liées (champs multiselection du formulaire).
+   * - grid : grille avec vignettes (défaut)
+   * - alphabetic : liste alphabétique sans image (ex. mots-clés)
+   */
+  resourcePickerDisplay?: 'grid' | 'alphabetic';
+
+  /**
+   * Boutons d'ajout de contributeurs en mode édition.
+   * Un bouton = un type de ressource = un ResourcePicker dédié.
+   */
+  contributorButtons?: ContributorButton[];
 
   // ---- Overrides custom (pour configs avancées comme les conférences) ----
 

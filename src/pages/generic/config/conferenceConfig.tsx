@@ -48,7 +48,7 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
       title: 'Bibliographie',
       property: 'dcterms:references',
       renderType: 'references',
-      resourceTemplateIds: [81, 83],
+      resourceTemplateIds: [81, 99],
       editable: true,
     },
     {
@@ -56,7 +56,8 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
       title: 'Médias',
       property: 'schema:associatedMedia',
       renderType: 'references',
-      resourceTemplateIds: [99, 98, 83],
+      resourceTemplateIds: [83, 98],
+      editable: true,
     },
   ],
 
@@ -66,6 +67,10 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
   recommendationsTitle: 'Conférences associées',
   defaultView: 'MicroResumes',
   formEnabled: true,
+
+  contributorButtons: [
+    { label: 'Ajouter Intervenant', templateId: 72, property: 'schema:agent' },
+  ],
 };
 
 export const conferenceConfig = convertToGenericConfig(conferenceConfigSimplified);

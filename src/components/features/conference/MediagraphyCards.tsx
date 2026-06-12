@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CameraIcon, SoundIcon, ImageIcon, FileIcon } from '@/components/ui/icons';
+import { ImageIcon, FileIcon } from '@/components/ui/icons';
 
 const formatAuthors = (creators: { first_name: string; last_name: string }[] = []) => {
   if (!Array.isArray(creators)) {
@@ -32,24 +32,6 @@ const formatDirector = (director: { first_name: string; last_name: string }[] = 
       return `${lastName}, ${firstInitial}`;
     })
     .join(', ');
-};
-
-const getIcon = (mediaType: string) => {
-  switch (mediaType) {
-    case '85':
-    case '56':
-    case '977':
-      return <CameraIcon size={22} />;
-    case '38':
-    case '37':
-      return <SoundIcon size={22} />;
-    case '58':
-      return <ImageIcon size={22} />;
-    case '49':
-      return <FileIcon size={22} />;
-    default:
-      return <FileIcon size={22} />;
-  }
 };
 
 const mediagraphyTemplates: { [key: string]: (item: Mediagraphy) => React.ReactNode } = {
@@ -249,7 +231,7 @@ export const MediagraphyCard: React.FC<Mediagraphy> = ({
       onMouseLeave={() => setIsHovered(false)}>
       <Link className='w-full gap-6 p-6 flex flex-row justify-between' to={uri ?? '#'} target='_blank'>
         <div className={`flex flex-col justify-center transition-transform-colors-opacity ${isHovered ? 'text-c6' : 'text-c4'}`}>
-          {thumbnail ? <img src={thumbnail} alt='thumbnail' className='w-12 object-cover rounded-md' /> : getIcon(mediaType)}
+          {thumbnail ? <img src={thumbnail} alt='thumbnail' className='w-12 object-cover rounded-md' /> : <ImageIcon size={22} />}
         </div>
 
         <div className='w-full text-base text-c6 font-normal'>

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CameraIcon, UserIcon, ShareIcon, ArrowIcon, PlusIcon, CrossIcon, UploadIcon, LinkIcon } from '@/components/ui/icons';
+import { ImageIcon, UserIcon, ShareIcon, ArrowIcon, AddIcon, CrossIcon, UploadIcon, LinkIcon } from '@/components/ui/icons';
 import { isValidYouTubeUrl } from '@/lib/utils';
 import { motion, Variants } from 'framer-motion';
 import { addToast, Link, Button, cn, DropdownMenu, Dropdown, DropdownItem, DropdownTrigger } from '@heroui/react';
@@ -310,7 +310,7 @@ export const ExpOverviewCard: React.FC<ExpOverviewProps> = ({
                   onDragLeave={handleDragLeave}
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}>
-                  <CameraIcon size={48} className='text-c4 mb-4' />
+                  <ImageIcon size={48} className='text-c4 mb-4' />
                   <p className='text-c5 text-base font-medium mb-2'>Glissez-déposez vos médias ici</p>
                   <p className='text-c4 text-sm mb-4'>ou</p>
                   <div className='flex flex-col gap-2.5 items-center'>
@@ -390,7 +390,7 @@ export const ExpOverviewCard: React.FC<ExpOverviewProps> = ({
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className='flex-shrink-0 w-[136px] h-[50px] rounded-xl border-2 border-dashed border-c4 flex items-center justify-center hover:border-action transition-all duration-200'>
-                      <PlusIcon size={20} className='text-c4' />
+                      <AddIcon size={20} className='text-c4' />
                     </button>
                   </SplideSlide>
                 </SplideTrack>
@@ -730,7 +730,7 @@ export const ExpOverviewSkeleton: React.FC = () => {
 export const UnloadedCard: React.FC = () => {
   return (
     <div className='lg:w-[100%] lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px] flex flex-col items-center justify-center p-5 bg-c3 rounded-xl gap-5'>
-      <CameraIcon size={42} className='text-c4' />
+      <ImageIcon size={42} className='text-c4' />
       <div className='w-[80%] flex flex-col justify-center items-center gap-2.5'>
         <h2 className='text-c5 text-3xl font-medium'>Oups !</h2>
         <p className='w-[400px] text-c5 text-base text-regular text-center'>

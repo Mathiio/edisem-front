@@ -12,6 +12,12 @@ export const recitTechnoConfigSimplified: SimplifiedDetailConfig = {
     date: { property: 'dcterms:issued', type: 'date', zone: 'details' },
     application: { property: 'schema:application', type: 'textarea', label: 'Résumé', zone: 'details' },
     purpose: { property: 'oa:hasPurpose', type: 'textarea', label: 'Objectif', zone: 'details' },
+    figureNarrative: {
+      property: 'genstory:hasConditionInitial',
+      type: 'textarea',
+      label: 'Figures narratives',
+      zone: 'details',
+    },
     slogan: { property: 'storyline:hasQuote', type: 'textarea', label: 'Phrases clés marketing', zone: 'details' },
     contributors: {
       property: 'dcterms:creator',
@@ -30,6 +36,14 @@ export const recitTechnoConfigSimplified: SimplifiedDetailConfig = {
       zone: 'header',
     },
     externalLink: { property: 'schema:url', type: 'url', label: 'Site web associé', placeholder: 'https://...', zone: 'details' },
+    domain: {
+      property: 'dcterms:subject',
+      type: 'itemset',
+      label: 'Domaine du récit',
+      itemSetId: 21318,
+      multiSelect: true,
+      zone: 'details',
+    },
   },
 
   views: [
@@ -42,18 +56,12 @@ export const recitTechnoConfigSimplified: SimplifiedDetailConfig = {
       resourceTemplateId: 101,
     },
     {
-      key: 'figureNarrative',
-      title: 'Figures narratives',
-      property: 'genstory:hasConditionInitial',
-      renderType: 'text',
-    },
-    {
       key: 'Outils',
       title: 'Outils',
       property: 'schema:tool',
       renderType: 'items',
       urlPattern: '/corpus/outil/:id',
-      resourceTemplateIds: [114, 129],
+      resourceTemplateId: 114,
     },
     {
       key: 'Documentation',
@@ -76,13 +84,6 @@ export const recitTechnoConfigSimplified: SimplifiedDetailConfig = {
       renderType: 'references',
       resourceTemplateIds: [81, 99, 98, 83],
     },
-    {
-      key: 'Domaine',
-      title: 'Domaines du récit',
-      property: 'dcterms:subject',
-      renderType: 'items',
-      itemSetIds: [21318],
-    },
   ],
 
   showKeywords: true,
@@ -92,6 +93,11 @@ export const recitTechnoConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'recit_techno_industriel',
   defaultView: 'AnalyseCritique',
   formEnabled: true,
+
+  contributorButtons: [
+    { label: 'Ajouter Personne', templateId: 33, property: 'schema:agent' },
+    { label: 'Ajouter Organisation', templateId: 104, property: 'schema:agent' },
+  ],
 
   smartRecommendations: {
     getRelatedItems: async (itemDetails: any) => {

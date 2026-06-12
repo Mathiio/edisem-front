@@ -1,7 +1,13 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button, Spinner } from '@heroui/react';
-import { SaveIcon, CrossIcon, CheckIcon, WarningIcon } from '@/components/ui/icons';
+import { Spinner } from '@heroui/react';
+import { Button } from '@/theme/components/button';
+import {
+  modalBottomFadeClass,
+  modalFooterCancelButtonClass,
+  modalFooterConfirmButtonClass,
+} from '@/theme/components/modal';
+import { CheckIcon, WarningIcon } from '@/components/ui/icons';
 
 interface ResourceTreeChild {
   title: string;
@@ -55,7 +61,7 @@ export const EditSaveBar: React.FC<EditSaveBarProps> = ({
           {/* Resource tree - floating above bar on the left */}
           {resourceTree && resourceTree.children.length > 0 && (
             <div className='absolute bottom-full left-6 mb-3 pointer-events-none'>
-              <div className='bg-c2/90 border border-c3 rounded-xl px-4 py-3 backdrop-blur-sm shadow-lg flex flex-col gap-1.5'>
+              <div className='bg-c2 border border-c3 rounded-xl px-4 py-3 shadow-lg flex flex-col gap-1.5'>
                 {/* Root */}
                 <span className='text-c6 text-xs font-medium'>{resourceTree.root}</span>
                 {/* Children */}
@@ -68,7 +74,14 @@ export const EditSaveBar: React.FC<EditSaveBarProps> = ({
                         <span className={`text-xs ${child.isActive ? 'text-c6 font-semibold' : 'text-c4'}`}>
                           {child.title}
                         </span>
-                        {child.isActive && <span className='w-1.5 h-1.5 rounded-full bg-action flex-shrink-0' />}
+                        {child.isActive && 
+                          <motion.span
+                            className='w-1.5 h-1.5 shrink-0 rounded-full bg-c6'
+                            animate={{ opacity: [1, 0.4, 1] }}
+                            transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                            aria-hidden
+                          />
+                        }
                       </div>
                     );
                   })}
@@ -78,12 +91,11 @@ export const EditSaveBar: React.FC<EditSaveBarProps> = ({
           )}
 
           {/* Gradient fade effect */}
-          <div className='h-5 bg-gradient-to-t from-c1 to-transparent pointer-events-none' />
+          <div className={modalBottomFadeClass} />
 
-          {/* Main bar */}
-          <div className='bg-c2 border-t-2 border-c3 '>
-            <div className='px-6 py-[10px]'>
-              <div className='flex items-center justify-between gap-5'>
+          {/* Main bar — aligné sur ModalFooter HeroUI (flex gap-2 px-6 py-4) */}
+          <div className='bg-c1 border-t border-c3'>
+            <div className='flex items-center justify-between gap-4 px-6 py-4'>
                 {/* Left side - Status info */}
                 <div className='flex items-center gap-2'>
 
@@ -118,33 +130,24 @@ export const EditSaveBar: React.FC<EditSaveBarProps> = ({
                   )}
                 </div>
 
-                {/* Right side - Action buttons */}
-                <div className='flex items-center gap-4'>
-                  {/* Cancel button */}
+                {/* Right side — mêmes boutons que ResourcePicker ModalFooter */}
+                <div className='flex flex-row gap-2 shrink-0'>
                   <Button
-                    size='md'
-                    variant='flat'
-                    className='text-c6 hover:bg-c3/80 bg-c3 rounded-lg p-6 font-medium transition-all duration-200'
+                    variant='light'
+                    className={modalFooterCancelButtonClass}
                     onPress={onCancel}
-                    isDisabled={isSubmitting}
-                    startContent={<CrossIcon size={16} />}>
+                    isDisabled={isSubmitting}>
                     Annuler
                   </Button>
 
-                  {/* Save button */}
                   <Button
-                    size='md'
-                    className={`rounded-lg p-6 font-medium transition-all duration-200 ${
-                      isDirty || isCreateMode ? 'bg-action text-selected hover:bg-action/90 shadow-[0_0_15px_rgba(var(--action-rgb),0.3)]' : 'bg-c3 text-c5 cursor-not-allowed'
-                    }`}
+                    className={modalFooterConfirmButtonClass}
                     onPress={onSave}
                     isLoading={isSubmitting}
-                    isDisabled={isSubmitting || (!isDirty && !isCreateMode)}
-                    startContent={!isSubmitting && <SaveIcon size={16} />}>
+                    isDisabled={isSubmitting || (!isDirty && !isCreateMode)}>
                     {saveLabel ?? (isCreateMode ? 'Créer la ressource' : 'Sauvegarder')}
                   </Button>
                 </div>
-              </div>
             </div>
           </div>
         </motion.div>

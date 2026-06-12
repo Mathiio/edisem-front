@@ -1,9 +1,24 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Input, Spinner, Chip, Checkbox, Tabs, Tab } from '@heroui/react';
-import { SearchIcon, SortIcon, ThumbnailIcon, UserIcon } from '@/components/ui/icons';
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Spinner, Chip, Checkbox } from '@heroui/react';
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  modalCloseButtonClasses,
+  modalFooterCancelButtonClass,
+  modalFooterConfirmButtonClass,
+  modalBottomFadeClass,
+  Input,
+  Select,
+  SelectItem,
+} from '@/theme/components';
+import { Button } from '@/theme/components/button';
+import { SearchIcon, ThumbnailIcon, UserIcon, AddIcon } from '@/components/ui/icons';
 import { useGetDataByClass } from '@/hooks/useFetchData';
 import { getResourceConfigByTemplateId } from '@/config/resourceConfig';
+import { QUICK_CREATE_CONFIGS, QuickCreateModal, type QuickCreatedItem } from './QuickCreateModal';
 
 export interface ResourcePickerProps {
   isOpen: boolean;
@@ -20,6 +35,12 @@ export interface ResourcePickerProps {
   filterFn?: (resource: any) => boolean; // Fonction de filtre personnalisée
   maxSelection?: number; // Nombre max de sélections
   displayMode?: 'grid' | 'alphabetic'; // Mode d'affichage: grille (défaut) ou alphabétique (pour mots-clés)
+  /** Affiche un bouton "Créer" (QuickCreateModal ou nouvel onglet selon le template) */
+  allowCreate?: boolean;
+  /** Remplace la création par défaut (ex. modale item set pour les domaines) */
+  onCreateOverride?: () => void;
+  /** Si true, masque la grille de sélection (création uniquement) */
+  createOnly?: boolean;
 }
 
 /**
@@ -148,6 +169,13 @@ const loadResourcesByMultipleTemplateIds = async (templateIds: number[]): Promis
   }
 };
 
+const PickerScrollArea: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className='relative'>
+    <div className='max-h-[450px] overflow-y-auto pr-px'>{children}</div>
+    <div className={`absolute bottom-0 left-0 right-0 z-10 ${modalBottomFadeClass}`} aria-hidden />
+  </div>
+);
+
 export const ResourcePicker: React.FC<ResourcePickerProps> = ({
   isOpen,
   onClose,
@@ -163,11 +191,17 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
   filterFn,
   maxSelection,
   displayMode = 'grid',
+  allowCreate = false,
+  onCreateOverride,
+  createOnly = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [localSelectedIds, setLocalSelectedIds] = useState<Set<string | number>>(new Set(selectedIds));
+  // Ressources créées via postMessage, en attente d'apparaître dans la liste rechargée
+  const pendingCreatedRef = useRef<Map<string | number, any>>(new Map());
+  const sessionCreatedIdsRef = useRef<Set<string | number>>(new Set());
   const [activeTab, setActiveTab] = useState<string>('all');
+  const [quickCreateTemplateId, setQuickCreateTemplateId] = useState<number | null>(null);
 
   // État pour les ressources chargées par template ID (nouvelle structure avec onglets)
   const [templateDataList, setTemplateDataList] = useState<TemplateData[]>([]);
@@ -205,6 +239,97 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
     }
   }, [isOpen, resourceTemplateId, resourceTemplateIds, itemSetIds]);
 
+  const reloadResources = useCallback(async () => {
+    if (itemSetIds && itemSetIds.length > 0) {
+      setTemplateLoading(true);
+      const res = await loadResourcesByItemSetIds(itemSetIds);
+      setTemplateDataList(res);
+      setTemplateLoading(false);
+    } else if (resourceTemplateIds && resourceTemplateIds.length > 0) {
+      setTemplateLoading(true);
+      const res = await loadResourcesByMultipleTemplateIds(resourceTemplateIds);
+      setTemplateDataList(res);
+      setTemplateLoading(false);
+    } else if (resourceTemplateId) {
+      setTemplateLoading(true);
+      const { resources, templateLabel } = await loadResourcesByTemplateId(resourceTemplateId);
+      setTemplateDataList([{ templateId: resourceTemplateId, templateLabel, resources }]);
+      setTemplateLoading(false);
+    }
+  }, [itemSetIds, resourceTemplateIds, resourceTemplateId]);
+
+  const createableTemplateId = useMemo(() => {
+    if (!allowCreate) return null;
+    const ids = resourceTemplateId ? [resourceTemplateId] : resourceTemplateIds || [];
+    return ids.find((id) => {
+      const cfg = getResourceConfigByTemplateId(id);
+      return cfg?.createUrl || QUICK_CREATE_CONFIGS[id];
+    }) ?? null;
+  }, [allowCreate, resourceTemplateId, resourceTemplateIds]);
+
+  const handleCreate = (templateId: number) => {
+    if (onCreateOverride) {
+      onCreateOverride();
+      return;
+    }
+    const cfg = getResourceConfigByTemplateId(templateId);
+    if (cfg?.createUrl) {
+      window.open(`${cfg.createUrl}?fromPicker=1`, '_blank');
+    } else if (QUICK_CREATE_CONFIGS[templateId]) {
+      setQuickCreateTemplateId(templateId);
+    }
+  };
+
+  const handleQuickCreated = async (item: QuickCreatedItem) => {
+    setQuickCreateTemplateId(null);
+    sessionCreatedIdsRef.current.add(item.id);
+    await reloadResources();
+    setLocalSelectedIds((prev) => new Set([...prev, item.id]));
+  };
+
+  const injectCreatedResource = useCallback((id: number, title: string) => {
+    sessionCreatedIdsRef.current.add(id);
+    const newResource = {
+      'o:id': id,
+      id,
+      'dcterms:title': [{ '@value': title }],
+      title,
+      display_title: title,
+    };
+    pendingCreatedRef.current.set(id, newResource);
+
+    setTemplateDataList((prev) => {
+      if (prev.length === 0) {
+        return [{ templateId: resourceTemplateId || 0, templateLabel: '', resources: [newResource] }];
+      }
+      return prev.map((t, idx) => {
+        const targetTemplate = resourceTemplateId ? t.templateId === resourceTemplateId : idx === 0;
+        if (!targetTemplate && prev.length > 1) return t;
+        const exists = t.resources.some((r) => (r['o:id'] || r.id) === id);
+        if (exists) return t;
+        return { ...t, resources: [newResource, ...t.resources] };
+      });
+    });
+
+    setLocalSelectedIds((prev) => new Set([...prev, id]));
+  }, [resourceTemplateId]);
+
+  // Écouter le postMessage d'une page /add-resource créée depuis le picker
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== 'RESOURCE_CREATED') return;
+      const { id, title: newTitle } = event.data as { id: number; title: string };
+      const title = newTitle || `Item ${id}`;
+      injectCreatedResource(id, title);
+      // Re-injecter après reload au cas où l'API n'a pas encore l'item
+      void reloadResources().then(() => injectCreatedResource(id, title));
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [isOpen, reloadResources, injectCreatedResource]);
+
   // Calculer les ressources plates (pour la compatibilité avec le reste du code)
   const allTemplateResources = useMemo(() => {
     return templateDataList.flatMap((t) => t.resources);
@@ -229,6 +354,9 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
     if (isOpen) {
       setLocalSelectedIds(new Set(selectedIds));
       setSearchTerm('');
+    } else {
+      pendingCreatedRef.current.clear();
+      sessionCreatedIdsRef.current.clear();
     }
   }, [isOpen, selectedIds]);
 
@@ -303,15 +431,8 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
       });
     }
 
-    // Sort
-    result.sort((a, b) => {
-      const aValue = getDisplayValue(a);
-      const bValue = getDisplayValue(b);
-      return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-    });
-
     return result;
-  }, [resourcesForActiveTab, searchTerm, sortOrder, filterFn, getDisplayValue]);
+  }, [resourcesForActiveTab, searchTerm, filterFn, getDisplayValue]);
 
   // Toggle selection
   const toggleSelection = (resource: any) => {
@@ -340,19 +461,21 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
 
   // Handle confirm
   const handleConfirm = () => {
-    if (!resources) return;
+    const selectedFromList = (resources || []).filter((r) => localSelectedIds.has(getResourceId(r)));
+    const foundIds = new Set(selectedFromList.map((r) => getResourceId(r)));
+    const orphanResources = [...localSelectedIds]
+      .filter((id) => !foundIds.has(id))
+      .map((id) => pendingCreatedRef.current.get(id))
+      .filter(Boolean);
 
-    const selectedResources = resources.filter((r) => localSelectedIds.has(getResourceId(r)));
-    onSelect(selectedResources);
+    const allSelected = [...selectedFromList, ...orphanResources];
+    onSelect(
+      allSelected.map((r) => ({
+        ...r,
+        _sessionCreated: sessionCreatedIdsRef.current.has(getResourceId(r)),
+      })),
+    );
     onClose();
-  };
-
-  // Handle sort order change
-  const handleSortOrderChange = (key: any) => {
-    const selectedKey = Array.from(key)[0];
-    if (selectedKey === 'asc' || selectedKey === 'desc') {
-      setSortOrder(selectedKey);
-    }
   };
 
   // Truncate text
@@ -420,143 +543,93 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
   };
 
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       size='4xl'
+      backdrop='blur'
       scrollBehavior='inside'
-      classNames={{
-        base: 'bg-c1 border-2 border-c3',
-        header: 'border-b border-c3',
-        body: 'py-4',
-        footer: 'border-t border-c3',
-      }}>
+      classNames={{ closeButton: modalCloseButtonClasses }}>
       <ModalContent>
         <ModalHeader className='flex flex-col gap-px'>
-          <h2 className='text-c6 text-xl font-medium'>{title}</h2>
+          <h2 className='text-c6 text-xl font-semibold'>{title}</h2>
           <p className='text-c4 text-sm font-normal'>
-            {localSelectedIds.size} sélectionné(s) sur {filteredResources.length} disponibles
-            {maxSelection && ` (max: ${maxSelection})`}
+            {createOnly
+              ? 'Créez une nouvelle ressource pour la lier à cet élément.'
+              : `${localSelectedIds.size} sélectionné(s) sur ${filteredResources.length} disponibles${maxSelection ? ` (max: ${maxSelection})` : ''}`}
           </p>
         </ModalHeader>
 
         <ModalBody>
-          {/* Onglets par type de ressource */}
-          {templateDataList.length > 1 && (
-            <div className='mb-4'>
-              <Tabs
-                aria-label='Types de ressources'
-                selectedKey={activeTab}
-                onSelectionChange={(key) => setActiveTab(String(key))}
-                classNames={{
-                  tabList: 'bg-c2 border-2 border-c3 rounded-xl p-px gap-px',
-                  cursor: 'bg-action rounded-lg',
-                  tab: 'px-4 py-2 text-c5 data-[selected=true]:text-white',
-                  tabContent: 'group-data-[selected=true]:text-white',
-                }}>
-                <Tab
-                  key='all'
-                  title={
-                    <div className='flex items-center gap-2'>
-                      <span>Tous</span>
-                      <span className='text-xs bg-c3 group-data-[selected=true]:bg-white/20 px-2 py-0.5 rounded-full'>{resources?.length || 0}</span>
-                    </div>
-                  }
-                />
-                {templateDataList.map((template) => (
-                  <Tab
-                    key={String(template.templateId)}
-                    title={
-                      <div className='flex items-center gap-2'>
-                        <span>{template.templateLabel}</span>
-                        <span className='text-xs bg-c3 group-data-[selected=true]:bg-white/20 px-2 py-0.5 rounded-full'>{template.resources.length}</span>
-                      </div>
-                    }
-                  />
-                ))}
-              </Tabs>
-            </div>
-          )}
-
-          {/* Search and Sort */}
+          {/* Search, type filter and sort */}
           <div className='flex flex-col sm:flex-row gap-3 mb-4'>
+            {!createOnly && (
             <Input
+              aria-label='Rechercher'
               classNames={{
-                mainWrapper: 'flex-1',
-                input: 'text-c6 text-base',
-                inputWrapper: 'bg-c3 border-2 border-c3 hover:bg-c4 hover:border-c4 rounded-lg min-h-[40px]',
+                base: 'flex-1 w-full',
+                mainWrapper: 'w-full',
+                inputWrapper: '!min-h-10 !h-10 !rounded-lg',
+                input: 'text-c6 text-sm',
               }}
               placeholder='Rechercher...'
-              startContent={<SearchIcon size={16} className='text-c5' />}
+              startContent={<SearchIcon size={16} className='text-c5 shrink-0' />}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               type='search'
               isClearable
               onClear={() => setSearchTerm('')}
             />
-
-            <Dropdown
-              classNames={{
-                content:
-                  'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3 min-w-[140px]',
-              }}>
-              <DropdownTrigger>
-                <Button
-                  startContent={<SortIcon size={16} className='text-c6' />}
-                  className='px-4 min-h-[40px] bg-c3 border-2 border-c3 hover:bg-c4 hover:border-c4 rounded-lg text-c6 font-medium'>
-                  Trier
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu
-                aria-label='Sort order selection'
-                variant='flat'
-                disallowEmptySelection
-                selectedKeys={new Set([sortOrder])}
-                onSelectionChange={handleSortOrderChange}
-                selectionMode='single'
-                className='p-2'
-                classNames={{
-                  base: 'bg-transparent shadow-none border-0',
-                  list: 'bg-transparent',
-                }}>
-                <DropdownItem
-                  key='asc'
-                  className='cursor-pointer text-c6 rounded-lg py-2 px-3 data-[hover=true]:!bg-c3 data-[selectable=true]:focus:!bg-c3'>
-                  A - Z
-                </DropdownItem>
-                <DropdownItem
-                  key='desc'
-                  className='cursor-pointer text-c6 rounded-lg py-2 px-3 data-[hover=true]:!bg-c3 data-[selectable=true]:focus:!bg-c3'>
-                  Z - A
-                </DropdownItem>
-              </DropdownMenu>
-            </Dropdown>
-
-            {multiSelect && (
-              <div className='flex gap-2'>
-                <Button
-                  size='md'
-                  onPress={() => {
-                    // Sélectionner uniquement les ressources de l'onglet actif
-                    const allIds = new Set(filteredResources.map((r) => getResourceId(r)));
-                    setLocalSelectedIds((prev) => new Set([...prev, ...allIds]));
-                  }}
-                  className='bg-c3 border-2 border-c3 text-c6 hover:bg-c4 hover:border-c4 rounded-lg px-4 min-h-[40px] font-medium'>
-                  Tout sélectionner
-                </Button>
-                <Button
-                  size='md'
-                  onPress={() => setLocalSelectedIds(new Set())}
-                  className='bg-c3 border-2 border-c3 text-c6 hover:bg-c4 hover:border-c4 rounded-lg px-4 min-h-[40px] font-medium'>
-                  Tout désélectionner
-                </Button>
-              </div>
             )}
+
+            {allowCreate && (createableTemplateId || onCreateOverride) && (
+              <Button
+                variant='bordered'
+                onPress={() => handleCreate(createableTemplateId || 0)}
+                className={`shrink-0 border-2 border-c3 bg-c2 hover:bg-c3 text-c6 text-xs rounded-lg min-h-10 h-10 px-3 ${createOnly ? 'w-full sm:w-auto' : ''}`}>
+                <AddIcon size={14} className='text-c5' />
+                {onCreateOverride
+                  ? 'Créer'
+                  : QUICK_CREATE_CONFIGS[createableTemplateId!]?.title ||
+                    (getResourceConfigByTemplateId(createableTemplateId!)?.label
+                      ? `Créer ${getResourceConfigByTemplateId(createableTemplateId!)!.label.toLowerCase()}`
+                      : 'Créer')}
+              </Button>
+            )}
+
+            {!createOnly && templateDataList.length > 1 && (
+              <Select
+                aria-label='Type de ressource'
+                disallowEmptySelection
+                selectionMode='single'
+                selectedKeys={[activeTab]}
+                onSelectionChange={(keys) => {
+                  const selectedKey = Array.from(keys)[0] as string;
+                  if (selectedKey) setActiveTab(selectedKey);
+                }}
+                classNames={{
+                  base: 'w-full sm:w-auto sm:min-w-[160px] shrink-0',
+                  trigger: '!min-h-10 !h-10 max-h-10',
+                  value: 'text-c6 text-sm',
+                }}>
+                {[
+                  { key: 'all', label: 'Tous' },
+                  ...templateDataList.map((template) => ({
+                    key: String(template.templateId),
+                    label: template.templateLabel,
+                  })),
+                ].map((option) => (
+                  <SelectItem key={option.key}>{option.label}</SelectItem>
+                ))}
+              </Select>
+            )}
+
           </div>
 
           {/* Selected chips */}
           {localSelectedIds.size > 0 && (
-            <div className='flex flex-wrap gap-2 mb-4 p-3 bg-c2 rounded-lg border-2 border-c3'>
+            <div className='flex flex-wrap items-center gap-2 mb-4 '>
               <span className='text-c5 text-sm mr-2'>Sélection :</span>
               {Array.from(localSelectedIds).map((id) => {
                 const resource = resources?.find((r) => getResourceId(r) === id);
@@ -581,13 +654,13 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
           {/* Loading state */}
           {loading && (
             <div className='flex justify-center items-center py-12'>
-              <Spinner size='lg' />
+              <Spinner size='sm' color='current' className='text-c6' />
               <span className='ml-3 text-c5'>Chargement...</span>
             </div>
           )}
 
           {/* Resource grid ou liste alphabétique */}
-          {!loading && (
+          {!loading && !createOnly && (
             <>
               {filteredResources.length === 0 ? (
                 <div className='text-center py-12'>
@@ -596,7 +669,7 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
                 </div>
               ) : displayMode === 'alphabetic' ? (
                 // Affichage alphabétique pour les mots-clés
-                <div className='max-h-[450px] overflow-y-auto pr-px'>
+                <PickerScrollArea>
                   <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-px'>
                     {(() => {
                       // Grouper les ressources par première lettre
@@ -646,29 +719,46 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
                       ));
                     })()}
                   </div>
-                </div>
+                </PickerScrollArea>
               ) : (
                 // Affichage en grille standard
-                <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[450px] overflow-y-auto pr-px'>
-                  {filteredResources.map((resource) => (
-                    <ResourceCard key={String(getResourceId(resource))} resource={resource} />
-                  ))}
-                </div>
+                <PickerScrollArea>
+                  <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3'>
+                    {filteredResources.map((resource) => (
+                      <ResourceCard key={String(getResourceId(resource))} resource={resource} />
+                    ))}
+                  </div>
+                </PickerScrollArea>
               )}
             </>
           )}
         </ModalBody>
 
         <ModalFooter>
-          <Button onPress={onClose} className='bg-c3 border-2 border-c3 text-c6 hover:bg-c4 hover:border-c4 rounded-lg px-6 min-h-[40px] font-medium'>
+          <Button variant='light' onPress={onClose} className={modalFooterCancelButtonClass}>
             Annuler
           </Button>
-          <Button onPress={handleConfirm} className='bg-action hover:bg-action/80 text-c6 rounded-lg px-6 min-h-[40px] font-medium' isDisabled={localSelectedIds.size === 0}>
+          <Button
+            onPress={handleConfirm}
+            className={modalFooterConfirmButtonClass}
+            isDisabled={localSelectedIds.size === 0}>
             Confirmer ({localSelectedIds.size})
           </Button>
         </ModalFooter>
       </ModalContent>
     </Modal>
+
+    {quickCreateTemplateId && QUICK_CREATE_CONFIGS[quickCreateTemplateId] && (
+      <QuickCreateModal
+        isOpen={true}
+        onClose={() => setQuickCreateTemplateId(null)}
+        onCreated={handleQuickCreated}
+        templateId={quickCreateTemplateId}
+        title={QUICK_CREATE_CONFIGS[quickCreateTemplateId].title}
+        fields={QUICK_CREATE_CONFIGS[quickCreateTemplateId].fields}
+      />
+    )}
+  </>
   );
 };
 

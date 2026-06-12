@@ -12,6 +12,12 @@ export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
     date: { property: 'dcterms:issued', type: 'date', zone: 'details' },
     application: { property: 'schema:application', type: 'textarea', label: 'Résumé', zone: 'details' },
     purpose: { property: 'oa:hasPurpose', type: 'textarea', label: 'Objectif', zone: 'details' },
+    figureNarrative: {
+      property: 'genstory:hasConditionInitial',
+      type: 'textarea',
+      label: 'Figures narratives',
+      zone: 'details',
+    },
     contributors: {
       property: 'dcterms:creator',
       type: 'resource',
@@ -29,6 +35,14 @@ export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
       zone: 'header',
     },
     externalLink: { property: 'schema:url', type: 'url', label: 'Site web associé', placeholder: 'https://...', zone: 'details' },
+    domain: {
+      property: 'dcterms:subject',
+      type: 'itemset',
+      label: 'Domaine du récit',
+      itemSetId: 21318,
+      multiSelect: true,
+      zone: 'details',
+    },
   },
 
   views: [
@@ -41,18 +55,12 @@ export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
       resourceTemplateId: 101,
     },
     {
-      key: 'figureNarrative',
-      title: 'Figures narratives',
-      property: 'genstory:hasConditionInitial',
-      renderType: 'text',
-    },
-    {
       key: 'Outils',
       title: 'Outils',
       property: 'schema:tool',
       renderType: 'items',
       urlPattern: '/corpus/outil/:id',
-      resourceTemplateIds: [114, 129],
+      resourceTemplateId: 114,
     },
     {
       key: 'Documentation',
@@ -75,13 +83,6 @@ export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
       renderType: 'references',
       resourceTemplateIds: [81, 99, 98, 83],
     },
-    {
-      key: 'Domaine',
-      title: 'Domaines du récit',
-      property: 'dcterms:subject',
-      renderType: 'items',
-      itemSetIds: [21318],
-    },
   ],
 
   showKeywords: true,
@@ -91,6 +92,11 @@ export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'recit_scientifique',
   defaultView: 'AnalyseCritique',
   formEnabled: true,
+
+  contributorButtons: [
+    { label: 'Ajouter Personne', templateId: 33, property: 'dcterms:creator' },
+    { label: 'Ajouter Organisation', templateId: 104, property: 'dcterms:creator' },
+  ],
 
   smartRecommendations: {
     getRelatedItems: async (itemDetails: any) => {

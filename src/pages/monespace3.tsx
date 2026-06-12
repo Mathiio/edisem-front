@@ -1,14 +1,15 @@
 import { Layouts } from '@/components/layout/Layouts';
 import { motion, Variants } from 'framer-motion';
-import { StudentCard, StudentCardSkeleton } from '@/components/features/espaceEtudiant/StudentCard';
+import { MySpaceResourceCard, MySpaceResourceCardSkeleton } from '@/components/features/espaceEtudiant/MySpaceResourceCard';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { getUserResources, getStudentCourses, getCourses, type StudentResourceCard, type Course } from '@/services/StudentSpace';
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, addToast, Select, SelectItem } from '@heroui/react';
+import { getUserResources, getStudentCourses, getCourses, deleteUserResource, type StudentResourceCard, type Course } from '@/services/StudentSpace';
+import { addToast } from '@heroui/react';
+import { Select, SelectItem } from '@/theme/components';
+import { CreateResourceAction } from '@/components/features/espaceEtudiant/CreateResourceAction';
+import { AlertModal } from '@/components/ui/AlertModal';
 import {
   ExperimentationIcon,
   UniversityIcon,
-  TrashIcon,
-  PlusIcon,
   WarningIcon,
   BookIcon,
   PratiqueNarrativeIcon,
@@ -16,12 +17,9 @@ import {
   UserIcon,
   CollectionIcon,
   ArrowIcon,
-  CalendarIcon,
 } from '@/components/ui/icons';
 import { useNavigate } from 'react-router-dom';
-import { experimentationStudentConfigSimplified } from '@/pages/generic/config/experimentationStudentConfig';
-import { feedbackStudentConfigSimplified } from '@/pages/generic/config/feedbackStudentConfig';
-import { toolConfigSimplified, toolStudentConfigSimplified } from '@/pages/generic/config/toolConfig';
+import { toolConfigSimplified } from '@/pages/generic/config/toolConfig';
 import { conferenceConfigSimplified } from '@/pages/generic/config/conferenceConfig';
 import { recitArtitstiqueConfigSimplified } from '@/pages/generic/config/recitArtitstiqueConfig';
 import { recitScientifiqueConfigSimplified } from '@/pages/generic/config/recitScientifiqueConfig';
@@ -29,36 +27,29 @@ import { recitTechnoConfigSimplified } from '@/pages/generic/config/recitTechnoC
 import { recitCitoyenConfigSimplified } from '@/pages/generic/config/recitcitoyenConfig';
 import { recitMediatiqueConfigSimplified } from '@/pages/generic/config/recitmediatiqueConfig';
 import { experimentationConfigSimplified } from '@/pages/generic/config/experimentationConfig';
-import { feedbackConfigSimplified } from '@/pages/generic/config/feedbackConfig';
-import { analyseCritiqueConfigSimplified } from '@/pages/generic/config/analyseCritiqueConfig';
-import { elementEsthetiqueConfigSimplified } from '@/pages/generic/config/elementEsthetiqueConfig';
-import { elementNarratifConfigSimplified } from '@/pages/generic/config/elementNarratifConfig';
-import { bibliographyStudentConfigSimplified } from '@/pages/generic/config/bibliographyStudentConfig';
-import { RESOURCE_TYPES, getRessourceLabel } from '@/config/resourceConfig';
+import { bibliographyConfigSimplified } from '@/pages/generic/config/bibliographyConfig';
+import { mediagraphyConfigSimplified } from '@/pages/generic/config/mediagraphyConfig';
+import { intervenantConfigSimplified } from '@/pages/generic/config/intervenantConfig';
+import { personneConfigSimplified } from '@/pages/generic/config/personneConfig';
+import { organisationConfigSimplified } from '@/pages/generic/config/organisationConfig';
+import { RESOURCE_TYPES, getResourceEditUrl } from '@/config/resourceConfig';
 import { useAuth } from '@/hooks/useAuth';
-import type { Key } from 'react';
-import { Button } from '@/theme/components/button';
-
-const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=StudentSpace';
 
 // role: 'student' = étudiants uniquement, 'actant' = actants uniquement, 'any' = les deux
 const createableConfigs = [
-  { config: experimentationStudentConfigSimplified, route: '/add-resource/experimentation', icon: ExperimentationIcon, category: 'experimentation', role: 'student' as const },
   { config: experimentationConfigSimplified, route: '/add-resource/experimentation-chercheur', icon: ExperimentationIcon, category: 'experimentation', role: 'actant' as const },
-  { config: toolStudentConfigSimplified, route: '/add-resource/outil', icon: UniversityIcon, category: 'outil', role: 'student' as const },
   { config: toolConfigSimplified, route: '/add-resource/outil-chercheur', icon: UniversityIcon, category: 'outil', role: 'actant' as const },
-  { config: feedbackStudentConfigSimplified, route: '/add-resource/retour-experience', icon: BookIcon, category: 'feedback', role: 'student' as const },
-  { config: feedbackConfigSimplified, route: '/add-resource/retour-experience-chercheur', icon: BookIcon, category: 'feedback', role: 'actant' as const },
   { config: conferenceConfigSimplified, route: '/add-resource/conference', icon: SeminaireIcon, category: 'conference', role: 'actant' as const },
+  { config: intervenantConfigSimplified, route: '/add-resource/intervenant', icon: UserIcon, category: 'intervenant', role: 'actant' as const },
+  { config: personneConfigSimplified, route: '/add-resource/personne', icon: UserIcon, category: 'personne', role: 'actant' as const },
+  { config: organisationConfigSimplified, route: '/add-resource/organisation', icon: CollectionIcon, category: 'organisation', role: 'actant' as const },
   { config: recitScientifiqueConfigSimplified, route: '/add-resource/recit-scientifique', icon: PratiqueNarrativeIcon, category: 'recit', role: 'actant' as const },
   { config: recitArtitstiqueConfigSimplified, route: '/add-resource/recit-artistique', icon: PratiqueNarrativeIcon, category: 'recit', role: 'actant' as const },
   { config: recitTechnoConfigSimplified, route: '/add-resource/recit-techno', icon: PratiqueNarrativeIcon, category: 'recit', role: 'actant' as const },
   { config: recitCitoyenConfigSimplified, route: '/add-resource/recit-citoyen', icon: PratiqueNarrativeIcon, category: 'recit', role: 'actant' as const },
   { config: recitMediatiqueConfigSimplified, route: '/add-resource/recit-mediatique', icon: PratiqueNarrativeIcon, category: 'recit', role: 'actant' as const },
-  { config: analyseCritiqueConfigSimplified, route: '/add-resource/analyse-critique', icon: CollectionIcon, category: 'analyse', role: 'actant' as const },
-  { config: elementEsthetiqueConfigSimplified, route: '/add-resource/element-esthetique', icon: CollectionIcon, category: 'element', role: 'actant' as const },
-  { config: elementNarratifConfigSimplified, route: '/add-resource/element-narratif', icon: CollectionIcon, category: 'element', role: 'actant' as const },
-  { config: bibliographyStudentConfigSimplified, route: '/add-resource/bibliographie', icon: BookIcon, category: 'bibliographie', role: 'any' as const },
+  { config: bibliographyConfigSimplified, route: '/add-resource/bibliographie', icon: BookIcon, category: 'bibliographie', role: 'any' as const },
+  { config: mediagraphyConfigSimplified, route: '/add-resource/mediagraphie', icon: BookIcon, category: 'mediagraphie', role: 'any' as const },
 ];
 
 // Bento sections definition
@@ -83,31 +74,12 @@ const bentoSections = [
     filter: (r: StudentResourceCard) => (r.type || '').includes('recit'),
   },
   {
-    key: 'analyse',
-    title: 'Mes analyses critiques',
-    icon: CollectionIcon,
-    color: '#D4A5FF',
-    description: 'Annotations et analyses critiques',
-    filter: (r: StudentResourceCard) => (r.type || '') === 'annotation',
-  },
-  {
     key: 'experimentation',
     title: 'Mes expérimentations',
     icon: ExperimentationIcon,
     color: '#A9E2DA',
     description: 'Expérimentations et hypothèses de recherche',
-    filter: (r: StudentResourceCard) => (r.type || '').includes('experimentation'),
-  },
-  {
-    key: 'feedback',
-    title: "Mes retours d'expérience",
-    icon: BookIcon,
-    color: '#C8E6C9',
-    description: 'Bilans et retours sur les expérimentations',
-    filter: (r: StudentResourceCard) => {
-      const type = r.type || '';
-      return type.includes('retour') || type.includes('feedback');
-    },
+    filter: (r: StudentResourceCard) => r.type === 'experimentation',
   },
   {
     key: 'outil',
@@ -115,16 +87,7 @@ const bentoSections = [
     icon: UniversityIcon,
     color: '#FFF1B8',
     description: 'Outils et méthodes utilisés',
-    filter: (r: StudentResourceCard) => (r.type || '').includes('outil'),
-  },
-
-  {
-    key: 'element',
-    title: 'Mes éléments',
-    icon: CollectionIcon,
-    color: '#FFD6A5',
-    description: 'Éléments esthétiques et narratifs',
-    filter: (r: StudentResourceCard) => (r.type || '').includes('element_'),
+    filter: (r: StudentResourceCard) => r.type === 'outil',
   },
   {
     key: 'bibliographie',
@@ -133,6 +96,14 @@ const bentoSections = [
     color: '#B8D4FF',
     description: 'Références bibliographiques',
     filter: (r: StudentResourceCard) => (r.type || '') === 'bibliographie',
+  },
+  {
+    key: 'mediagraphie',
+    title: 'Mes médiagraphies',
+    icon: BookIcon,
+    color: '#FFB8E6',
+    description: 'Références médiagraphiques',
+    filter: (r: StudentResourceCard) => (r.type || '') === 'mediagraphie',
   },
 ];
 
@@ -167,66 +138,53 @@ const BentoSection: React.FC<{
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className='flex flex-col  p-[20px] rounded-[16px] border-2 border-c3 hover:border-c4/30 transition-all duration-300'>
+      className='flex flex-col p-5 rounded-2xl border-2 border-c3 transition-all duration-300'>
       {/* Section header */}
-      <div className='flex flex-row items-center justify-between gap-[20px]'>
+      <div className='flex flex-row items-center justify-between gap-5'>
         <div className='flex items-center gap-5'>
-          <div className='p-[8px] rounded-[10px] flex items-center justify-center border-2 border-c3 ' style={{ backgroundColor: `${section.color}15` }}>
+          <div className='p-2 rounded-lg flex items-center justify-center border-2 border-c3' style={{ backgroundColor: `${section.color}15` }}>
             <Icon size={20} style={{ color: section.color }} />
           </div>
           <div className='flex flex-col'>
-            <h3 className='text-[24px] text-c6 font-semibold'>{section.title}</h3>
-            <p className='text-c4 text-[12px]'>{section.description}</p>
+            <h3 className='text-2xl text-c6 font-semibold'>{section.title}</h3>
+            <p className='text-c4 text-xs'>{section.description}</p>
           </div>
         </div>
-        <div className='flex items-center gap-[8px]'>
-          {canCreate && categoryConfigs.length > 0 && (
-            <Dropdown>
-              <DropdownTrigger>
-                <button className='flex flex-row items-center gap-2 cursor-pointer text-white px-3 py-2 rounded-[8px] bg-c2 border-2 border-c3 hover:bg-c3 transition-all duration-200'>
-                  Créer <PlusIcon size={14} className='text-c5 rotate-90' />
-                </button>
-              </DropdownTrigger>
-              <DropdownMenu
-                aria-label='Créer'
-                className='bg-c2 rounded-[16px] border-2 border-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] p-[4px] min-w-[200px]'
-                onAction={(key: Key) => {
-                  const config = categoryConfigs.find((c) => String(c.config.templateId) === String(key));
-                  if (config) onCreateResource(config.route);
-                }}>
-                {categoryConfigs.map(({ config, icon: CIcon }) => (
-                  <DropdownItem key={String(config.templateId)} className='hover:bg-c3 text-c6 px-3 py-2 rounded-[8px]' startContent={<CIcon size={14} className='text-c5' />}>
-                    {getRessourceLabel(config.resourceType)}
-                  </DropdownItem>
-                ))}
-              </DropdownMenu>
-            </Dropdown>
+        <div className='flex items-center gap-2'>
+          {canCreate && (
+            <CreateResourceAction
+              configs={categoryConfigs}
+              onCreate={onCreateResource}
+              compact
+            />
           )}
         </div>
       </div>
 
       {/* Resources */}
       {loading ? (
-        <div className='grid grid-cols-4 gap-[15px]'>
+        <div className='grid grid-cols-4 gap-4'>
           {Array.from({ length: 4 }).map((_, i) => (
-            <StudentCardSkeleton key={i} />
+            <MySpaceResourceCardSkeleton key={i} />
           ))}
         </div>
       ) : resources.length === 0 ? (
         <></>
       ) : (
         <>
-          <div className='grid grid-cols-4 gap-[15px] mt-[20px]'>
+          <div className='grid grid-cols-4 gap-4 mt-5'>
             {displayResources.map((item, index) => (
               <motion.div key={`${section.key}-${item.type}-${item.id}`} initial='hidden' animate='visible' variants={fadeIn} custom={index}>
-                <StudentCard
+                <MySpaceResourceCard
                   id={String(item.id)}
                   title={item.title}
-                  thumbnail={item.thumbnail ? (item.thumbnail.startsWith('http') ? item.thumbnail : `https://tests.arcanes.ca/omk${item.thumbnail}`) : undefined}
+                  thumbnail={item.thumbnail ?? undefined}
+                  url={item.url}
+                  date={item.date}
                   actants={item.actants?.map((a: { id: number | string; title: string; picture: string | null }) => ({
                     id: String(a.id),
                     title: a.title,
-                    picture: a.picture ? (a.picture.startsWith('http') ? a.picture : `https://tests.arcanes.ca/omk${a.picture}`) : undefined,
+                    picture: a.picture ?? undefined,
                   }))}
                   type={item.type}
                   showActions
@@ -238,9 +196,9 @@ const BentoSection: React.FC<{
             ))}
           </div>
           {resources.length > 4 && (
-            <button onClick={onToggle} className='flex items-center gap-[6px] self-center text-c5 hover:text-c6 text-[14px] transition-colors pt-[6px]'>
+            <button onClick={onToggle} className='flex items-center gap-1.5 self-center text-c5 hover:text-c6 text-sm transition-colors pt-1.5 cursor-pointer'>
               {expanded ? 'Voir moins' : `Voir tout (${resources.length})`}
-              <ArrowIcon size={12} className={`transition-transform ${expanded ? 'rotate-[-90deg]' : 'rotate-90'}`} />
+              <ArrowIcon size={12} className={`transition-transform ${expanded ? '-rotate-90' : 'rotate-90'}`} />
             </button>
           )}
         </>
@@ -273,7 +231,10 @@ export const MonEspace3: React.FC = () => {
   const canCreate = useMemo(() => isActant || courses.length > 0, [isActant, courses.length]);
 
   // Filtrer les configs créables selon le rôle (étudiant ou actant)
-  const filteredCreateableConfigs = useMemo(() => createableConfigs.filter((c) => c.role === 'any' || isActant || c.role === 'student'), [isActant]);
+  const filteredCreateableConfigs = useMemo(
+    () => createableConfigs.filter((c) => c.role === 'any' || isActant),
+    [isActant],
+  );
 
   const fullName = useMemo(() => {
     if (userData?.firstname && userData?.lastname) return `${userData.firstname} ${userData.lastname}`;
@@ -295,8 +256,9 @@ export const MonEspace3: React.FC = () => {
     try {
       setLoading(true);
       const userId = localStorage.getItem('userId');
-      if (!userId) return;
-      const resources = await getUserResources(parseInt(userId));
+      const omekaUserId = userData?.omekaUserId ?? (localStorage.getItem('omekaUserId') ? parseInt(localStorage.getItem('omekaUserId')!, 10) : null);
+      if (!userId && !omekaUserId) return;
+      const resources = await getUserResources(userId ? parseInt(userId, 10) : 0, omekaUserId);
       resources.sort((a, b) => new Date(b.created || 0).getTime() - new Date(a.created || 0).getTime());
       setAllResources(resources);
     } catch (error) {
@@ -304,7 +266,7 @@ export const MonEspace3: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userData?.omekaUserId]);
 
   useEffect(() => {
     fetchResources();
@@ -357,18 +319,17 @@ export const MonEspace3: React.FC = () => {
   const handleEdit = useCallback(
     (id: string, type?: string) => {
       if (type && RESOURCE_TYPES[type as keyof typeof RESOURCE_TYPES]) {
-        const url = RESOURCE_TYPES[type as keyof typeof RESOURCE_TYPES].getUrl(id);
-        navigate(`${url}?mode=edit`);
-      } else {
-        navigate(`/espace-etudiant/experimentation/${id}?mode=edit`);
+        navigate(getResourceEditUrl(type, id));
+        return;
       }
+      navigate(getResourceEditUrl('experimentation_etudiant', id));
     },
     [navigate],
   );
 
   const handleDeleteClick = useCallback(
     (id: string) => {
-      const item = allResources.find((r) => r.id === id);
+      const item = allResources.find((r) => String(r.id) === String(id));
       if (item) {
         setItemToDelete({ id, title: item.title || 'Sans titre' });
         setDeleteModalOpen(true);
@@ -381,17 +342,17 @@ export const MonEspace3: React.FC = () => {
     if (!itemToDelete) return;
     setIsDeleting(true);
     try {
-      const response = await fetch(`${API_BASE}&action=deleteResource&id=${itemToDelete.id}&json=1`);
-      const result = await response.json();
-      if (result.success) {
-        addToast({ title: 'Succès', description: 'Ressource supprimée.', color: 'success' });
-        await fetchResources();
-      } else {
-        addToast({ title: 'Erreur', description: result.message || 'Erreur.', color: 'danger' });
-      }
+      await deleteUserResource(itemToDelete.id);
+      setAllResources((prev) => prev.filter((item) => String(item.id) !== String(itemToDelete.id)));
+      addToast({ title: 'Succès', description: 'Ressource supprimée.', color: 'success' });
+      await fetchResources();
     } catch (error) {
       console.error('Error deleting:', error);
-      addToast({ title: 'Erreur', description: 'Erreur lors de la suppression.', color: 'danger' });
+      addToast({
+        title: 'Erreur',
+        description: error instanceof Error ? error.message : 'Erreur lors de la suppression.',
+        color: 'danger',
+      });
     } finally {
       setIsDeleting(false);
       setDeleteModalOpen(false);
@@ -403,26 +364,26 @@ export const MonEspace3: React.FC = () => {
   const totalResources = allResources.length;
 
   return (
-    <Layouts className='col-span-10 flex flex-col gap-[40px] z-0 overflow-visible'>
+    <Layouts className='col-span-10 flex flex-col gap-10 z-0 overflow-visible'>
       {/* ===== HERO / PROFILE ===== */}
-      <div className='flex flex-col gap-[25px] pt-[60px]'>
+      <div className='flex flex-col gap-6 pt-16'>
         <div className='flex items-start justify-between'>
-          <div className='flex items-center gap-[20px]'>
-            <div className='w-[75px] h-[75px] rounded-xl bg-gradient-to-br from-c3 to-c2 flex items-center justify-center border-2 border-c3 overflow-hidden'>
+          <div className='flex items-center gap-5'>
+            <div className='size-20 rounded-xl bg-gradient-to-br from-c3 to-c2 flex items-center justify-center border-2 border-c3 overflow-hidden'>
               {userData?.picture ? <img src={userData.picture} alt={fullName} className='w-full h-full object-cover' /> : <UserIcon size={32} className='text-c5' />}
             </div>
-            <div className='flex flex-col gap-[4px]'>
-              <h1 className='text-[32px] text-c6 font-semibold'>{fullName}</h1>
-              <div className='flex items-center gap-[10px]'>
-                <span className='text-c4 text-[14px]'>{userTypeLabel}</span>
+            <div className='flex flex-col'>
+              <h1 className='text-3xl text-c6 font-semibold'>{fullName}</h1>
+              <div className='flex items-center gap-2.5'>
+                <span className='text-c4 text-sm'>{userTypeLabel}</span>
                 <span className='text-c3'>|</span>
-                <span className='text-c4 text-[14px]'>
+                <span className='text-c4 text-sm'>
                   {totalResources} ressource{totalResources !== 1 ? 's' : ''}
                 </span>
                 {courses.length > 0 && (
                   <>
                     <span className='text-c3'>|</span>
-                    <span className='text-c4 text-[14px]'>{courses.length} cours</span>
+                    <span className='text-c4 text-sm'>{courses.length} cours</span>
                   </>
                 )}
               </div>
@@ -430,7 +391,7 @@ export const MonEspace3: React.FC = () => {
           </div>
 
           {/* Course selector + Global create */}
-          <div className='flex items-end justify-end gap-[10px]'>
+          <div className='flex items-end justify-end gap-2.5'>
             {canCreate && (isActant || courses.length > 1) && (
               <Select
                 label='Destination'
@@ -443,13 +404,7 @@ export const MonEspace3: React.FC = () => {
                   else setSelectedCourseId(id ? parseInt(String(id)) : null);
                 }}
                 isLoading={loadingCourses}
-                className='w-[200px]'
-                classNames={{
-                  trigger: 'bg-c2 border-2 border-c3 hover:bg-c3',
-                  label: 'text-c5',
-                  value: 'text-c6',
-                  popoverContent: 'bg-c2 border-2 border-c3',
-                }}>
+                className='max-w-xs'>
                 {[
                   ...(isActant ? [{ id: TEACHER_RESOURCES_OPTION, label: 'Ress. enseignantes', isTeacher: true }] : []),
                   ...courses.map((c) => ({ id: String(c.id), label: `${c.title}${c.code ? ` (${c.code})` : ''}`, isTeacher: false })),
@@ -462,52 +417,32 @@ export const MonEspace3: React.FC = () => {
             )}
 
             {canCreate && (
-              <Dropdown>
-                <DropdownTrigger>
-                  <div className='h-[48px] hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 flex flex-row rounded-[8px] border-2 border-c3 items-center  px-[15px] py-2 text-[14px] gap-[8px] text-c6 transition-all duration-200'>
-                    <PlusIcon className='text-c6 rotate-90' size={14} />
-                    Créer une ressource
-                  </div>
-                </DropdownTrigger>
-                <DropdownMenu
-                  aria-label='Créer'
-                  className='bg-c2 rounded-[12px] border-2 border-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] p-[8px] min-w-[220px]'
-                  onAction={(key: Key) => {
-                    const config = filteredCreateableConfigs.find((c) => String(c.config.templateId) === String(key));
-                    if (config) handleCreateResource(config.route);
-                  }}>
-                  {filteredCreateableConfigs.map(({ config, icon: Icon }) => (
-                    <DropdownItem
-                      key={String(config.templateId)}
-                      className='hover:bg-c3 text-c6 px-3 py-2 rounded-[8px] transition-all duration-200'
-                      startContent={<Icon size={16} className='text-c5' />}>
-                      {getRessourceLabel(config.resourceType)}
-                    </DropdownItem>
-                  ))}
-                </DropdownMenu>
-              </Dropdown>
+              <CreateResourceAction
+                configs={filteredCreateableConfigs}
+                onCreate={handleCreateResource}
+              />
             )}
           </div>
         </div>
 
         {/* Warning */}
         {!isActant && !loadingCourses && courses.length === 0 && (
-          <div className='flex items-center gap-[10px] bg-warning/10 border-2 border-warning/30 rounded-[10px] px-[15px] py-[10px] self-start'>
+          <div className='flex items-center gap-2.5 bg-warning/10 border-2 border-warning/30 rounded-xl px-4 py-2.5 self-start'>
             <WarningIcon size={18} className='text-warning' />
-            <span className='text-c5 text-[14px]'>Inscription à un cours requise pour créer des ressources.</span>
+            <span className='text-c5 text-sm'>Inscription à un cours requise pour créer des ressources.</span>
           </div>
         )}
 
         {/* Quick stats bar */}
-        <div className='flex gap-[8px] flex-wrap'>
+        <div className='flex gap-2 flex-wrap'>
           {bentoSections.map((section) => {
             const Icon = section.icon;
             const count = allResources.filter(section.filter).length;
             return (
-              <div key={section.key} className='flex items-center gap-3 px-[15px] py-[8px] rounded-[10px] border-2 border-c3 bg-c1'>
+              <div key={section.key} className='flex items-center gap-3 px-4 py-2 rounded-lg border-2 border-c3 bg-c1'>
                 <Icon size={16} style={{ color: section.color }} />
-                <span className='text-[14px] text-c5'>{section.title.replace('Mes ', '')}</span>
-                <span className='text-[14px] font-semibold text-c6'>{count}</span>
+                <span className='text-sm text-c5'>{section.title.replace('Mes ', '')}</span>
+                <span className='text-sm font-semibold text-c6'>{count}</span>
               </div>
             );
           })}
@@ -516,22 +451,23 @@ export const MonEspace3: React.FC = () => {
 
       {/* ===== RECENT ACTIVITY ===== */}
       {!loading && allResources.length > 0 && (
-        <div className='flex flex-col gap-[15px]'>
-          <h2 className='text-[24px] text-c6 font-semibold flex items-center gap-[10px]'>
-            <CalendarIcon size={18} className='text-c4' />
+        <div className='flex flex-col gap-4'>
+          <h2 className='text-2xl text-c6 font-semibold flex items-center gap-2.5'>
             Dernières modifications
           </h2>
-          <div className='grid grid-cols-4 gap-[15px]'>
+          <div className='grid grid-cols-4 gap-4'>
             {allResources.slice(0, 4).map((item, index) => (
               <motion.div key={`recent-${item.type}-${item.id}`} initial='hidden' animate='visible' variants={fadeIn} custom={index}>
-                <StudentCard
+                <MySpaceResourceCard
                   id={String(item.id)}
                   title={item.title}
-                  thumbnail={item.thumbnail ? (item.thumbnail.startsWith('http') ? item.thumbnail : `https://tests.arcanes.ca/omk${item.thumbnail}`) : undefined}
+                  thumbnail={item.thumbnail ?? undefined}
+                  url={item.url}
+                  date={item.date}
                   actants={item.actants?.map((a: { id: number | string; title: string; picture: string | null }) => ({
                     id: String(a.id),
                     title: a.title,
-                    picture: a.picture ? (a.picture.startsWith('http') ? a.picture : `https://tests.arcanes.ca/omk${a.picture}`) : undefined,
+                    picture: a.picture ?? undefined,
                   }))}
                   type={item.type}
                   showActions
@@ -545,9 +481,8 @@ export const MonEspace3: React.FC = () => {
       )}
 
       {/* ===== BENTO SECTIONS ===== */}
-      <div className='flex flex-col gap-[20px]'>
-        <h2 className='text-[24px] text-c6 font-semibold flex items-center gap-[10px]'>
-          <CalendarIcon size={18} className='text-c4' />
+      <div className='flex flex-col gap-5'>
+        <h2 className='text-2xl text-c6 font-semibold flex items-center gap-2.5'>
           Mes ressources
         </h2>
         {bentoSections.map((section) => (
@@ -563,41 +498,29 @@ export const MonEspace3: React.FC = () => {
             canCreate={canCreate}
             createConfigs={filteredCreateableConfigs}
             onCreateResource={handleCreateResource}
-            onCardClick={section.key === 'bibliographie' ? handleEdit : undefined}
+            onCardClick={section.key === 'bibliographie' || section.key === 'mediagraphie' ? handleEdit : undefined}
           />
         ))}
       </div>
 
-      {/* Delete modal */}
-      <Modal
+      <AlertModal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
-        classNames={{ base: 'bg-c1 border-2 border-c3', header: 'border-b border-c3', body: 'py-6', footer: 'border-t border-c3' }}>
-        <ModalContent>
-          <ModalHeader className='flex flex-col gap-1'>
-            <div className='flex items-center gap-2'>
-              <div className='p-1 rounded-[10px] bg-[#FF0000]/20'>
-                <TrashIcon size={20} className='text-[#FF0000]' />
-              </div>
-              <span className='text-c6'>Confirmer la suppression</span>
-            </div>
-          </ModalHeader>
-          <ModalBody>
-            <p className='text-c5'>
-              Supprimer <span className='text-c6 font-semibold'>"{itemToDelete?.title}"</span> ?
+        title='Confirmer la suppression'
+        type='danger'
+        confirmLabel='Supprimer'
+        onConfirm={handleConfirmDelete}
+        isLoading={isDeleting}
+        description={
+          <>
+            <p>
+              Êtes-vous sûr de vouloir supprimer la ressource{' '}
+              <span className='text-c6 font-medium'>&quot;{itemToDelete?.title}&quot;</span> ?
             </p>
-            <p className='text-c4 text-[14px]'>Cette action est irréversible.</p>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant='light' onPress={() => setDeleteModalOpen(false)} className='text-c5 hover:text-c6 min-h'>
-              Annuler
-            </Button>
-            <Button onPress={handleConfirmDelete} isLoading={isDeleting} className='bg-[#FF0000]/70 hover:bg-[#FF0000]/90'>
-              Supprimer
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+            <p className='text-c4 text-sm mt-2.5'>Cette action est irréversible.</p>
+          </>
+        }
+      />
     </Layouts>
   );
 };

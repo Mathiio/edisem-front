@@ -3,7 +3,7 @@ import { InputConfig } from '@/components/features/database/EditModal';
 import { useGetDataByClass } from '@/hooks/useFetchData';
 import { Button, Spinner } from '@heroui/react';
 import { Input, Select, SelectItem } from '@/theme/components';
-import { CrossIcon, SearchIcon, SortIcon } from '@/components/ui/icons';
+import { CrossIcon, SearchIcon } from '@/components/ui/icons';
 
 import AutoResizingField from './AutoResizingTextarea';
 
@@ -174,7 +174,6 @@ export const SelectionInput: React.FC<SelectionInputProps> = ({ col, actualData,
             if (selectedKey === 'asc') setSortOrder('asc');
             else if (selectedKey === 'desc') setSortOrder('desc');
           }}
-          startContent={<SortIcon size={16} className='text-c4 shrink-0' />}
           classNames={{
             base: 'w-auto min-w-28 shrink-0',
             trigger:

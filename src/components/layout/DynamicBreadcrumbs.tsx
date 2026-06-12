@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useLocation, useParams, Link } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams, Link } from 'react-router-dom';
 import { Breadcrumbs, BreadcrumbItem, Spinner } from '@heroui/react';
 import { useNavigationTrail } from '@/hooks/useNavigationTrail';
 import { HomeIcon } from '@/components/ui/icons';
@@ -60,7 +60,11 @@ interface DynamicBreadcrumbsProps {
 export const DynamicBreadcrumbs: React.FC<DynamicBreadcrumbsProps> = ({ itemTitle, underline = 'hover', className = '' }) => {
   const location = useLocation();
   const params = useParams();
+  const [searchParams] = useSearchParams();
   const { trail, updateCurrentTitle } = useNavigationTrail();
+
+  const isEditContext =
+    searchParams.get('mode') === 'edit' || location.pathname.startsWith('/add-resource');
 
   // Mettre à jour le titre de la page courante quand il est chargé
   useEffect(() => {
@@ -68,6 +72,11 @@ export const DynamicBreadcrumbs: React.FC<DynamicBreadcrumbsProps> = ({ itemTitl
       updateCurrentTitle(itemTitle);
     }
   }, [itemTitle, updateCurrentTitle]);
+
+  // Masqué en mode édition / création (PageBanner + onglets suffisent)
+  if (isEditContext) {
+    return null;
+  }
 
   // Ne rien afficher si on est sur la page d'accueil
   if (location.pathname === '/') {

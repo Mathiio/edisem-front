@@ -2,8 +2,10 @@ import { ViewOption, SmartRecommendationsStrategy } from './config';
 import { ItemsList, SimpleTextBlock, ToolItemData } from './components';
 import { Bibliographies } from '@/components/features/conference/BibliographyCards';
 import { Mediagraphies } from '@/components/features/conference/MediagraphyCards';
-import { AddResourceCard } from '@/components/features/forms/AddResourceCard';
+import { ReferenceAddButtons } from '@/components/features/forms/AddResourceCard';
+import { FormTextInput, FormAutoResizeTextareaInput, formFieldLabelClass } from '@/components/features/forms/FormFields';
 import { getResourceConfigByTemplateId, getRessourceLabel, getResourceUrl } from '@/config/resourceConfig';
+import { getLinkedResourceId } from '@/pages/generic/resourceHelpers';
 
 /**
  * Helpers pour créer des viewOptions communes facilement
@@ -32,7 +34,7 @@ export const createItemsListView = (options: CreateItemsListViewOptions): ViewOp
     resourceLabel: options.resourceLabel,
     resourceTemplateId: options.resourceTemplateId,
     editable: options.editable !== false,
-    renderContent: ({ itemDetails, isEditing, onLinkExisting, onCreateNew, onRemoveItem, onNavigate }) => {
+    renderContent: ({ itemDetails, isEditing, onLinkExisting, onRemoveItem, onNavigate }) => {
       let items = options.getItems(itemDetails);
       // Normaliser pour s'assurer que c'est toujours un tableau
       if (!items) {
@@ -41,13 +43,15 @@ export const createItemsListView = (options: CreateItemsListViewOptions): ViewOp
         items = [items];
       }
 
-      // En mode édition, vérifier aussi les ressources ajoutées via formData (clé = options.key)
-      if (isEditing && itemDetails[options.key] && Array.isArray(itemDetails[options.key])) {
+      // En mode édition, formData (clé = options.key) fait autorité sur la liste affichée
+      if (isEditing && itemDetails[options.key] !== undefined && Array.isArray(itemDetails[options.key])) {
         const formDataItems = itemDetails[options.key];
-        const existingIds = items.map((r: any) => r.id || r['o:id']);
+        const formIds = new Set(formDataItems.map((item: any) => String(getLinkedResourceId(item))));
+        items = items.filter((item: ToolItemData) => formIds.has(String(getLinkedResourceId(item) ?? item.id)));
+        const existingIds = new Set(items.map((r: ToolItemData) => String(getLinkedResourceId(r) ?? r.id)));
         const newItems = formDataItems.filter((item: any) => {
-          const itemId = item.id || item['o:id'];
-          return itemId && !existingIds.includes(itemId);
+          const itemId = getLinkedResourceId(item);
+          return itemId && !existingIds.has(String(itemId));
         });
         if (newItems.length > 0) {
           items = [...items, ...newItems];
@@ -60,8 +64,7 @@ export const createItemsListView = (options: CreateItemsListViewOptions): ViewOp
           mapUrl={options.mapUrl}
           isEditing={isEditing && options.editable !== false}
           resourceLabel={options.resourceLabel || options.title}
-          onLinkExisting={onLinkExisting ? () => onLinkExisting(options.key) : undefined}
-          onCreateNew={onCreateNew ? () => onCreateNew(options.key) : undefined}
+          onAdd={onLinkExisting ? () => onLinkExisting(options.key) : undefined}
           onRemoveItem={onRemoveItem ? (id) => onRemoveItem(options.key, id) : undefined}
           onNavigate={onNavigate}
         />
@@ -151,16 +154,35 @@ export const createFormFieldsView = (options: CreateFormFieldsViewOptions): View
       // Mode édition : afficher les inputs
       if (isEditing) {
         return (
-          <div className='flex flex-col gap-4'>
+          <div className='flex flex-col gap-12 items-start w-full'>
             {options.fields.map((field) => {
               const value = formData?.[field.key] ?? itemDetails?.[field.key] ?? '';
 
+              if (field.type === 'slider') {
+                return (
+                  <div key={field.key} className='w-full'>
+                    <div className='flex justify-between items-center'>
+                      <span className={formFieldLabelClass}>
+                        {field.label}
+                        {field.required && <span className='text-danger ml-px'>*</span>}
+                      </span>
+                      <span className='text-c6 font-semibold'>{value || 0}%</span>
+                    </div>
+                    <input
+                      type='range'
+                      className='w-full mt-2.5 accent-action'
+                      value={value || field.min || 0}
+                      onChange={(e) => onItemsChange?.(field.key, Number(e.target.value))}
+                      min={field.min || 0}
+                      max={field.max || 100}
+                      step={field.step || 1}
+                    />
+                  </div>
+                );
+              }
+
               return (
-                <div key={field.key} className='flex flex-col gap-2'>
-                  <label className='text-c6 font-medium text-sm'>
-                    {field.label}
-                    {field.required && <span className='text-danger ml-px'>*</span>}
-                  </label>
+                <div key={field.key} className='w-full'>
                   {renderFormField(field, value, (newValue) => onItemsChange?.(field.key, newValue))}
                 </div>
               );
@@ -201,51 +223,66 @@ export const createFormFieldsView = (options: CreateFormFieldsViewOptions): View
  * Render un champ de formulaire selon son type
  */
 const renderFormField = (field: FormFieldConfig, value: any, onChange: (value: any) => void): JSX.Element => {
-  const baseInputClass = 'bg-c1 border border-c3 rounded-lg px-4 py-2.5 text-c6 text-sm focus:outline-none focus:border-action';
+  const stringValue = value ?? '';
 
   switch (field.type) {
     case 'textarea':
-      return <textarea className={`${baseInputClass} resize-none`} value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} rows={3} />;
+      return (
+        <FormAutoResizeTextareaInput
+          label={field.label}
+          value={stringValue}
+          onChange={onChange}
+          placeholder={field.placeholder}
+          isRequired={field.required}
+        />
+      );
 
     case 'url':
-      return <input type='url' className={baseInputClass} value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} />;
+      return (
+        <FormTextInput
+          label={field.label}
+          type='url'
+          value={stringValue}
+          onChange={onChange}
+          placeholder={field.placeholder}
+          isRequired={field.required}
+        />
+      );
 
     case 'number':
       return (
-        <input
+        <FormTextInput
+          label={field.label}
           type='number'
-          className={baseInputClass}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          value={String(stringValue)}
+          onChange={onChange}
           placeholder={field.placeholder}
-          min={field.min}
-          max={field.max}
-          step={field.step}
+          isRequired={field.required}
         />
       );
 
     case 'date':
-      return <input type='date' className={baseInputClass} value={value} onChange={(e) => onChange(e.target.value)} />;
-
-    case 'slider':
       return (
-        <div className='flex items-center gap-2.5'>
-          <input
-            type='range'
-            className='flex-1'
-            value={value || field.min || 0}
-            onChange={(e) => onChange(Number(e.target.value))}
-            min={field.min || 0}
-            max={field.max || 100}
-            step={field.step || 1}
-          />
-          <span className='text-c5 text-sm w-2.5 text-right'>{value || 0}%</span>
-        </div>
+        <FormTextInput
+          label={field.label}
+          type='date'
+          value={stringValue}
+          onChange={onChange}
+          isRequired={field.required}
+        />
       );
 
     case 'text':
     default:
-      return <input type='text' className={baseInputClass} value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} />;
+      return (
+        <FormTextInput
+          label={field.label}
+          value={stringValue}
+          onChange={onChange}
+          placeholder={field.placeholder}
+          isRequired={field.required}
+        />
+      );
   }
 };
 
@@ -266,7 +303,7 @@ export const createScientificReferencesView = (options?: { resourceTemplateIds?:
     title: 'Contenus scientifiques',
     editable: options?.editable !== false,
     resourceTemplateIds: options?.resourceTemplateIds || defaultTemplateIds,
-    renderContent: ({ itemDetails, loading, isEditing, onLinkExisting, onCreateNew }) => {
+    renderContent: ({ itemDetails, loading, isEditing, onLinkExisting }) => {
       let references = itemDetails?.referencesScient || itemDetails?.references || [];
 
       // En mode édition, vérifier aussi les ressources ajoutées via formData
@@ -320,9 +357,12 @@ export const createScientificReferencesView = (options?: { resourceTemplateIds?:
             </div>
           )}
 
-          {/* Carte "Ajouter" en mode édition */}
-          {canEdit && onLinkExisting && (
-            <AddResourceCard resourceLabel='une référence scientifique' onLinkExisting={() => onLinkExisting('ContentScient')} onCreateNew={() => onCreateNew?.('ContentScient')} />
+          {canEdit && (
+            <ReferenceAddButtons
+              viewKey='ContentScient'
+              templateIds={options?.resourceTemplateIds || defaultTemplateIds}
+              onLinkExisting={onLinkExisting}
+            />
           )}
         </div>
       );
@@ -343,7 +383,7 @@ export const createCulturalReferencesView = (options?: { resourceTemplateIds?: n
     title: 'Contenus culturels',
     editable: options?.editable !== false,
     resourceTemplateIds: options?.resourceTemplateIds || defaultTemplateIds,
-    renderContent: ({ itemDetails, loading, isEditing, onLinkExisting, onCreateNew }) => {
+    renderContent: ({ itemDetails, loading, isEditing, onLinkExisting }) => {
       let references = itemDetails?.referencesCultu || itemDetails?.bibliographicCitations || [];
 
       // En mode édition, vérifier aussi les ressources ajoutées via formData
@@ -397,9 +437,12 @@ export const createCulturalReferencesView = (options?: { resourceTemplateIds?: n
             </div>
           )}
 
-          {/* Carte "Ajouter" en mode édition */}
-          {canEdit && onLinkExisting && (
-            <AddResourceCard resourceLabel='une référence culturelle' onLinkExisting={() => onLinkExisting('ContentCultu')} onCreateNew={() => onCreateNew?.('ContentCultu')} />
+          {canEdit && (
+            <ReferenceAddButtons
+              viewKey='ContentCultu'
+              templateIds={options?.resourceTemplateIds || defaultTemplateIds}
+              onLinkExisting={onLinkExisting}
+            />
           )}
         </div>
       );
@@ -422,7 +465,7 @@ export const createToolsView = (
     resourceLabel: options?.resourceLabel || 'un outil',
     resourceTemplateId: options?.resourceTemplateId || defaultTemplateId,
     editable: options?.editable !== false,
-    renderContent: ({ itemDetails, viewData, isEditing, onLinkExisting, onCreateNew, onRemoveItem, onNavigate }) => {
+    renderContent: ({ itemDetails, viewData, isEditing, onLinkExisting, onRemoveItem, onNavigate }) => {
       let items = getTools ? getTools(itemDetails, viewData) : itemDetails?.tools || [];
       // Normaliser pour s'assurer que c'est toujours un tableau
       if (!items) {
@@ -431,13 +474,15 @@ export const createToolsView = (
         items = [items];
       }
 
-      // En mode édition, vérifier aussi les ressources ajoutées via formData (clé 'Outils')
-      if (isEditing && itemDetails['Outils'] && Array.isArray(itemDetails['Outils'])) {
+      // En mode édition, formData['Outils'] fait autorité sur la liste affichée
+      if (isEditing && itemDetails['Outils'] !== undefined && Array.isArray(itemDetails['Outils'])) {
         const formDataItems = itemDetails['Outils'];
-        const existingIds = items.map((r: any) => r.id || r['o:id']);
+        const formIds = new Set(formDataItems.map((item: any) => String(getLinkedResourceId(item))));
+        items = items.filter((item: ToolItemData) => formIds.has(String(getLinkedResourceId(item) ?? item.id)));
+        const existingIds = new Set(items.map((r: ToolItemData) => String(getLinkedResourceId(r) ?? r.id)));
         const newItems = formDataItems.filter((item: any) => {
-          const itemId = item.id || item['o:id'];
-          return itemId && !existingIds.includes(itemId);
+          const itemId = getLinkedResourceId(item);
+          return itemId && !existingIds.has(String(itemId));
         });
         if (newItems.length > 0) {
           items = [...items, ...newItems];
@@ -450,8 +495,7 @@ export const createToolsView = (
           mapUrl={mapUrl}
           isEditing={isEditing && options?.editable !== false}
           resourceLabel={options?.resourceLabel || 'un outil'}
-          onLinkExisting={onLinkExisting ? () => onLinkExisting('Outils') : undefined}
-          onCreateNew={onCreateNew ? () => onCreateNew('Outils') : undefined}
+          onAdd={onLinkExisting ? () => onLinkExisting('Outils') : undefined}
           onRemoveItem={onRemoveItem ? (id) => onRemoveItem('Outils', id) : undefined}
           onNavigate={onNavigate}
         />

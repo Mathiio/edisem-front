@@ -11,8 +11,10 @@ export const recitCitoyenConfigSimplified: SimplifiedDetailConfig = {
     title: { property: 'dcterms:title', type: 'title', zone: 'header' },
     date: { property: 'dcterms:issued', type: 'date', zone: 'details' },
     description: { property: 'dcterms:abstract', type: 'textarea', label: 'Description', zone: 'details' },
-    purpose: { property: 'oa:hasPurpose', type: 'textarea', label: 'Objectif', zone: 'details' },
+    purpose: { property: 'oa:hasPurpose', type: 'textarea', label: 'Public Cible', zone: 'details' },
     application: { property: 'schema:application', type: 'textarea', label: 'Résumé', zone: 'details' },
+    figureNarrative: { property: 'genstory:hasConditionInitial', type: 'textarea', label: 'Figure narrative', zone: 'details'},
+    slogan: { property: 'storyline:hasQuote', type: 'textarea', label: 'Slogan', zone: 'details' },
     contributors: {
       property: 'dcterms:creator',
       type: 'resource',
@@ -29,7 +31,15 @@ export const recitCitoyenConfigSimplified: SimplifiedDetailConfig = {
       multiSelect: true,
       zone: 'header',
     },
-    externalLink: { property: 'schema:url', type: 'url', label: 'Lien vidéo', placeholder: 'https://...', zone: 'details' },
+    externalLink: { property: 'schema:url', type: 'url', label: 'Site web associé', placeholder: 'https://...', zone: 'details' },
+    domain: {
+      property: 'dcterms:subject',
+      type: 'itemset',
+      label: 'Domaine du récit',
+      itemSetId: 21318,
+      multiSelect: true,
+      zone: 'details',
+    },
   },
 
   views: [
@@ -40,12 +50,6 @@ export const recitCitoyenConfigSimplified: SimplifiedDetailConfig = {
       renderType: 'items',
       resourceTemplateId: 101,
       urlPattern: '/corpus/analyse-critique/:id',
-    },
-    {
-      key: 'figureNarrative',
-      title: 'Figure narrative',
-      property: 'genstory:hasConditionInitial',
-      renderType: 'text',
     },
     {
       key: 'ContentScient',
@@ -61,13 +65,6 @@ export const recitCitoyenConfigSimplified: SimplifiedDetailConfig = {
       renderType: 'references',
       resourceTemplateIds: [81, 99, 98, 83],
     },
-    {
-      key: 'Domaine',
-      title: 'Domaines du récit',
-      property: 'dcterms:subject',
-      renderType: 'items',
-      itemSetIds: [21318],
-    },
   ],
 
   showKeywords: true,
@@ -77,6 +74,11 @@ export const recitCitoyenConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'recit_citoyen',
   defaultView: 'AnalyseCritique',
   formEnabled: true,
+
+  contributorButtons: [
+    { label: 'Ajouter Personne', templateId: 33, property: 'schema:agent' },
+    { label: 'Ajouter Organisation', templateId: 104, property: 'schema:agent' },
+  ],
 
   smartRecommendations: {
     getRelatedItems: async (itemDetails: any) => {

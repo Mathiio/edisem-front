@@ -34,12 +34,12 @@ export const elementNarratifConfigSimplified: SimplifiedDetailConfig = {
           key: 'narrative',
           title: 'Éléments narratifs',
           subcategories: [
-            { key: 'genre', label: "Genre de l'œuvre", property: 'schema:genre' },
-            { key: 'duration', label: "Durée de l'œuvre", property: 'schema:duration' },
-            { key: 'plotSummary', label: 'Enjeux et/ou intrigues', property: 'eclap:plotSummary' },
-            { key: 'characters', label: 'Personnages', property: 'schema:character' },
-            { key: 'transcript', label: 'Scénario', property: 'schema:transcript' },
-            { key: 'storyboard', label: 'Storyboard', property: 'ma:fragmentName' },
+            { key: 'genre', label: "Genre de l'œuvre", property: 'schema:genre', allowMultipleInputs: false },
+            { key: 'duration', label: "Durée de l'œuvre", property: 'schema:duration', allowMultipleInputs: false },
+            { key: 'plotSummary', label: 'Enjeux et/ou intrigues', property: 'eclap:plotSummary', allowMultipleInputs: false },
+            { key: 'characters', label: 'Personnages', property: 'schema:character', allowMultipleInputs: false },
+            { key: 'transcript', label: 'Scénario (url)', property: 'schema:transcript', allowMultipleInputs: false },
+            { key: 'storyboard', label: 'Storyboard (url)', property: 'ma:fragmentName', allowMultipleInputs: false },
           ],
         },
       ],
@@ -53,7 +53,7 @@ export const elementNarratifConfigSimplified: SimplifiedDetailConfig = {
     },
     {
       key: 'Adaptations',
-      title: 'Adaptations ou suites',
+      title: 'Hypotextes et Adaptations',
       property: 'ma:isRelatedTo',
       renderType: 'text',
     },
@@ -66,6 +66,11 @@ export const elementNarratifConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'element_narratif',
   defaultView: 'Analyse',
   formEnabled: true,
+
+  contributorButtons: [
+    { label: 'Ajouter Intervenant', templateId: 72, property: 'dcterms:creator' },
+    { label: 'Ajouter Étudiant', templateId: 96, property: 'dcterms:creator' },
+  ],
 
   smartRecommendations: {
     maxRecommendations: 5,

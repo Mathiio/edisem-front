@@ -14,7 +14,7 @@ import {
 import { Button } from '@/theme/components/button';
 import { Input, Checkbox, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@/theme/components';
 import { Layouts } from '@/components/layout/Layouts';
-import { PlusIcon, EditIcon, TrashIcon, ChainLinkIcon, ImportIcon, ExportIcon, SchoolIcon } from '@/components/ui/icons';
+import { AddIcon, EditIcon, TrashIcon, ChainLinkIcon, ImportIcon, ExportIcon, SchoolIcon } from '@/components/ui/icons';
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { AlertModal } from '@/components/ui/AlertModal';
 import { getCourses, getStudentCourses, enrollStudent, unenrollStudent, type Course } from '@/services/StudentSpace';
@@ -893,7 +893,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
             <Button variant='flat' className='bg-c3 text-c6' startContent={<ImportIcon size={16} />} onPress={() => setIsImportModalOpen(true)}>
               Importer CSV
             </Button>
-            <Button className='bg-action text-selected' startContent={<PlusIcon size={16} />} onPress={handleOpenCreate}>
+            <Button className='bg-action text-selected' startContent={<AddIcon size={16} />} onPress={handleOpenCreate}>
               Nouvel Étudiant
             </Button>
           </div>
@@ -1039,7 +1039,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
           <ModalContent>
             <ModalHeader className='flex flex-col gap-px'>
               <ModalTitle
-                icon={editingStudent ? EditIcon : PlusIcon}
+                icon={editingStudent ? EditIcon : AddIcon}
                 iconColor='text-action'
                 iconBg='bg-action/20'
                 title={editingStudent ? "Modifier l'étudiant" : 'Nouvel étudiant'}

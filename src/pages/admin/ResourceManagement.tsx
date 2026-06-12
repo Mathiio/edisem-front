@@ -16,7 +16,7 @@ import { Layouts } from '@/components/layout/Layouts';
 import { TrashIcon, EditIcon, ExperimentationIcon, UserIcon } from '@/components/ui/icons';
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { AlertModal } from '@/components/ui/AlertModal';
-import { getCourses, type Course, type StudentResourceCard } from '@/services/StudentSpace';
+import { getCourses, type Course, type StudentResourceCard, deleteUserResource } from '@/services/StudentSpace';
 import { getRessourceLabel } from '@/config/resourceConfig';
 
 const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=StudentSpace';
@@ -173,26 +173,19 @@ const ResourceManagement: React.FC<ResourceManagementProps> = ({ embedded = fals
     setResourceToDelete(null);
   };
 
-  // Confirmer la suppression (soft delete via API PHP)
+  // Confirmer la suppression définitive (DELETE Omeka S)
   const handleConfirmDelete = async () => {
     if (!resourceToDelete) return;
 
     setIsDeleting(true);
     try {
-      const url = `${API_BASE}&action=deleteResource&id=${resourceToDelete.id}&json=1`;
-      const response = await fetch(url);
-      const result = await response.json();
-
-      if (result.success) {
-        addToast({
-          title: 'Succès',
-          description: 'La ressource a été supprimée',
-          color: 'success',
-        });
-        await loadData();
-      } else {
-        throw new Error(result.message || 'Erreur lors de la suppression');
-      }
+      await deleteUserResource(resourceToDelete.id);
+      addToast({
+        title: 'Succès',
+        description: 'La ressource a été supprimée',
+        color: 'success',
+      });
+      await loadData();
     } catch (error: any) {
       console.error('Error deleting resource:', error);
       addToast({

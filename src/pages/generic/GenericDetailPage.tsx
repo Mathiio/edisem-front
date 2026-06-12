@@ -1,35 +1,58 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, Variants } from 'framer-motion';
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Spinner, addToast, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from '@heroui/react';
+import { Spinner, addToast } from '@heroui/react';
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, modalCloseButtonClasses, ModalCloseIcon } from '@/theme/components';
+import { Button } from '@/theme/components/button';
+import { ModalTitle } from '@/components/ui/ModalTitle';
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  dropdownContentClassNames,
+  dropdownTriggerButtonClass,
+  dropdownMenuClassNames,
+  dropdownMenuItemClass,
+  dropdownItemInnerPadding,
+} from '@/theme/components/dropdown';
 import { Select, SelectItem } from '@/theme/components/select';
+import { FormTextInput, FormAutoResizeTextareaInput, FormDateInput, formFieldLabelClass } from '@/components/features/forms/FormFields';
 import { LongCarrousel, FullCarrousel } from '@/components/ui/Carrousels';
-import { KeywordsCard } from '@/components/features/conference/KeywordsCards';
+import { KeywordsCard, KeywordsCarouselSkeleton } from '@/components/features/conference/KeywordsCards';
 import { Layouts } from '@/components/layout/Layouts';
 import { ResourceCard, ResourceCardSkeleton } from '@/components/features/corpus/ResourceCard';
 import { SearchModal, SearchModalRef } from '@/components/features/search/SearchModal';
-import { ArrowIcon, CrossIcon, EditIcon, TrashIcon } from '@/components/ui/icons';
+import { ArrowIcon, AddIcon, ThumbnailIcon } from '@/components/ui/icons';
+import { AlertModal } from '@/components/ui/AlertModal';
 import { EditSaveBar } from '@/components/ui/EditSaveBar';
-import { PageBanner } from '@/components/ui/PageBanner';
-import { getPersonDisplayName, getPersonPicture } from '@/components/features/experimentation/ExpOverview';
+import { EditModeBanner } from '@/components/ui/EditModeBanner';
 import CommentSection from '@/components/layout/CommentSection';
 import { DynamicBreadcrumbs } from '@/components/layout/DynamicBreadcrumbs';
-import { GenericDetailPageConfig, PageMode, FetchResult } from './config';
+import { GenericDetailPageConfig, PageMode, FetchResult, ViewOption } from './config';
 import { generateSmartRecommendations } from './helpers';
 import { ResourcePicker } from '@/components/features/forms/ResourcePicker';
-import { ResourceFormTabs, ResourceTabInfo } from '@/components/features/forms/ResourceFormTabs';
 import { getTemplatePropertiesMap } from '@/services/Items';
-import { getRessourceLabel, getResourceConfigByTemplateId, OMEKA_PROPERTY_IDS } from '@/config/resourceConfig';
-
-const getResourceFallbackTitle = (id: number | string, templateId?: number | string): string => {
-  if (templateId) {
-    const config = getResourceConfigByTemplateId(templateId);
-    if (config) return `${config.label} #${id}`;
-  }
-  return `Item #${id}`;
-};
+import { getRessourceLabel, getResourceConfigByTemplateId, getMonEspacePath, OMEKA_PROPERTY_IDS, TEMPLATE_ID_TO_TYPE } from '@/config/resourceConfig';
+import { QUICK_CREATE_CONFIGS } from '@/components/features/forms/QuickCreateModal';
+import {
+  getLinkedResourceId,
+  getLinkedResourceTitle,
+  getResourceOwnerId,
+  getResourceFallbackTitle,
+  getAutoContributorConfig,
+  buildAutoContributorFormValues,
+  buildConnectedUserContributorItem,
+  isCreateOnlyView,
+  resolveViewResourceTemplateId,
+  shouldHardDeleteLinkedResource,
+  canDeleteLinkedResource,
+} from './resourceHelpers';
+import { deleteUserResource } from '@/services/StudentSpace';
 import { useFormState } from '@/hooks/useFormState';
-import { MediaFile } from '@/components/features/forms/MediaDropzone';
+import { useAuth } from '@/hooks/useAuth';
+import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '@/utils/omekaApi';
+import { MediaFile, DEFAULT_AUTHOR_TEMPLATE_IDS } from '@/components/features/forms/MediaDropzone';
 
 // ========================================
 // Composant local: sélecteur depuis un item set Omeka
@@ -37,9 +60,10 @@ import { MediaFile } from '@/components/features/forms/MediaDropzone';
 const ItemSetFormField: React.FC<{
   label: string;
   itemSetId: number;
-  value?: number;
-  onChange: (id: number, title: string) => void;
-}> = ({ label, itemSetId, value, onChange }) => {
+  multiple?: boolean;
+  value?: { id: number; title: string }[];
+  onChange: (items: { id: number; title: string }[]) => void;
+}> = ({ label, itemSetId, multiple = false, value = [], onChange }) => {
   const [items, setItems] = React.useState<{ id: number; title: string }[]>([]);
 
   React.useEffect(() => {
@@ -56,16 +80,66 @@ const ItemSetFormField: React.FC<{
       .catch(console.error);
   }, [itemSetId]);
 
+  const selected = Array.isArray(value) ? value : [];
+
+  if (multiple) {
+    const available = items.filter((item) => !selected.some((s) => s.id === item.id));
+
+    return (
+      <div className='w-full flex flex-col gap-2'>
+        <label className={formFieldLabelClass}>{label}</label>
+        <div className='flex flex-wrap gap-2 items-center'>
+          {selected.map((item) => (
+            <div key={item.id} className={selectedResourceChipClass}>
+              <span>{item.title || `Item ${item.id}`}</span>
+              <button
+                type='button'
+                onClick={() => onChange(selected.filter((s) => s.id !== item.id))}
+                className={selectedResourceRemoveButtonClass}
+                aria-label='Retirer'>
+                <ModalCloseIcon />
+              </button>
+            </div>
+          ))}
+          {available.length > 0 && (
+            <Dropdown classNames={dropdownContentClassNames}>
+              <DropdownTrigger>
+                <button
+                  type='button'
+                  className='flex items-center gap-2 h-12 px-4 rounded-lg border-2 border-c3 bg-c2 hover:bg-c3 text-c6 text-sm font-medium transition-all duration-200 cursor-pointer'>
+                  <AddIcon size={14} className='text-c4' />
+                  Ajouter
+                </button>
+              </DropdownTrigger>
+              <DropdownMenu aria-label={label} className='p-2 max-h-64 overflow-auto' classNames={dropdownMenuClassNames}>
+                {available.map((item) => (
+                  <DropdownItem
+                    key={String(item.id)}
+                    className={dropdownMenuItemClass}
+                    onPress={() => onChange([...selected, item])}>
+                    <div className={`${dropdownItemInnerPadding} rounded-lg text-c6`}>{item.title}</div>
+                  </DropdownItem>
+                ))}
+              </DropdownMenu>
+            </Dropdown>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className='flex flex-col gap-2'>
-      <label className='text-[14px] text-c5 font-medium'>{label}</label>
+    <div className='w-full'>
       <Select
+        label={label}
+        labelPlacement='outside-top'
+        classNames={{ label: formFieldLabelClass }}
         aria-label={label}
-        selectedKeys={value ? new Set([String(value)]) : new Set()}
+        selectedKeys={selected[0] ? new Set([String(selected[0].id)]) : new Set()}
         onSelectionChange={(keys) => {
           const key = Array.from(keys)[0] as string;
           const found = items.find((i) => String(i.id) === key);
-          if (found) onChange(found.id, found.title);
+          if (found) onChange([found]);
         }}
         placeholder='Sélectionner...'>
         {items.map((item) => (
@@ -78,10 +152,11 @@ const ItemSetFormField: React.FC<{
   );
 };
 
-// API Config
-const API_BASE = '/omk/api/';
-const API_KEY = import.meta.env.VITE_API_KEY;
-const API_IDENT = 'NUO2yCjiugeH7XbqwUcKskhE8kXg0rUj';
+const selectedResourceChipClass = 'flex items-center gap-2 pl-4 pr-2 h-12 border-2 border-c3 text-c6 rounded-lg text-sm';
+const selectedResourceRemoveButtonClass = [
+  modalCloseButtonClasses,
+  'inline-flex items-center justify-center shrink-0 p-1 text-sm',
+].join(' ');
 
 const fadeIn: Variants = {
   hidden: { opacity: 0, y: 6 },
@@ -106,18 +181,16 @@ interface GenericDetailPageProps {
   onCancel?: () => void;
   onCreateNewResource?: (viewKey: string, resourceTemplateId?: number) => void;
   onSaveComplete?: (savedItemId: string | number, savedItemTitle?: string) => void; // Callback après sauvegarde réussie
-  onEditResource?: (viewKey: string, resourceId: string | number) => void; // Callback pour éditer une ressource existante
+  onEditResource?: (viewKey: string, resourceId: string | number, templateId?: number) => void; // Callback pour éditer une ressource existante
   onDirtyChange?: (isDirty: boolean) => void; // Callback quand l'état dirty change
   pendingLinks?: PendingLink[]; // Ressources à lier automatiquement (créées dans un onglet enfant)
   onPendingLinksProcessed?: () => void; // Callback après avoir traité les pendingLinks
-  // Props pour le système d'onglets (rendus à l'intérieur après PageBanner)
-  tabs?: ResourceTabInfo[];
-  activeTabId?: string;
-  onTabChange?: (tabId: string) => void;
-  onTabClose?: (tabId: string) => void;
   updatedResources?: Record<string, { title?: string; thumbnail?: string }>; // Ressources mises à jour dans les onglets enfants
   saveLabel?: string; // Libellé personnalisé pour le bouton de sauvegarde
   resourceTree?: { root: string; children: { title: string; isActive: boolean }[] }; // Arbre de composition
+  /** Ressource parente (onglet enfant) — pré-remplit les vues hiddenInForm (ex. oa:hasTarget) */
+  parentResourceId?: string | number;
+  parentResourceTitle?: string;
 }
 
 /**
@@ -145,13 +218,11 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   onDirtyChange,
   pendingLinks,
   onPendingLinksProcessed,
-  tabs,
-  activeTabId,
-  onTabChange,
-  onTabClose,
   updatedResources,
   saveLabel,
   resourceTree,
+  parentResourceId,
+  parentResourceTitle,
 }) => {
   const { id: paramId } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -159,6 +230,19 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   // propItemId peut être undefined explicitement (nouvel item) ou une string (édition)
   const id = initialMode === 'create' && propItemId === undefined ? undefined : propItemId || paramId;
   const navigate = useNavigate();
+  const { userData } = useAuth();
+  const monEspacePath = getMonEspacePath(userData?.type);
+  const currentOmekaUserId = userData?.omekaUserId ?? (localStorage.getItem('omekaUserId') ? parseInt(localStorage.getItem('omekaUserId')!, 10) : null);
+
+  // Ressources créées par l'utilisateur dans cette session (édition au clic autorisée)
+  const [userCreatedResourceIds, setUserCreatedResourceIds] = useState<Set<string>>(() => new Set());
+  const markResourceAsUserCreated = useCallback((resourceId: string | number) => {
+    setUserCreatedResourceIds((prev) => {
+      const next = new Set(prev);
+      next.add(String(resourceId));
+      return next;
+    });
+  }, []);
 
   // Check URL for mode parameter (e.g., ?mode=edit)
   const urlMode = searchParams.get('mode') as PageMode | null;
@@ -212,6 +296,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   onDirtyChangeRef.current = onDirtyChange;
 
   const formInitializedRef = useRef(false);
+  const autoContributorAppliedRef = useRef(false);
   const prevIsDirtyRef = useRef(isDirty);
   useEffect(() => {
     // Only call if isDirty actually changed
@@ -240,16 +325,32 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
         const currentItems = formData[link.linkedField] || [];
         const linkedViewOption = config.viewOptions.find((v) => v.key === link.linkedField);
-        const linkedTemplateId = linkedViewOption?.resourceTemplateId || linkedViewOption?.resourceTemplateIds?.[0];
+        const linkedFormField = config.formFields?.find((f) => f.key === link.linkedField);
+        const linkedTemplateId =
+          linkedViewOption?.resourceTemplateId ||
+          linkedViewOption?.resourceTemplateIds?.[0] ||
+          linkedFormField?.selectionConfig?.templateId;
         const newItem = {
           id: link.resourceId,
           'o:id': link.resourceId,
           title: link.resourceTitle || getResourceFallbackTitle(link.resourceId, linkedTemplateId),
+          ownerId: currentOmekaUserId ?? undefined,
         };
         // Avoid duplicates
         const alreadyLinked = currentItems.some((item: any) => item.id === link.resourceId || item['o:id'] === link.resourceId);
         if (!alreadyLinked) {
           setValue(link.linkedField, [...currentItems, newItem]);
+          markResourceAsUserCreated(link.resourceId);
+
+          if (config.contributorButtons?.some((btn) => btn.property === link.linkedField)) {
+            const personnes: any[] = Array.isArray(formData.personnes) ? formData.personnes : [];
+            const alreadyInPersonnes = personnes.some(
+              (p: any) => String(getLinkedResourceId(p)) === String(link.resourceId),
+            );
+            if (!alreadyInPersonnes) {
+              setValue('personnes', [...personnes, newItem]);
+            }
+          }
         }
 
         // Mark as processed
@@ -266,10 +367,34 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         }
       }
     }
-  }, [pendingLinks, formData, setValue, onPendingLinksProcessed, mode, id]);
+  }, [pendingLinks, formData, setValue, onPendingLinksProcessed, mode, id, markResourceAsUserCreated, config.viewOptions, config.formFields, config.contributorButtons, currentOmekaUserId]);
 
   // Ref pour auto-save apres traitement des pendingLinks
   const shouldAutoSaveRef = useRef(false);
+
+  // Pré-remplir les vues masquées avec la ressource parente (ex. oa:hasTarget = récit parent)
+  useEffect(() => {
+    if (!parentResourceId || !isEditing) return;
+
+    config.viewOptions.forEach((view) => {
+      if (!view.hiddenInForm) return;
+
+      const current = formData[view.key];
+      const alreadyLinked =
+        Array.isArray(current) &&
+        current.some((item) => String(getLinkedResourceId(item)) === String(parentResourceId));
+
+      if (alreadyLinked) return;
+
+      setValue(view.key, [
+        {
+          id: parentResourceId,
+          'o:id': parentResourceId,
+          title: parentResourceTitle || getResourceFallbackTitle(parentResourceId),
+        },
+      ]);
+    });
+  }, [parentResourceId, parentResourceTitle, isEditing, config.viewOptions, formData, setValue]);
 
   // Get changed fields (for save)
   const getChangedFields = useCallback(() => {
@@ -284,6 +409,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     resourceTemplateIds?: number[];
     itemSetIds?: number[];
     multiSelect?: boolean;
+    pickerTitle?: string;
+    createOnly?: boolean;
   }>({
     isOpen: false,
     viewKey: '',
@@ -329,9 +456,16 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   const [loadingKeywords, setLoadingKeywords] = useState(!isCreateMode);
   const [loadingViews, setLoadingViews] = useState(!isCreateMode);
   const [selected, setSelected] = useState(config.defaultView || config.viewOptions[0]?.key || '');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [equalHeight, setEqualHeight] = useState<number | null>(null);
   const [isExitingRightColumn, setIsExitingRightColumn] = useState(false); // Pour l'animation de sortie
+
+  // État pour le sélecteur de ressources liées (champs multiselection dans le formulaire)
+  const [activeResourceField, setActiveResourceField] = useState<{
+    key: string;
+    label: string;
+    templateId: number;
+    displayMode?: 'grid' | 'alphabetic';
+  } | null>(null);
 
   // Refs
   const firstDivRef = useRef<HTMLDivElement>(null);
@@ -339,7 +473,6 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
   const handleOptionSelect = (optionKey: string) => {
     setSelected(optionKey);
-    setIsDropdownOpen(false);
   };
 
   // Callback pour déclencher l'animation de sortie avant navigation
@@ -409,12 +542,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
             setKeywords(partial.keywords);
             setLoadingKeywords(false);
           }
-          if (partial.viewData && partial.viewData.resourceCache) {
+          if (partial.viewData) {
             setViewData(partial.viewData);
-            // Si le resourceCache est rempli, les vues sont chargées
-            if (Object.keys(partial.viewData.resourceCache).length > 0) {
-              setLoadingViews(false);
-            }
           }
         });
 
@@ -509,6 +638,23 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     fetchData();
   }, [fetchData]);
 
+  // Pré-remplir l'intervenant/contributeur avec la personne connectée (templates ciblés uniquement)
+  useEffect(() => {
+    autoContributorAppliedRef.current = false;
+  }, [config.resourceTemplateId, mode]);
+
+  useEffect(() => {
+    if (mode !== 'create' || autoContributorAppliedRef.current) return;
+
+    const values = buildAutoContributorFormValues(config.resourceTemplateId, userData, {
+      includePersonnes: Boolean(config.contributorButtons?.length),
+    });
+    if (!values) return;
+
+    autoContributorAppliedRef.current = true;
+    setFormData(values);
+  }, [mode, config.resourceTemplateId, config.contributorButtons, userData, setFormData]);
+
   const handleKeywordClick = (searchTerm: string) => {
     searchModalRef.current?.openWithSearch(searchTerm);
   };
@@ -561,11 +707,23 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
               const resourceCache = itemDetails.resourceCache || {};
               const hydratedResources = linkedResources
                 .map((ref: any) => {
-                  const resourceId = ref.value_resource_id || ref['o:id'] || ref.id;
-                  if (resourceId && resourceCache[resourceId]) {
-                    return { id: resourceId, ...resourceCache[resourceId] };
+                  const resourceId = getLinkedResourceId(ref);
+                  if (!resourceId) return null;
+                  if (resourceCache[resourceId]) {
+                    return {
+                      id: resourceId,
+                      'o:id': resourceId,
+                      title: getLinkedResourceTitle({ ...resourceCache[resourceId], id: resourceId }),
+                      name: getLinkedResourceTitle({ ...resourceCache[resourceId], id: resourceId }),
+                    };
                   }
-                  return ref;
+                  return {
+                    id: resourceId,
+                    'o:id': resourceId,
+                    title: getLinkedResourceTitle(ref),
+                    name: getLinkedResourceTitle(ref),
+                    display_title: ref.display_title,
+                  };
                 })
                 .filter(Boolean);
 
@@ -579,6 +737,28 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                 extractedData.personnes = hydratedResources;
                 extractedData.actants = hydratedResources;
               }
+            }
+          }
+        }
+
+        // Item set (dropdown) : hydrater [{ id, title }] pour le sélecteur
+        if (field.type === 'selection' && field.selectionConfig?.itemSetId) {
+          const property = field.dataPath?.split('.')[0];
+          const linked = property ? itemDetails[property] : null;
+          if (Array.isArray(linked) && linked.length > 0) {
+            const resourceCache = itemDetails.resourceCache || {};
+            const entries = linked
+              .filter((entry: any) => entry?.value_resource_id)
+              .map((entry: any) => {
+                const resourceId = entry.value_resource_id;
+                const cached = resourceCache[resourceId];
+                return {
+                  id: resourceId,
+                  title: cached?.title || entry.display_title || `Item ${resourceId}`,
+                };
+              });
+            if (entries.length > 0) {
+              extractedData[field.key] = field.selectionConfig.multiple ? entries : [entries[0]];
             }
           }
         }
@@ -657,8 +837,19 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     }
 
     if (mode === 'create') {
-      // En mode create, retourner à la page précédente par défaut
-      navigate(-1);
+      // Si l'onglet a été ouvert depuis un picker, on le ferme simplement
+      const pickerParams = new URLSearchParams(window.location.search);
+      if (pickerParams.get('fromPicker') === '1' && window.opener) {
+        window.close();
+        return;
+      }
+      if (config.formOnly) {
+        navigate(monEspacePath);
+      } else {
+        navigate(-1);
+      }
+    } else if (config.formOnly) {
+      navigate(monEspacePath);
     } else {
       setMode('view');
     }
@@ -686,8 +877,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
           const viewData = formData[viewKey];
           if (viewData !== undefined && viewData !== null) {
             changedData[viewKey] = viewData;
-            // Aussi stocker sous la propriété Omeka S pour les champs texte
-            if (typeof viewData === 'string') {
+            // Synchroniser la propriété Omeka (évite qu'une copie stale de formData écrase la vue)
+            if (typeof viewData === 'string' || Array.isArray(viewData)) {
               changedData[property] = viewData;
             }
           }
@@ -749,6 +940,11 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       setMediaFiles([]);
       setRemovedMediaIndexes([]);
 
+      if (config.formOnly) {
+        navigate(monEspacePath);
+        return;
+      }
+
       setMode('view');
       // Refresh data
       fetchData();
@@ -797,44 +993,44 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     const writtenOmekaProperties = new Set<string>();
 
     Object.entries(data).forEach(([key, value]) => {
-      // Si c'est un tableau de ressources liées (objets avec id ou o:id ou value_resource_id)
-      const firstItem = Array.isArray(value) && value.length > 0 ? (value as any[])[0] : null;
-      if (firstItem && (firstItem.id !== undefined || firstItem['o:id'] !== undefined || firstItem.value_resource_id !== undefined)) {
-        // Chercher la propriété Omeka correspondante
-        let omekaPropertyKey = findOmekaPropertyKey(updatedItem, key);
+      const viewMappedProperty = config.viewKeyToProperty?.[key];
+      const isViewOmekaProperty =
+        viewMappedProperty == null &&
+        config.viewKeyToProperty != null &&
+        Object.values(config.viewKeyToProperty).includes(key);
+      const isResourceArray =
+        Array.isArray(value) &&
+        (viewMappedProperty != null ||
+          isViewOmekaProperty ||
+          (value.length > 0 &&
+            (value[0]?.id !== undefined ||
+              value[0]?.['o:id'] !== undefined ||
+              value[0]?.value_resource_id !== undefined)));
+
+      if (isResourceArray) {
+        let omekaPropertyKey = viewMappedProperty || key;
         let propertyId: number | null = null;
 
-        // Ne pas écraser une propriété Omeka déjà traitée (ex: 'references' après 'dcterms:references')
-        if (omekaPropertyKey && writtenOmekaProperties.has(omekaPropertyKey)) {
+        if (writtenOmekaProperties.has(omekaPropertyKey)) {
           return;
         }
 
-        // Si la propriété existe dans l'item, récupérer le propertyId
-        if (omekaPropertyKey && updatedItem[omekaPropertyKey] && Array.isArray(updatedItem[omekaPropertyKey])) {
-          const firstOriginal = updatedItem[omekaPropertyKey][0];
-          propertyId = firstOriginal?.property_id;
-        }
-        // Sinon, chercher dans le template (pour les nouvelles propriétés comme keywords)
-        else {
-          // Mapping des clés vers les propriétés Omeka
+        if (updatedItem[omekaPropertyKey] && Array.isArray(updatedItem[omekaPropertyKey]) && updatedItem[omekaPropertyKey].length > 0) {
+          propertyId = updatedItem[omekaPropertyKey][0]?.property_id ?? null;
+        } else {
           const keyToOmekaProp: Record<string, string> = {
             keywords: 'jdc:hasConcept',
             personnes: 'schema:agent',
             actants: 'jdc:hasActant',
-            // Propriétés pour les ressources liées (outils, feedbacks, etc.)
             'theatre:credit': 'theatre:credit',
             'schema:description': 'schema:description',
-            'Outils': 'theatre:credit', // Support ancien
-            'Feedback': 'schema:description', // Support ancien
-            // Propriétés pour les bibliographies/références
             references: 'dcterms:references',
             'dcterms:references': 'dcterms:references',
             'dcterms:bibliographicCitation': 'dcterms:bibliographicCitation',
           };
-          const fallbackProp = keyToOmekaProp[key] || key; // Utiliser la clé directement si pas de mapping
+          const fallbackProp = config.viewKeyToProperty?.[key] || keyToOmekaProp[key] || key;
 
-          // Vérifier aussi le writtenOmekaProperties pour le fallback
-          if (fallbackProp && writtenOmekaProperties.has(fallbackProp)) {
+          if (writtenOmekaProperties.has(fallbackProp)) {
             return;
           }
 
@@ -845,19 +1041,22 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         }
 
         if (omekaPropertyKey && propertyId) {
-          // Remplacer complètement les ressources liées (permet ajouts ET suppressions)
-          updatedItem[omekaPropertyKey] = (value as any[]).map((item: any) => ({
-            type: 'resource',
-            property_id: propertyId,
-            value_resource_id: item.id || item['o:id'] || item.value_resource_id,
-            is_public: true,
-          })).filter((item: any) => item.value_resource_id);
+          updatedItem[omekaPropertyKey] = (value as any[])
+            .map((item: any) => ({
+              type: 'resource',
+              property_id: propertyId,
+              value_resource_id: item.id || item['o:id'] || item.value_resource_id,
+              is_public: true,
+            }))
+            .filter((item: any) => item.value_resource_id);
           writtenOmekaProperties.add(omekaPropertyKey);
         }
+        return;
       }
+
       // Si c'est une valeur texte simple
-      else if (typeof value === 'string') {
-        const omekaPropertyKey = findOmekaPropertyKey(updatedItem, key);
+      if (typeof value === 'string') {
+        const omekaPropertyKey = getFormFieldOmekaProperty(key) || findOmekaPropertyKey(updatedItem, key);
         if (omekaPropertyKey) {
           // Détecter si c'est une propriété URL (schema:url, etc.)
           const isUrlProperty = omekaPropertyKey === 'schema:url' || key === 'fullUrl' || key === 'externalLink' || key === 'url';
@@ -903,7 +1102,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       }
       // Si c'est une valeur numérique
       else if (typeof value === 'number') {
-        const omekaPropertyKey = findOmekaPropertyKey(updatedItem, key);
+        const omekaPropertyKey = getFormFieldOmekaProperty(key) || findOmekaPropertyKey(updatedItem, key);
         if (omekaPropertyKey) {
           if (updatedItem[omekaPropertyKey] && Array.isArray(updatedItem[omekaPropertyKey]) && updatedItem[omekaPropertyKey].length > 0) {
             // La propriété existe, mettre à jour
@@ -928,7 +1127,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
     // 4. Envoyer la mise à jour
     console.log('[saveToOmekaS] Sending PUT request...');
-    const saveUrl = `${API_BASE}items/${id}?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
+    const saveUrl = omekaApiUrl(`${API_BASE}items/${id}`);
     const saveResponse = await fetch(saveUrl, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -957,7 +1156,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
             continue;
           }
 
-          const mediaUrl = `${API_BASE}media?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
+          const mediaUrl = omekaApiUrl(`${API_BASE}media`);
           const mediaResponse = await fetch(mediaUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1001,7 +1200,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
             );
             formData.append('file[0]', file);
 
-            const mediaUrl = `${API_BASE}media?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
+            const mediaUrl = omekaApiUrl(`${API_BASE}media`);
             const mediaResponse = await fetch(mediaUrl, {
               method: 'POST',
               body: formData,
@@ -1023,6 +1222,11 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   };
 
   // Trouver la clé de propriété Omeka correspondante
+  const getFormFieldOmekaProperty = (fieldKey: string): string | null => {
+    const field = config.formFields?.find((f) => f.key === fieldKey);
+    return field?.dataPath?.split('.')[0] ?? null;
+  };
+
   const findOmekaPropertyKey = (rawItem: any, simpleKey: string): string | null => {
     // Mapping des clés simples vers les propriétés Omeka
     const keyMappings: Record<string, string[]> = {
@@ -1114,34 +1318,52 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       ];
     }
 
-    // Ajouter l'utilisateur connecté comme créateur/contributeur
-    if (userId) {
-      // Chercher la bonne propriété pour le créateur selon le template
-      let creatorProp = 'dcterms:creator';
-      if (propMap['schema:agent']) {
-        creatorProp = 'schema:agent';
-      } else if (propMap['schema:contributor']) {
-        creatorProp = 'schema:contributor';
-      } else if (propMap['dcterms:contributor']) {
-        creatorProp = 'dcterms:contributor';
-      } else if (propMap['jdc:hasActant']) {
-        creatorProp = 'jdc:hasActant';
-      } else if (propMap['dcterms:creator']) {
-        creatorProp = 'dcterms:creator';
-      }
+    // Contributeur/intervenant = personne connectée (analyse critique, expérimentation, feedback, outils)
+    const autoContributor = getAutoContributorConfig(config.resourceTemplateId);
+    if (autoContributor) {
+      const formContributors = data[autoContributor.fieldKey] ?? data[autoContributor.property];
+      const linkedIds: number[] = Array.isArray(formContributors)
+        ? formContributors
+            .map((item: any) => item?.id ?? item?.['o:id'] ?? item?.value_resource_id)
+            .filter((id: unknown) => id != null)
+            .map((id: unknown) => parseInt(String(id), 10))
+            .filter((id: number) => Number.isFinite(id))
+        : [];
 
-      const creatorPropertyId = propMap[creatorProp];
-      if (creatorPropertyId) {
-        itemData[creatorProp] = [
+      const contributorId =
+        linkedIds[0] ?? (userId ? parseInt(userId, 10) : buildConnectedUserContributorItem(userData)?.id);
+
+      const contributorPropertyId = getPropertyId(autoContributor.property, propMap);
+      if (contributorId && contributorPropertyId) {
+        itemData[autoContributor.property] = [
           {
             type: 'resource',
-            property_id: creatorPropertyId,
-            value_resource_id: parseInt(userId, 10),
+            property_id: contributorPropertyId,
+            value_resource_id: contributorId,
             is_public: true,
           },
         ];
       }
     }
+
+    // Mapper les champs ressource liées (multiselection) du formulaire
+    config.formFields?.forEach((field) => {
+      if (field.type !== 'multiselection') return;
+      const value = data[field.key];
+      if (!Array.isArray(value) || value.length === 0) return;
+      const propertyName = field.dataPath.split('.')[0];
+      if (itemData[propertyName]) return;
+      const propertyId = getPropertyId(propertyName, propMap);
+      if (!propertyId) return;
+      itemData[propertyName] = value
+        .map((item: any) => ({
+          type: 'resource',
+          property_id: propertyId,
+          value_resource_id: item.id || item['o:id'] || item.value_resource_id,
+          is_public: true,
+        }))
+        .filter((item: any) => item.value_resource_id);
+    });
 
     // Mapper les champs du formulaire vers le format Omeka S
     config.formFields?.forEach((field) => {
@@ -1149,6 +1371,25 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       if (value !== undefined && value !== '' && value !== null) {
         const propertyName = field.dataPath.split('.')[0];
         const propertyId = getPropertyId(propertyName, propMap);
+
+        if (field.type === 'multiselection') {
+          return;
+        }
+
+        if (field.type === 'selection') {
+          const items = Array.isArray(value) ? value : [];
+          if (items.length > 0 && propertyId) {
+            itemData[propertyName] = items
+              .map((item: any) => ({
+                type: 'resource',
+                property_id: propertyId,
+                value_resource_id: item.id || item['o:id'] || item.value_resource_id,
+                is_public: true,
+              }))
+              .filter((item: any) => item.value_resource_id);
+          }
+          return;
+        }
 
         if (field.type === 'url') {
           // Les URLs sont des ressources URI
@@ -1408,7 +1649,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
           };
           if (cit.startTime) citData['schema:startTime'] = [{ type: 'numeric:integer', property_id: 1417, '@value': cit.startTime, is_public: true }];
           if (cit.endTime) citData['schema:endTime'] = [{ type: 'numeric:integer', property_id: 735, '@value': cit.endTime, is_public: true }];
-          const citResponse = await fetch(`${API_BASE}items?key_identity=${API_IDENT}&key_credential=${API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(citData) });
+          const citResponse = await fetch(omekaApiUrl(`${API_BASE}items`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(citData) });
           if (citResponse.ok) {
             const citResult = await citResponse.json();
             citationIds.push(citResult['o:id']);
@@ -1434,7 +1675,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
           if (mr.description) mrData['dcterms:description'] = [{ type: 'literal', property_id: 4, '@value': mr.description, is_public: true }];
           if (mr.startTime) mrData['schema:startTime'] = [{ type: 'numeric:integer', property_id: 1417, '@value': mr.startTime, is_public: true }];
           if (mr.endTime) mrData['schema:endTime'] = [{ type: 'numeric:integer', property_id: 735, '@value': mr.endTime, is_public: true }];
-          const mrResponse = await fetch(`${API_BASE}items?key_identity=${API_IDENT}&key_credential=${API_KEY}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(mrData) });
+          const mrResponse = await fetch(omekaApiUrl(`${API_BASE}items`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(mrData) });
           if (mrResponse.ok) {
             const mrResult = await mrResponse.json();
             mrIds.push(mrResult['o:id']);
@@ -1464,7 +1705,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
     console.log('[createInOmekaS] Item data to send:', itemData);
 
-    const createUrl = `${API_BASE}items?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
+    const createUrl = omekaApiUrl(`${API_BASE}items`);
     const response = await fetch(createUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1472,9 +1713,13 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({}));
       console.error('[createInOmekaS] Creation failed:', errorData);
-      throw new Error(errorData.errors?.[0]?.message || 'Échec de la création');
+      throw new Error(
+        omekaAuthErrorMessage(response.status) ||
+          errorData.errors?.[0]?.message ||
+          'Échec de la création',
+      );
     }
 
     const result = await response.json();
@@ -1499,7 +1744,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
             );
             formData.append('file[0]', file);
 
-            const mediaUrl = `${API_BASE}media?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
+            const mediaUrl = omekaApiUrl(`${API_BASE}media`);
             const mediaResponse = await fetch(mediaUrl, {
               method: 'POST',
               body: formData,
@@ -1531,7 +1776,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
             continue;
           }
 
-          const mediaUrl = `${API_BASE}media?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
+          const mediaUrl = omekaApiUrl(`${API_BASE}media`);
           const mediaResponse = await fetch(mediaUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1556,60 +1801,139 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       }
     }
 
-    // Si onSaveComplete est défini (mode onglets), notifier et ne pas naviguer
+    const savedTitle = data.title || result?.['o:title'] || result?.['dcterms:title']?.[0]?.['@value'];
+
+    // Si la page a été ouverte depuis un picker (window.open), notifier le parent et fermer
+    const pickerParams = new URLSearchParams(window.location.search);
+    if (pickerParams.get('fromPicker') === '1' && window.opener) {
+      window.opener.postMessage(
+        { type: 'RESOURCE_CREATED', id: newItemId, title: savedTitle || `Item ${newItemId}` },
+        window.location.origin,
+      );
+      window.close();
+      return result;
+    }
+
+    // Si onSaveComplete est défini (mode onglets), notifier — la navigation est gérée par le wrapper
     if (onSaveComplete) {
-      // Récupérer le titre depuis les données ou le résultat
-      const savedTitle = data.title || result?.['o:title'] || result?.['dcterms:title']?.[0]?.['@value'];
       onSaveComplete(newItemId, savedTitle);
       return result;
     }
 
-    // Sinon, rediriger comme avant
-    let redirectPath = `/espace-etudiant/`;
+    if (config.formOnly) {
+      navigate(monEspacePath);
+      return result;
+    }
 
-    navigate(redirectPath);
+    navigate('/espace-etudiant/');
     return result;
   };
 
-  // Handle opening resource picker for a view
-  const handleLinkExisting = (viewKey: string) => {
-    const viewOption = config.viewOptions.find((v) => v.key === viewKey);
+  // Handle opening resource picker for a view, or an internal child tab when onCreateNewResource is available
+  const openLinkedResourceCreate = useCallback(
+    (viewKey: string, options?: { resourceTemplateIds?: number[]; pickerTitle?: string }) => {
+      const viewOption = config.viewOptions.find((v) => v.key === viewKey);
 
-    // Template IDs par défaut pour les types courants
-    const defaultTemplateIds: Record<string, number> = {
-      personnes: 96, // Template des actants/personnes (pas 35)
-      actants: 96, // Template des actants
-      keywords: 34, // Template des mots-clés
-    };
+      const defaultTemplateIds: Record<string, number> = {
+        keywords: 34,
+      };
+      const defaultMultiTemplateIds: Record<string, number[]> = {
+        personnes: [...DEFAULT_AUTHOR_TEMPLATE_IDS],
+        actants: [...DEFAULT_AUTHOR_TEMPLATE_IDS],
+      };
 
-    // Vérifier si on a plusieurs template IDs (pour les références bibliographiques/médiagraphiques)
-    const resourceTemplateIds = viewOption?.resourceTemplateIds;
-    const resourceTemplateId = viewOption?.resourceTemplateId || defaultTemplateIds[viewKey];
-    const itemSetIds = viewOption?.itemSetIds;
+      const resourceTemplateIds =
+        options?.resourceTemplateIds ?? viewOption?.resourceTemplateIds ?? defaultMultiTemplateIds[viewKey];
+      const resourceTemplateId = resolveViewResourceTemplateId(viewKey, viewOption, options, {
+        single: defaultTemplateIds,
+        multi: defaultMultiTemplateIds,
+      });
+      const itemSetIds = viewOption?.itemSetIds;
+      const createOnly = isCreateOnlyView(viewOption, resourceTemplateId);
 
-    setPickerState({
-      isOpen: true,
-      viewKey,
-      resourceTemplateId,
-      resourceTemplateIds,
-      itemSetIds,
-      multiSelect: true,
+      // Create-only (analyse critique, retour d'expérience…) → nouvel onglet interne empilé
+      if (createOnly && onCreateNewResource && resourceTemplateId) {
+        onCreateNewResource(viewKey, resourceTemplateId);
+        return;
+      }
+
+      if (createOnly && !onCreateNewResource) {
+        setPickerState({
+          isOpen: true,
+          viewKey,
+          resourceTemplateId,
+          resourceTemplateIds: undefined,
+          itemSetIds,
+          multiSelect: false,
+          pickerTitle: options?.pickerTitle,
+          createOnly: true,
+        });
+        return;
+      }
+
+      setPickerState({
+        isOpen: true,
+        viewKey,
+        resourceTemplateId,
+        resourceTemplateIds,
+        itemSetIds,
+        multiSelect: true,
+        pickerTitle: options?.pickerTitle,
+        createOnly: false,
+      });
+    },
+    [config.viewOptions, onCreateNewResource],
+  );
+
+  const handleLinkExisting = openLinkedResourceCreate;
+
+  const handleCreateNewFromView = useCallback(
+    (viewKey: string) => {
+      openLinkedResourceCreate(viewKey);
+    },
+    [openLinkedResourceCreate],
+  );
+
+  const handlePickerCreateInTab = useCallback(() => {
+    if (!pickerState.viewKey || !onCreateNewResource) return;
+    const viewOption = config.viewOptions.find((v) => v.key === pickerState.viewKey);
+    const templateId =
+      pickerState.resourceTemplateId ??
+      pickerState.resourceTemplateIds?.[0] ??
+      viewOption?.resourceTemplateId ??
+      viewOption?.resourceTemplateIds?.[0];
+    if (!templateId) return;
+    onCreateNewResource(pickerState.viewKey, templateId);
+    setPickerState({ isOpen: false, viewKey: '' });
+  }, [pickerState.viewKey, pickerState.resourceTemplateId, pickerState.resourceTemplateIds, config.viewOptions, onCreateNewResource]);
+
+  const handleFieldCreateInTab = useCallback(() => {
+    if (!activeResourceField || !onCreateNewResource) return;
+    onCreateNewResource(activeResourceField.key, activeResourceField.templateId);
+    setActiveResourceField(null);
+  }, [activeResourceField, onCreateNewResource]);
+
+  const pickerAllowsCreate = useMemo(() => {
+    if (!pickerState.isOpen) return false;
+    if (pickerState.itemSetIds?.length) return true;
+    const ids =
+      pickerState.resourceTemplateIds ||
+      (pickerState.resourceTemplateId ? [pickerState.resourceTemplateId] : []);
+    return ids.some((id) => {
+      const cfg = getResourceConfigByTemplateId(id);
+      return cfg?.createUrl || QUICK_CREATE_CONFIGS[id];
     });
-  };
+  }, [pickerState]);
 
-  // Handle creating a new resource (opens new tab)
-  const handleCreateNew = (viewKey: string) => {
-    const viewOption = config.viewOptions.find((v) => v.key === viewKey);
-    // Si la vue utilise des item sets, ouvrir la modale de création rapide
-    if (viewOption?.itemSetIds && viewOption.itemSetIds.length > 0) {
-      setCreateItemSetModalState({ isOpen: true, viewKey, itemSetIds: viewOption.itemSetIds });
-      return;
-    }
-    const templateId = viewOption?.resourceTemplateId || viewOption?.resourceTemplateIds?.[0];
-    if (onCreateNewResource) {
-      onCreateNewResource(viewKey, templateId);
-    }
-  };
+  const handlePickerCreateOverride = useCallback(() => {
+    if (!pickerState.itemSetIds?.length || !pickerState.viewKey) return;
+    setPickerState({ isOpen: false, viewKey: '' });
+    setCreateItemSetModalState({
+      isOpen: true,
+      viewKey: pickerState.viewKey,
+      itemSetIds: pickerState.itemSetIds,
+    });
+  }, [pickerState.viewKey, pickerState.itemSetIds]);
 
   // État pour la modale de création d'item dans un item set
   const [createItemSetModalState, setCreateItemSetModalState] = useState<{
@@ -1628,7 +1952,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         'o:item_set': createItemSetModalState.itemSetIds.map((id) => ({ 'o:id': id })),
         'dcterms:title': [{ type: 'literal', '@value': createItemSetTitle.trim(), property_id: 1, is_public: true }],
       };
-      const url = `${API_BASE}items?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
+      const url = omekaApiUrl(`${API_BASE}items`);
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1652,43 +1976,123 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   };
 
   // Delete Modal State
-  const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; viewKey: string; itemId: string | number | null; itemTitle?: string }>({
+  const [deleteModalState, setDeleteModalState] = useState<{
+    isOpen: boolean;
+    viewKey: string;
+    itemId: string | number | null;
+    itemTitle?: string;
+    hardDelete?: boolean;
+  }>({
     isOpen: false,
     viewKey: '',
     itemId: null,
     itemTitle: '',
+    hardDelete: false,
   });
+  const [isDeletingLinkedItem, setIsDeletingLinkedItem] = useState(false);
 
-  // Handle removing an item from a view (opens confirmation modal)
-  const handleRemoveItem = (viewKey: string, itemId: string | number) => {
-    // Find the item to get its title
-    const currentItems = formData[viewKey] || itemDetails?.[viewKey] || [];
-    const itemToDelete = currentItems.find((item: any) => item.id === itemId);
-    const itemTitle = itemToDelete?.title || '';
-    
-    setDeleteModalState({ isOpen: true, viewKey, itemId, itemTitle });
-  };
+  /** Liste courante d'une vue liée (formData > viewKey > propriété Omeka) */
+  const resolveLinkedItemsForView = useCallback(
+    (viewKey: string): any[] => {
+      if (formData[viewKey] !== undefined) {
+        return Array.isArray(formData[viewKey]) ? formData[viewKey] : [];
+      }
+      if (Array.isArray(itemDetails?.[viewKey])) {
+        return itemDetails[viewKey];
+      }
+      const property = config.viewKeyToProperty?.[viewKey];
+      if (property && Array.isArray(itemDetails?.[property])) {
+        const resourceCache = itemDetails.resourceCache || {};
+        return itemDetails[property]
+          .map((ref: any) => {
+            const resourceId = getLinkedResourceId(ref);
+            if (resourceId == null) return null;
+            const cached = resourceCache[resourceId];
+            return {
+              id: resourceId,
+              'o:id': resourceId,
+              value_resource_id: ref.value_resource_id ?? resourceId,
+              title: cached
+                ? getLinkedResourceTitle({ ...cached, id: resourceId })
+                : getLinkedResourceTitle(ref),
+              ownerId: getResourceOwnerId(cached) ?? getResourceOwnerId(ref),
+            };
+          })
+          .filter(Boolean);
+      }
+      return [];
+    },
+    [formData, itemDetails, config.viewKeyToProperty],
+  );
 
-  // Confirm deletion
-  const handleConfirmDelete = () => {
-    const { viewKey, itemId } = deleteModalState;
-    if (itemId !== null) {
-      // Update the formData to remove the item
-      const currentItems = formData[viewKey] || itemDetails?.[viewKey] || [];
+  const unlinkItemFromView = useCallback(
+    (viewKey: string, itemId: string | number) => {
+      const currentItems = resolveLinkedItemsForView(viewKey);
       const updatedItems = currentItems.filter((item: any) => {
         const id = item.id || item['o:id'] || item.value_resource_id;
         return id !== itemId && String(id) !== String(itemId);
       });
       setValue(viewKey, updatedItems);
-      
+    },
+    [resolveLinkedItemsForView, setValue],
+  );
+
+  /** Délier (transverse) = immédiat ; analyse / retour = popup + suppression Omeka */
+  const handleRemoveItem = (viewKey: string, itemId: string | number) => {
+    const currentItems = resolveLinkedItemsForView(viewKey);
+    const itemToDelete = currentItems.find((item: any) => {
+      const id = item.id || item['o:id'] || item.value_resource_id;
+      return id === itemId || String(id) === String(itemId);
+    });
+
+    const viewOption = config.viewOptions.find((v) => v.key === viewKey);
+    const templateId = resolveViewResourceTemplateId(viewKey, viewOption);
+    const hardDelete = shouldHardDeleteLinkedResource(templateId);
+
+    if (!hardDelete) {
+      unlinkItemFromView(viewKey, itemId);
+      return;
+    }
+
+    if (!canDeleteLinkedResource(itemToDelete, currentOmekaUserId, userCreatedResourceIds)) {
+      addToast({
+        title: 'Action non autorisée',
+        description: 'Seul le propriétaire de la ressource peut la supprimer.',
+        classNames: { base: 'bg-warning', title: 'text-c6', description: 'text-c5', icon: 'text-c6' },
+      });
+      return;
+    }
+
+    const itemTitle = itemToDelete?.title || getLinkedResourceTitle(itemToDelete) || '';
+    setDeleteModalState({ isOpen: true, viewKey, itemId, itemTitle, hardDelete: true });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { viewKey, itemId } = deleteModalState;
+    if (itemId === null) return;
+
+    setIsDeletingLinkedItem(true);
+    try {
+      await deleteUserResource(itemId);
+      unlinkItemFromView(viewKey, itemId);
+
       addToast({
         title: 'Suppression réussie',
-        description: "L'élément a été retiré de la liste.",
+        description: "L'élément a été supprimé définitivement.",
         classNames: { base: 'bg-success', title: 'text-c6', description: 'text-c6', icon: 'text-c6' },
         timeout: 2000,
       });
+      setDeleteModalState({ isOpen: false, viewKey: '', itemId: null, hardDelete: false });
+    } catch (error) {
+      console.error('Error deleting linked resource:', error);
+      addToast({
+        title: 'Erreur',
+        description: error instanceof Error ? error.message : 'Une erreur est survenue lors de la suppression.',
+        classNames: { base: 'bg-danger', title: 'text-c6', description: 'text-c5', icon: 'text-c6' },
+      });
+    } finally {
+      setIsDeletingLinkedItem(false);
     }
-    setDeleteModalState({ isOpen: false, viewKey: '', itemId: null });
   };
 
   // Handle items change (for text views)
@@ -1705,7 +2109,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   // Handle resource selection from picker
   const handleResourceSelect = (resources: any[]) => {
     const { viewKey, resourceTemplateId } = pickerState;
-    const currentItems = formData[viewKey] || itemDetails?.[viewKey] || [];
+    const currentItems = resolveLinkedItemsForView(viewKey);
 
     // Normaliser les ressources Omeka S vers le format interne attendu par les composants
     const normalizedResources = resources.map((r) => {
@@ -1715,13 +2119,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       // Déterminer le type basé sur le template ID
       let type = r.type;
       if (!type && templateId) {
-        // Templates de médiagraphies: 99, 98
-        // Templates de bibliographies: 81, 83
-        if ([99, 98].includes(templateId)) {
-          type = 'mediagraphie';
-        } else if ([81, 83].includes(templateId)) {
-          type = 'bibliographie';
-        }
+        type = TEMPLATE_ID_TO_TYPE[Number(templateId)];
       }
 
       // Récupérer l'image/thumbnail
@@ -1739,6 +2137,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         // Conserver les données brutes Omeka S pour la sauvegarde
         '@id': r['@id'],
         'o:id': r['o:id'] || r.id,
+        _sessionCreated: r._sessionCreated,
         // Conserver le template ID et le type pour les filtres de références
         resource_template_id: templateId,
         type: type,
@@ -1747,7 +2146,11 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     });
 
     const updatedItems = [...currentItems, ...normalizedResources];
-    console.log('[handleResourceSelect] updatedItems:', updatedItems);
+    normalizedResources.forEach((r) => {
+      if (r._sessionCreated && r.id != null) {
+        markResourceAsUserCreated(r.id);
+      }
+    });
     setValue(viewKey, updatedItems);
     setPickerState({ isOpen: false, viewKey: '' });
   };
@@ -1855,13 +2258,15 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       // Edit mode context
       isEditing: isEditing && viewOption.editable !== false,
       onLinkExisting: handleLinkExisting,
-      onCreateNew: handleCreateNew,
+      onCreateNew: handleCreateNewFromView,
       onRemoveItem: handleRemoveItem,
       onItemsChange: handleItemsChange,
       onEditResource: onEditResource, // Pass callback to view
       formData, // Pour que les vues texte puissent lire les valeurs éditées
       onNavigate: handleRightColumnNavigate, // Pour déclencher l'animation de sortie
       updatedResources, // Passer les mises à jour
+      userCreatedResourceIds,
+      currentOmekaUserId,
     });
 
     // Return null if content is null or undefined
@@ -1877,6 +2282,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     isEditing,
     updatedResources,
     onEditResource,
+    handleCreateNewFromView,
+    currentOmekaUserId,
   ]);
 
   // Helper function to extract text from a React element recursively
@@ -1919,7 +2326,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     // Check for EmptyState component structure: div with text-center, bg-c2, border-c3
     // This matches the EmptyState component structure exactly
     const className = typeof props?.className === 'string' ? props.className : '';
-    const hasEmptyStateStructure = className.includes('text-center') && className.includes('bg-c2') && className.includes('border-c3') && className.includes('rounded-[12px]');
+    const hasEmptyStateStructure = className.includes('text-center') && className.includes('bg-c2') && className.includes('border-c3') && className.includes('rounded-xl');
 
     if (hasEmptyStateStructure) {
       // Extract all text from the element recursively
@@ -1977,13 +2384,19 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   };
 
   // Helper function to check if a single view has content
-  const viewHasContent = (viewOption: any): boolean => {
+  const viewHasRenderableContent = (viewOption: ViewOption | undefined): boolean => {
+    if (!viewOption) return false;
+
     // In edit mode, always show editable views
     if (isEditing && viewOption.editable !== false) {
       return true;
     }
 
-    if (!viewOption || !viewOption.renderContent) {
+    if (viewOption.getItemCount && itemDetails) {
+      return viewOption.getItemCount(itemDetails, isEditing ? formData : undefined) > 0;
+    }
+
+    if (!viewOption.renderContent) {
       return false;
     }
 
@@ -1991,6 +2404,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       itemDetails,
       viewData,
       loading: false,
+      loadingViews,
       onTimeChange: handleTimeChange,
       isEditing: false, // Check content availability in view mode
     });
@@ -2055,9 +2469,14 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       return [];
     }
 
+    const excludeFormHiddenViews = (views: typeof config.viewOptions) => {
+      if (!isEditing) return views;
+      return views.filter((viewOption) => !viewOption.hiddenInForm);
+    };
+
     // In create mode, show all editable views (no itemDetails to check)
     if (mode === 'create') {
-      return config.viewOptions.filter((viewOption) => viewOption.editable !== false);
+      return excludeFormHiddenViews(config.viewOptions.filter((viewOption) => viewOption.editable !== false));
     }
 
     if (!itemDetails || loading) {
@@ -2065,8 +2484,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     }
 
     // Filter views to only include those with content (or all editable in edit mode)
-    return config.viewOptions.filter((viewOption) => viewHasContent(viewOption));
-  }, [itemDetails, loading, config.viewOptions, isEditing, mode]);
+    return excludeFormHiddenViews(config.viewOptions.filter((viewOption) => viewHasRenderableContent(viewOption)));
+  }, [itemDetails, loading, loadingViews, config.viewOptions, isEditing, mode, formData]);
 
   // Ensure selected view is available, if not select the first available view
   useEffect(() => {
@@ -2085,31 +2504,37 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   const OverviewSkeleton = config.overviewSkeleton;
   const DetailsSkeleton = config.detailsSkeleton;
 
-  const shouldShowRightColumn = config.viewOptions && config.viewOptions.length > 0 && !(isEditing && config.editSingleColumn);
+  const shouldShowRightColumn =
+    (mode === 'create' || isEditing ? availableViews.length : (config.viewOptions?.length ?? 0)) > 0 &&
+    !config.editSingleColumn;
   const useSingleColumnEdit = isEditing && config.editSingleColumn;
+  /** Formulaire ou page sans colonne droite → contenu centré (outil, organisation, etc.) */
+  const useCenteredSingleColumn = config.editSingleColumn || (isEditing && !shouldShowRightColumn);
   const leftColumnSpan = shouldShowRightColumn ? 'col-span-10 lg:col-span-6' : 'col-span-10';
-  const singleColumnEditShell = useSingleColumnEdit ? 'w-2/3 mx-auto flex flex-col gap-12' : 'flex flex-col gap-[25px] w-full';
+  const centeredShellClass = useCenteredSingleColumn ? 'w-full max-w-3xl' : 'w-full';
+  const leftColumnOuterClassName = `${leftColumnSpan}${useCenteredSingleColumn ? ' flex justify-center' : ''}`;
+  const leftColumnInnerClassName = `${centeredShellClass} flex flex-col gap-5 h-fit`;
+  const singleColumnEditShell = useCenteredSingleColumn ? 'w-full flex flex-col gap-12' : 'flex flex-col gap-6 w-full';
 
-  // Use availableViews instead of config.viewOptions for the selected option
-  const selectedOption = availableViews.find((option) => option.key === selected);
+  // Titre / métadonnées de la vue sélectionnée (availableViews ou config complète)
+  const selectedOption =
+    availableViews.find((option) => option.key === selected) ??
+    config.viewOptions.find((option) => option.key === selected);
 
   const renderViewsPanel = (options?: { compact?: boolean }) => (
-    <div className={`flex w-full flex-col gap-[20px] flex-grow ${options?.compact ? '' : 'min-h-0 overflow-hidden'}`}>
-      <div className='flex items-center justify-between w-full'>
-        <h2 className='text-[24px] font-medium text-c6'>{selectedOption?.title}</h2>
+    <div className={`flex w-full flex-col gap-5 flex-grow ${options?.compact ? '' : 'min-h-0 overflow-hidden'}`}>
+      <div className='flex items-center justify-between gap-3 w-full min-w-0'>
+        <h2 className='text-2xl font-medium text-c6 truncate flex-1 min-w-0'>{selectedOption?.title}</h2>
 
-        <div className='relative'>
-          <Dropdown>
-            <DropdownTrigger className='p-0'>
-              <div
-                className='hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 flex flex-row rounded-[8px] border-2 border-c3 items-center justify-center px-[15px] py-[10px] text-[16px] gap-[10px] text-c6 transition-all ease-in-out duration-200'
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-                <span className='text-[16px] font-normal text-c6'>Autres choix</span>
-                <ArrowIcon size={12} className='rotate-90 text-c6' />
-              </div>
-            </DropdownTrigger>
+        <Dropdown classNames={dropdownContentClassNames}>
+          <DropdownTrigger className='shrink-0 p-0 bg-transparent border-0 data-[hover=true]:bg-transparent'>
+            <div className={dropdownTriggerButtonClass}>
+              <span className='text-base font-normal text-c6 whitespace-nowrap'>Autres choix</span>
+              <ArrowIcon size={12} className='rotate-90 text-c6 shrink-0' />
+            </div>
+          </DropdownTrigger>
 
-            <DropdownMenu aria-label='View options' className='p-[10px] bg-c2 rounded-[12px]'>
+            <DropdownMenu aria-label='View options' className='p-2' classNames={dropdownMenuClassNames}>
               {(availableViews.length > 0 ? availableViews : config.viewOptions).map((option) => {
                 const isAvailable = availableViews.some((v) => v.key === option.key);
                 const isLoading = loadingViews && !isAvailable;
@@ -2117,30 +2542,34 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                 return (
                   <DropdownItem
                     key={option.key}
-                    className={`p-0 ${selected === option.key ? 'bg-action' : ''}`}
-                    onClick={() => handleOptionSelect(option.key)}
+                    className={dropdownMenuItemClass}
+                    onPress={() => handleOptionSelect(option.key)}
                     isDisabled={isLoading}>
                     <div
-                      className={`flex items-center w-full px-[15px] py-[10px] rounded-[8px] transition-all ease-in-out duration-200 ${
-                        isLoading ? 'text-c4 cursor-not-allowed' : selected === option.key ? 'bg-action text-selected font-medium' : 'text-c6 hover:bg-c3'
+                      className={`flex items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 ${
+                        isLoading
+                          ? 'text-c4 cursor-not-allowed'
+                          : selected === option.key
+                            ? 'bg-action text-selected font-medium'
+                            : 'text-c6 hover:bg-c3'
                       }`}>
-                      {isLoading && <Spinner size='sm' className='mr-2' />}
-                      <span className='text-[16px]'>{option.title}</span>
+                      {isLoading && <Spinner size='sm' className='mr-2 text-c6' />}
+                      <span className='text-base font-normal'>{option.title}</span>
                     </div>
                   </DropdownItem>
                 );
               })}
             </DropdownMenu>
           </Dropdown>
-        </div>
       </div>
 
       <div className={`flex-grow ${options?.compact ? '' : 'min-h-0 overflow-auto'}`}>
-        {viewHasContent(selectedOption) ? (
+        {viewHasRenderableContent(selectedOption) ? (
           renderedContent
         ) : (
-          <div className='flex flex-col items-center justify-center w-full h-full py-[20px] text-center bg-c2 rounded-[12px] border border-dashed border-c3'>
-            <p className='text-c5 text-[16px]'>Aucun contenu renseigné pour {selectedOption?.title?.toLowerCase() || 'cette section'}.</p>
+          <div className='flex flex-col items-center justify-center w-full h-full py-5 text-center gap-4'>
+            <ThumbnailIcon size={32} className='text-c4' />
+            <p className='text-c5 text-base w-50'>Aucun contenu renseigné pour {selectedOption?.title?.toLowerCase() || 'cette section'}.</p>
           </div>
         )}
       </div>
@@ -2158,9 +2587,15 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     } else {
       allKeywords = keywords || [];
     }
-    
+
     if (allKeywords.length === 0) return [];
-    return [...allKeywords].sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+    return [...allKeywords]
+      .map((keyword) => ({
+        ...keyword,
+        id: getLinkedResourceId(keyword),
+        title: getLinkedResourceTitle(keyword, 34),
+      }))
+      .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
   }, [keywords, isEditing, formData.keywords]);
 
   // Résumé automatique des ressources liées pour EditSaveBar (tab racine)
@@ -2191,15 +2626,12 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   // Bug 3 fix: Si mode édition mais données pas encore chargées, afficher skeleton
   if (isEditing && !itemDetails && loading) {
     return (
-      <Layouts className='grid grid-cols-10 col-span-10 gap-[50px] overflow-visible z-0'>
+      <Layouts className='grid grid-cols-10 col-span-10 gap-12 overflow-visible z-0'>
         <div className='col-span-10 overflow-visible'>
-          <PageBanner title={mode === 'create' ? 'Mode création' : 'Mode édition'} icon={<EditIcon />} description={getRessourceLabel(config.type || 'Ressource')} edition />
+          <EditModeBanner mode={mode === 'create' ? 'create' : 'edit'} resourceType={config.type || 'Ressource'} />
         </div>
-        {/* Onglets toujours visibles même pendant le chargement */}
-        {tabs && activeTabId && onTabChange && onTabClose && <ResourceFormTabs tabs={tabs} activeTabId={activeTabId} onTabChange={onTabChange} onTabClose={onTabClose} />}
-        
         {/* Left column skeleton - matching loaded state structure */}
-        <motion.div className='col-span-10 flex flex-col gap-4 h-fit items-center justify-center py-[20px]' variants={fadeIn}>
+        <motion.div className='col-span-10 flex flex-col gap-4 h-fit items-center justify-center py-5' variants={fadeIn}>
           <Spinner color="current" className="text-c6" />
           <p className="text-c6">Chargement en cours...</p>
         </motion.div>
@@ -2210,171 +2642,213 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
   return (
     <>
-      <Layouts className='grid grid-cols-10 col-span-10 gap-[50px] overflow-visible z-0'>
+      <Layouts className='grid grid-cols-10 col-span-10 gap-6 overflow-visible z-0'>
         {/* Edit Mode Banner */}
         {isEditing && (
           <div className='col-span-10 overflow-visible'>
-            <PageBanner title={mode === 'create' ? 'Mode création' : 'Mode édition'} icon={<EditIcon />} description={getRessourceLabel(config.type || 'Ressource')} edition />
+            <EditModeBanner mode={mode === 'create' ? 'create' : 'edit'} resourceType={config.type || 'Ressource'} />
           </div>
         )}
 
-        {/* Onglets de ressources (toujours visible en mode édition si tabs est fourni) */}
-        {isEditing && tabs && activeTabId && onTabChange && onTabClose && (
-          <ResourceFormTabs tabs={tabs} activeTabId={activeTabId} onTabChange={onTabChange} onTabClose={onTabClose} />
+        {!isEditing && (
+          <div className='col-span-10 w-full'>
+            <DynamicBreadcrumbs
+              className='w-full'
+              itemTitle={itemDetails?.titre || itemDetails?.title || itemDetails?.['o:title'] || itemDetails?.name}
+              underline='hover'
+            />
+          </div>
         )}
 
         {/* Colonne principale */}
-        <motion.div ref={firstDivRef} className={`${leftColumnSpan} flex flex-col gap-[25px] h-fit`} variants={fadeIn}>
-          {/* Header avec breadcrumbs et boutons d'édition */}
-          <div className='flex items-center justify-between'>
-            <DynamicBreadcrumbs itemTitle={itemDetails?.titre || itemDetails?.title || itemDetails?.['o:title'] || itemDetails?.name} underline='hover' />
-          </div>
-
+        <motion.div ref={firstDivRef} className={leftColumnOuterClassName} variants={fadeIn}>
+          <div className={leftColumnInnerClassName}>
           {/* Keywords carousel */}
-          {itemDetails &&
-            config.showKeywords &&
+          {config.showKeywords &&
             (loadingKeywords ? (
-              <div className='flex items-center justify-center py-6 bg-c2 rounded-[12px] border-2 border-c3'>
-                <Spinner size='md' />
-                <span className='ml-3 text-c5'>Chargement des mots-clés...</span>
-              </div>
+              <KeywordsCarouselSkeleton />
             ) : (
+              itemDetails &&
               (sortedKeywords?.length > 0 || isEditing) && (
                 <div className='flex flex-col gap-2'>
-                  {isEditing && <label className='text-[14px] text-c5 font-medium'>Mots-clés</label>}
-                  <div className='flex items-center gap-[10px] overflow-hidden'>
-                    <div className='flex-1 min-w-0 overflow-hidden'>
-                      {isEditing ? (
-                        /* Mode édition: afficher les keywords comme des chips avec bouton de suppression */
-                        <div className='flex flex-wrap gap-2 items-center'>
-                          {sortedKeywords?.map((keyword: any) => (
-                            <div key={keyword.id || keyword.title} className='flex items-center gap-2 px-3 py-1.5 h-[40px] bg-c2 border border-c3 text-c6 rounded-[8px] text-[14px]'>
-                              <span>{keyword.title}</span>
-                              {/* Bouton de suppression */}
-                              <button
-                                type='button'
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // Supprimer de formData.keywords
-                                  const currentKeywords = formData.keywords || [];
-                                  const updatedKeywords = currentKeywords.filter((k: any) => k.id !== keyword.id);
-                                  setValue('keywords', updatedKeywords);
-                                }}
-                                className='ml-1 p-0.5 hover:bg-red-500/20 rounded-full transition-colors'>
-                                <CrossIcon size={12} className='text-c4 hover:text-red-500' />
-                              </button>
-                            </div>
-                          ))}
+                  {isEditing ? (
+                    <div className='flex flex-wrap gap-2 items-center w-full'>
+                      {sortedKeywords?.map((keyword: any) => (
+                        <div key={keyword.id || keyword.title} className={selectedResourceChipClass}>
+                          <span>{keyword.title}</span>
+                          <button
+                            type='button'
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const currentKeywords = formData.keywords || [];
+                              const updatedKeywords = currentKeywords.filter((k: any) => k.id !== keyword.id);
+                              setValue('keywords', updatedKeywords);
+                            }}
+                            className={selectedResourceRemoveButtonClass}
+                            aria-label='Retirer le mot-clé'>
+                            <ModalCloseIcon />
+                          </button>
                         </div>
-                      ) : (
-                        /* Mode lecture: carrousel */
-                        sortedKeywords?.length > 0 && (
-                          <LongCarrousel
-                            perPage={3}
-                            perMove={1}
-                            autowidth={true}
-                            data={sortedKeywords}
-                            renderSlide={(item) => (
-                              <KeywordsCard key={item.id || item.title} onSearchClick={handleKeywordClick} word={item.title} description={item.short_resume} />
-                            )}
-                          />
-                        )
-                      )}
-                    </div>
-                    {/* Search keyword button in edit mode */}
-                    {isEditing && (
+                      ))}
                       <button
                         type='button'
                         onClick={() => handleLinkExisting('keywords')}
-                        className='px-4 py-2 border-2 border-dashed border-c4 rounded-[8px] text-c5 text-[14px] hover:border-action hover:bg-c2 transition-all duration-200'>
-                        Ajouter un mot clé
+                        className='flex items-center gap-2 h-12 px-4 rounded-lg border-2 border-c3 bg-c2 hover:bg-c3 text-c6 text-sm font-medium transition-all duration-200 cursor-pointer'>
+                        <AddIcon size={14} className='text-c4' />
+                        Ajouter un mot-clé
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    sortedKeywords?.length > 0 && (
+                      <LongCarrousel
+                        perPage={3}
+                        perMove={1}
+                        autowidth={true}
+                        data={sortedKeywords}
+                        renderSlide={(item) => (
+                          <KeywordsCard key={item.id || item.title} onSearchClick={handleKeywordClick} word={item.title} />
+                        )}
+                      />
+                    )
+                  )}
                 </div>
               )
             ))}
 
           {/* Mode édition/création: Section unifiée */}
           {isEditing ? (
-            <div className={`${singleColumnEditShell} ${useSingleColumnEdit ? 'items-stretch' : ''}`}>
-              {/* Section Médias */}
-              <div className='w-full'>
-                <OverviewComponent
-                  {...config.mapOverviewProps({ ...itemDetails, ...formData }, currentVideoTime)}
-                  videoSeek={videoSeek}
-                  type={config.type}
-                  isEditing={true}
-                  loadingMedia={loadingMedia}
-                  onTitleChange={(value: string) => setValue('title', value)}
-                  onMediasChange={(files: MediaFile[]) => setMediaFiles(files)}
-                  onAddPerson={() => handleLinkExisting('personnes')}
-                  onResourcesSelected={(_property: string, resources: any[]) => {
-                    const mappedResources = resources.map((r) => ({
-                      id: r.id,
-                      title: r.title,
-                      name: r.title,
-                      type: 'actant',
-                    }));
-                    const currentPersonnes = formData.personnes || [];
-                    setValue('personnes', [...currentPersonnes, ...mappedResources]);
-                  }}
-                  onLinkChange={(value: string) => setValue('fullUrl', value)}
-                  youtubeUrls={youtubeUrls}
-                  onYouTubeUrlsChange={(urls: string[]) => setYoutubeUrls(urls)}
-                  mediaFiles={mediaFiles}
-                  removedMediaIndexes={removedMediaIndexes}
-                  onRemoveExistingMedia={handleRemoveExistingMedia}
-                />
-              </div>
+            <div className={`${singleColumnEditShell} ${useCenteredSingleColumn ? 'items-stretch' : ''}`}>
+              {/* Section Médias / Photo */}
+              {config.mediaUploadMode !== 'none' && (
+                <div className='w-full flex flex-col gap-4'>
+                  <OverviewComponent
+                    {...config.mapOverviewProps({ ...itemDetails, ...formData }, currentVideoTime)}
+                    videoSeek={videoSeek}
+                    type={config.type}
+                    isEditing={true}
+                    loadingMedia={loadingMedia}
+                    mediaUploadMode={config.mediaUploadMode}
+                    onTitleChange={(value: string) => setValue('title', value)}
+                    onMediasChange={(files: MediaFile[]) => setMediaFiles(files)}
+                    onLinkChange={(value: string) => setValue('fullUrl', value)}
+                    youtubeUrls={config.mediaUploadMode === 'gallery' ? youtubeUrls : []}
+                    onYouTubeUrlsChange={
+                      config.mediaUploadMode === 'gallery'
+                        ? (urls: string[]) => setYoutubeUrls(urls)
+                        : undefined
+                    }
+                    mediaFiles={mediaFiles}
+                    removedMediaIndexes={removedMediaIndexes}
+                    onRemoveExistingMedia={handleRemoveExistingMedia}
+                  />
+
+                  {/* Boutons contributeurs — inline : puces à gauche, boutons à droite */}
+                  {config.contributorButtons && config.contributorButtons.length > 0 && (() => {
+                    const seen = new Set<string>();
+                    const allContributors: any[] = [];
+                    config.contributorButtons!.forEach((btn) => {
+                      const items: any[] = Array.isArray(formData[btn.property])
+                        ? formData[btn.property]
+                        : Array.isArray(formData['personnes'])
+                          ? formData['personnes']
+                          : [];
+                      items.forEach((item) => {
+                        const itemId = getLinkedResourceId(item);
+                        if (itemId == null || seen.has(String(itemId))) return;
+                        seen.add(String(itemId));
+                        allContributors.push({
+                          ...item,
+                          id: itemId,
+                          title: getLinkedResourceTitle(item, btn.templateId),
+                          _property: btn.property,
+                        });
+                      });
+                    });
+
+                    return (
+                      <div className='flex flex-wrap gap-2 items-center w-full'>
+                        {allContributors.map((item: any, idx: number) => (
+                          <div key={item.id || idx} className={selectedResourceChipClass}>
+                            <span>{item.title || item.name}</span>
+                            <button
+                              type='button'
+                              onClick={() => {
+                                const prop = item._property;
+                                const current: any[] = Array.isArray(formData[prop]) ? formData[prop] : [];
+                                setValue(
+                                  prop,
+                                  current.filter((c: any) => String(getLinkedResourceId(c)) !== String(item.id)),
+                                );
+                                const legacy: any[] = Array.isArray(formData['personnes']) ? formData['personnes'] : [];
+                                if (legacy.some((c: any) => String(getLinkedResourceId(c)) === String(item.id))) {
+                                  setValue(
+                                    'personnes',
+                                    legacy.filter((c: any) => String(getLinkedResourceId(c)) !== String(item.id)),
+                                  );
+                                }
+                              }}
+                              className={selectedResourceRemoveButtonClass}
+                              aria-label='Retirer'>
+                              <ModalCloseIcon />
+                            </button>
+                          </div>
+                        ))}
+                        {config.contributorButtons!.map((btn) => (
+                          <button
+                            key={`${btn.property}-${btn.templateId}`}
+                            type='button'
+                            onClick={() =>
+                              setActiveResourceField({
+                                key: btn.property,
+                                label: btn.label,
+                                templateId: btn.templateId,
+                              })
+                            }
+                            className='flex items-center gap-2 h-12 px-4 rounded-lg border-2 border-c3 bg-c2 hover:bg-c3 text-c6 text-sm font-medium transition-all duration-200 cursor-pointer'>
+                            <AddIcon size={14} className='text-c4' />
+                            {btn.label}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
 
               {/* Section Formulaire Unifié */}
-              <div className={`${useSingleColumnEdit ? 'border-t border-c3 pt-6' : 'bg-c2 rounded-[12px] p-[25px]'} flex flex-col gap-[20px] w-full`}>
-                {/* Titre */}
-                <div className='flex flex-col gap-2'>
-                  <label className='text-[14px] text-c5 font-medium'>Titre</label>
-                  <input
-                    type='text'
-                    value={formData.title || ''}
-                    onChange={(e) => setValue('title', e.target.value)}
-                    placeholder='Titre de la ressource'
-                    className='bg-c1 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action'
-                  />
-                </div>
+              <div className={`${useSingleColumnEdit ? 'border-t border-c3 pt-6' : 'rounded-xl p-6 border-2 border-c3 border-2'} flex flex-col gap-8 items-start w-full`}>
+                <FormTextInput
+                  label='Titre'
+                  value={formData.title || ''}
+                  onChange={(value) => setValue('title', value)}
+                  placeholder='Titre de la ressource'
+                />
 
-                {/* Description */}
-                {config.formFields?.find((f) => f.key === 'description') && (
-                  <div className='flex flex-col gap-2'>
-                    <label className='text-[14px] text-c5 font-medium'>Description</label>
-                    <textarea
+                {config.formFields
+                  ?.filter((f) => f.key === 'description')
+                  .map((field) => (
+                    <FormAutoResizeTextareaInput
+                      key={field.key}
+                      label={field.label}
                       value={formData.description || ''}
-                      onChange={(e) => setValue('description', e.target.value)}
-                      placeholder='Décrivez votre ressource...'
-                      rows={4}
-                      className='bg-c1 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action resize-none'
+                      onChange={(value) => setValue('description', value)}
+                      placeholder={field.placeholder ?? 'Décrivez votre ressource...'}
                     />
-                  </div>
-                )}
+                  ))}
 
-                {/* Date */}
                 {config.formFields?.find((f) => f.key === 'date') && (
-                  <div className='flex flex-col gap-2'>
-                    <label className='text-[14px] text-c5 font-medium'>Date</label>
-                    <input
-                      type='date'
-                      value={formData.date || ''}
-                      onChange={(e) => setValue('date', e.target.value)}
-                      className='bg-c1 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action'
-                    />
-                  </div>
+                  <FormDateInput
+                    label='Date'
+                    value={formData.date || ''}
+                    onChange={(value) => setValue('date', value)}
+                  />
                 )}
 
-                {/* Avancement (Slider) */}
                 {config.formFields?.find((f) => f.key === 'percentage') && (
-                  <div className='flex flex-col gap-2'>
+                  <div className='w-full'>
                     <div className='flex justify-between items-center'>
-                      <label className='text-[14px] text-c5 font-medium'>Avancement</label>
-                      <span className='text-[14px] text-c6 font-semibold'>{formData.percentage || 0}%</span>
+                      <span className={formFieldLabelClass}>Avancement</span>
+                      <span className='text-c6 font-semibold'>{formData.percentage || 0}%</span>
                     </div>
                     <input
                       type='range'
@@ -2383,51 +2857,80 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                       step='5'
                       value={formData.percentage || 0}
                       onChange={(e) => setValue('percentage', parseInt(e.target.value))}
-                      className='w-full accent-action'
+                      className='w-full mt-2.5 accent-action'
                     />
                   </div>
                 )}
 
-                {/* Statut */}
                 {config.formFields?.find((f) => f.key === 'status') && (
-                  <div className='flex flex-col gap-2'>
-                    <label className='text-[14px] text-c5 font-medium'>Statut</label>
-                    <input
-                      type='text'
-                      value={formData.status || ''}
-                      onChange={(e) => setValue('status', e.target.value)}
-                      placeholder='En cours, Terminé...'
-                      className='bg-c1 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action'
-                    />
-                  </div>
+                  <FormTextInput
+                    label='Statut'
+                    value={formData.status || ''}
+                    onChange={(value) => setValue('status', value)}
+                    placeholder='En cours, Terminé...'
+                  />
                 )}
 
-                {/* Champs spécifiques aux outils */}
                 {config.formFields?.find((f) => f.key === 'category') && (
-                  <div className='flex flex-col gap-2'>
-                    <label className='text-[14px] text-c5 font-medium'>Type d'outil</label>
-                    <input
-                      type='text'
-                      value={formData.category || ''}
-                      onChange={(e) => setValue('category', e.target.value)}
-                      placeholder='Logiciel, Bibliothèque, Framework...'
-                      className='bg-c1 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action'
-                    />
-                  </div>
+                  <FormTextInput
+                    label="Type d'outil"
+                    value={formData.category || ''}
+                    onChange={(value) => setValue('category', value)}
+                    placeholder='Logiciel, Bibliothèque, Framework...'
+                  />
                 )}
 
-                {config.formFields?.find((f) => f.key === 'purpose') && (
-                  <div className='flex flex-col gap-2'>
-                    <label className='text-[14px] text-c5 font-medium'>Fonction</label>
-                    <textarea
+                {config.formFields
+                  ?.filter((f) => f.key === 'purpose')
+                  .map((purposeField) => (
+                    <FormAutoResizeTextareaInput
+                      key={purposeField.key}
+                      label={purposeField.label}
                       value={formData.purpose || ''}
-                      onChange={(e) => setValue('purpose', e.target.value)}
-                      placeholder="Objectif principal de l'outil..."
-                      rows={2}
-                      className='bg-c1 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action resize-none'
+                      onChange={(value) => setValue('purpose', value)}
+                      placeholder={purposeField.placeholder}
                     />
-                  </div>
-                )}
+                  ))}
+
+                {/* Champs texte / url / textarea / date déclarés dans la config (ex: prénom, nom, email…) */}
+                {config.formFields
+                  ?.filter((f) => {
+                    const handledKeys = new Set(['title', 'description', 'date', 'percentage', 'status', 'category', 'purpose']);
+                    return !handledKeys.has(f.key) && ['text', 'url', 'textarea', 'date'].includes(f.type);
+                  })
+                  .map((field) => {
+                    if (field.type === 'textarea') {
+                      return (
+                        <FormAutoResizeTextareaInput
+                          key={field.key}
+                          label={field.label}
+                          value={formData[field.key] || ''}
+                          onChange={(value) => setValue(field.key, value)}
+                          placeholder={field.placeholder}
+                        />
+                      );
+                    }
+                    if (field.type === 'date') {
+                      return (
+                        <FormDateInput
+                          key={field.key}
+                          label={field.label}
+                          value={formData[field.key] || ''}
+                          onChange={(value) => setValue(field.key, value)}
+                        />
+                      );
+                    }
+                    return (
+                      <FormTextInput
+                        key={field.key}
+                        label={field.label}
+                        type={field.type === 'url' ? 'url' : 'text'}
+                        value={formData[field.key] || ''}
+                        onChange={(value) => setValue(field.key, value)}
+                        placeholder={field.placeholder}
+                      />
+                    );
+                  })}
 
                 {/* Champs ItemSet (sélecteur depuis un item set Omeka) */}
                 {config.formFields
@@ -2437,66 +2940,86 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                       key={field.key}
                       label={field.label}
                       itemSetId={field.selectionConfig!.itemSetId!}
-                      value={formData[field.key]?.[0]?.id ?? undefined}
-                      onChange={(id, title) => setValue(field.key, [{ id, title }])}
+                      multiple={field.selectionConfig?.multiple}
+                      value={
+                        Array.isArray(formData[field.key])
+                          ? formData[field.key]
+                          : typeof formData[field.key] === 'number'
+                            ? [{ id: formData[field.key], title: '' }]
+                            : []
+                      }
+                      onChange={(items) => setValue(field.key, items)}
                     />
                   ))}
 
-                {/* Lien externe */}
-                <div className='flex flex-col gap-2'>
-                  <label className='text-[14px] text-c5 font-medium'>Lien externe</label>
-                  <input
-                    type='url'
-                    value={formData.fullUrl || formData.url || formData.homepage || ''}
-                    onChange={(e) => setValue('fullUrl', e.target.value)}
-                    placeholder='https://...'
-                    className='bg-c1 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action'
-                  />
-                </div>
-
-                {/* Contributeurs */}
-                <div className='flex flex-col gap-2'>
-                  <label className='text-[14px] text-c5 font-medium'>Contributeurs</label>
-                  <div className='flex flex-wrap gap-2 items-center'>
-                    {(formData.personnes || itemDetails?.personnes || itemDetails?.actants || []).map((person: any, index: number) => (
-                      <div key={person.id || index} className='flex items-center gap-2 px-6 h-[60px] bg-c3 rounded-[8px]'>
-                        {getPersonPicture(person) && <img src={getPersonPicture(person) ?? ''} alt='Avatar' className='w-6 h-6 rounded-full object-cover rounded-[4px]' />}
-                        <span className='text-c6 text-[14px]'>{getPersonDisplayName(person)}</span>
-                        {/* Bouton de suppression */}
-                        <button
-                          type='button'
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const currentPersonnes = formData.personnes || itemDetails?.personnes || itemDetails?.actants || [];
-                            const updatedPersonnes = currentPersonnes.filter((p: any) => p.id !== person.id);
-                            setValue('personnes', updatedPersonnes);
-                          }}
-                          className='ml-1 p-0.5 hover:bg-red-500/20 rounded-full transition-colors'>
-                          <CrossIcon size={12} className='text-c4 hover:text-red-500' />
-                        </button>
+                {/* Champs ressources liées (multiselection — ex: université, labo, etc.)
+                    Exclure contributors (géré par contributorButtons sous la dropzone)
+                    et keywords (géré par le carrousel au-dessus de la dropzone) */}
+                {config.formFields
+                  ?.filter((f) => f.type === 'multiselection' && f.selectionConfig?.templateId)
+                  .filter((f) => {
+                    if (config.contributorButtons?.length && f.key === 'contributors') return false;
+                    if (config.showKeywords && f.key === 'keywords') return false;
+                    return true;
+                  })
+                  .map((field) => {
+                    const selected: any[] = Array.isArray(formData[field.key]) ? formData[field.key] : [];
+                    return (
+                      <div key={field.key} className='flex flex-col gap-2'>
+                        <label className={formFieldLabelClass}>{field.label}</label>
+                        <div className='flex flex-wrap gap-2 items-center'>
+                          {selected.map((item: any, idx: number) => {
+                            const itemId = getLinkedResourceId(item);
+                            return (
+                            <div key={itemId ?? idx} className={selectedResourceChipClass}>
+                              <span>{getLinkedResourceTitle(item, field.selectionConfig?.templateId)}</span>
+                              <button
+                                type='button'
+                                onClick={() =>
+                                  setValue(
+                                    field.key,
+                                    selected.filter((s: any) => String(getLinkedResourceId(s)) !== String(itemId)),
+                                  )
+                                }
+                                className={selectedResourceRemoveButtonClass}
+                                aria-label='Retirer'>
+                                <ModalCloseIcon />
+                              </button>
+                            </div>
+                            );
+                          })}
+                          <button
+                            type='button'
+                            onClick={() =>
+                              setActiveResourceField({
+                                key: field.key,
+                                label: field.label,
+                                templateId: field.selectionConfig!.templateId!,
+                                displayMode: config.resourcePickerDisplay,
+                              })
+                            }
+                            className='flex items-center gap-2 h-12 px-4 rounded-lg border-2 border-c3 bg-c2 hover:bg-c3 text-c6 text-sm font-medium transition-all duration-200 cursor-pointer'>
+                            <AddIcon size={14} className='text-c4' />
+                            Ajouter
+                          </button>
+                        </div>
                       </div>
-                    ))}
-                    <button
-                      type='button'
-                      onClick={() => handleLinkExisting('personnes')}
-                      className='px-4 py-2 border-2 border-dashed border-c4 h-[56px] rounded-[8px] text-c5 text-[14px] hover:border-action hover:bg-c2 transition-all duration-200'>
-                      Ajouter un contributeur
-                    </button>
-                  </div>
-                </div>
+                    );
+                  })}
+
               </div>
 
               {/* Vues (caractéristiques, spécifications, liens…) — colonne unique */}
-              {useSingleColumnEdit && (
+              {useSingleColumnEdit && config.viewOptions && config.viewOptions.length > 0 && (
                 <div className='w-full border-t border-c3 pt-6'>
                   {loadingViews ? (
-                    <div className='flex flex-col gap-[15px]'>
+                    <div className='flex flex-col gap-4'>
                       <div className='flex items-center justify-between w-full'>
-                        <div className='w-2/5 h-12 bg-c2 rounded-[8px] animate-pulse' />
-                        <div className='w-1/5 h-12 bg-c2 rounded-[8px] animate-pulse' />
+                        <div className='w-2/5 h-12 bg-c3 rounded-lg animate-pulse' />
+                        <div className='w-1/5 h-12 bg-c3 rounded-lg animate-pulse' />
                       </div>
-                      <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
-                      <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
+                      <div className='w-full h-28 bg-c3 rounded-xl animate-pulse' />
+                      <div className='w-full h-28 bg-c3 rounded-xl animate-pulse' />
                     </div>
                   ) : (
                     renderViewsPanel({ compact: true })
@@ -2529,6 +3052,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
               ) : null}
             </>
           )}
+          </div>
         </motion.div>
 
         {/* Colonne secondaire - Vues multiples */}
@@ -2536,24 +3060,24 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         {shouldShowRightColumn ? (
           <motion.div
             style={{ height: equalHeight || 'auto' }}
-            className='col-span-10 lg:col-span-4 flex flex-col gap-[50px] overflow-hidden'
+            className='col-span-10 lg:col-span-4 flex flex-col gap-12 overflow-hidden'
             initial={{ opacity: 0, x: 30 }}
             animate={
               isExitingRightColumn ? { opacity: 0, x: 60, transition: { duration: 0.35, ease: 'easeIn' } } : { opacity: 1, x: 0, transition: { duration: 0.4, ease: 'easeOut' } }
             }>
             {loadingViews ? (
-              <div className='flex w-full flex-col gap-[20px] flex-grow'>
+              <div className='flex w-full flex-col gap-5 flex-grow'>
                 <div className='flex items-center justify-between w-full'>
-                  <div className='w-2/5 h-12 bg-c2 rounded-[8px] animate-pulse' />
-                  <div className='w-1/5 h-12 bg-c2 rounded-[8px] animate-pulse' />
+                  <div className='w-2/5 h-12 bg-c3 rounded-lg animate-pulse' />
+                  <div className='w-1/5 h-12 bg-c3 rounded-lg animate-pulse' />
                 </div>
-                <div className='flex flex-col gap-[15px]'>
-                  <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
-                  <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
-                  <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
-                  <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
-                  <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
-                  <div className='w-full h-28 bg-c2 rounded-[12px] animate-pulse' />
+                <div className='flex flex-col gap-4'>
+                  <div className='w-full h-28 bg-c3 rounded-xl animate-pulse' />
+                  <div className='w-full h-28 bg-c3 rounded-xl animate-pulse' />
+                  <div className='w-full h-28 bg-c3 rounded-xl animate-pulse' />
+                  <div className='w-full h-28 bg-c3 rounded-xl animate-pulse' />
+                  <div className='w-full h-28 bg-c3 rounded-xl animate-pulse' />
+                  <div className='w-full h-28 bg-c3 rounded-xl animate-pulse' />
                 </div>
               </div>
             ) : (
@@ -2562,20 +3086,20 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
           </motion.div>
         ) : null}
 
-        {/* Recommendations */}
-        {config.showRecommendations && (
+        {/* Recommendations — masquées en mode édition/création */}
+        {config.showRecommendations && !isEditing && (
           loadingRecommendations ? (
-            <motion.div className='col-span-10 h-full lg:col-span-6 flex flex-col gap-[50px] flex-grow' variants={fadeIn}>
-              <div className='flex flex-col gap-[20px]'>
-                <h2 className='text-[24px] font-medium text-c6'>{config.recommendationsTitle || 'Recommandations'}</h2>
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-[20px]'>
+            <motion.div className='col-span-10 h-full lg:col-span-6 flex flex-col gap-12 flex-grow' variants={fadeIn}>
+              <div className='flex flex-col gap-5'>
+                <h2 className='text-2xl font-medium text-c6'>{config.recommendationsTitle || 'Recommandations'}</h2>
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-5'>
                   <ResourceCardSkeleton />
                   <ResourceCardSkeleton />
                 </div>
               </div>
             </motion.div>
           ) : recommendations.length > 0 ? (
-            <motion.div className='col-span-10 h-full lg:col-span-6 flex flex-col gap-[50px] flex-grow' variants={fadeIn}>
+            <motion.div className='col-span-10 h-full lg:col-span-6 flex flex-col gap-12 flex-grow' variants={fadeIn}>
               <FullCarrousel
                 title={config.recommendationsTitle || 'Recommandations'}
                 perPage={2}
@@ -2597,8 +3121,12 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
         {/* Comments — masqués en mode édition/création */}
         {config.showComments && !isEditing && (
-          <motion.div className={`${shouldShowRightColumn ? 'col-span-4 lg:col-span-4' : 'col-span-10'} h-full flex flex-col gap-[50px] flex-grow`} variants={fadeIn}>
-            <CommentSection LinkedResourceId={Number(id)} />
+          <motion.div
+            className={`${shouldShowRightColumn ? 'col-span-4 lg:col-span-4' : 'col-span-10'} h-full flex flex-col gap-12 flex-grow${useCenteredSingleColumn ? ' items-center' : ''}`}
+            variants={fadeIn}>
+            <div className={`${centeredShellClass} flex flex-col gap-12 flex-grow`}>
+              <CommentSection LinkedResourceId={Number(id)} />
+            </div>
           </motion.div>
         )}
 
@@ -2609,44 +3137,84 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
           isOpen={pickerState.isOpen}
           onClose={() => setPickerState({ isOpen: false, viewKey: '' })}
           onSelect={handleResourceSelect}
-          title={`Sélectionner ${pickerState.viewKey === 'keywords' ? 'des mots-clés' : 'des ressources'}`}
+          title={
+            pickerState.pickerTitle ||
+            `Sélectionner ${pickerState.viewKey === 'keywords' ? 'des mots-clés' : 'des ressources'}`
+          }
           resourceTemplateId={pickerState.resourceTemplateId}
           resourceTemplateIds={pickerState.resourceTemplateIds}
           itemSetIds={pickerState.itemSetIds}
           multiSelect={pickerState.multiSelect}
           selectedIds={[]}
           displayMode={pickerState.viewKey === 'keywords' || pickerState.itemSetIds ? 'alphabetic' : 'grid'}
+          allowCreate={pickerAllowsCreate}
+          createOnly={pickerState.createOnly}
+          onCreateOverride={
+            pickerState.itemSetIds?.length
+              ? handlePickerCreateOverride
+              : onCreateNewResource
+                ? handlePickerCreateInTab
+                : undefined
+          }
         />
         {/* Modale création rapide d'un item dans un item set */}
         <Modal
           isOpen={createItemSetModalState.isOpen}
-          onClose={() => { setCreateItemSetModalState({ isOpen: false, viewKey: '', itemSetIds: [] }); setCreateItemSetTitle(''); }}
-          classNames={{ base: 'bg-c1 border-2 border-c3', header: 'border-b border-c3', body: 'py-6', footer: 'border-t border-c3' }}>
+          onClose={() => {
+            setCreateItemSetModalState({ isOpen: false, viewKey: '', itemSetIds: [] });
+            setCreateItemSetTitle('');
+          }}
+          backdrop='blur'
+          size='md'
+          scrollBehavior='inside'
+          classNames={{ closeButton: modalCloseButtonClasses }}
+          motionProps={{
+            variants: {
+              enter: {
+                y: 0,
+                opacity: 1,
+                transition: { duration: 0.3, ease: 'easeOut' },
+              },
+              exit: {
+                y: -20,
+                opacity: 0,
+                transition: { duration: 0.2, ease: 'easeIn' },
+              },
+            },
+          }}>
           <ModalContent>
             {(onClose) => (
               <>
-                <ModalHeader><span className='text-c6 font-semibold'>Créer une nouvelle entrée</span></ModalHeader>
+                <ModalHeader className='flex flex-col gap-px'>
+                  <ModalTitle
+                    title='Créer une nouvelle entrée'
+                    icon={AddIcon}
+                    iconColor='text-action'
+                    iconBg='bg-action/20'
+                    titleClassName='text-c6 text-xl font-semibold'
+                  />
+                </ModalHeader>
                 <ModalBody>
-                  <div className='flex flex-col gap-2'>
-                    <label className='text-[14px] text-c5 font-medium'>Titre</label>
-                    <input
-                      autoFocus
-                      type='text'
-                      value={createItemSetTitle}
-                      onChange={(e) => setCreateItemSetTitle(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') void handleCreateItemSetResource(); }}
-                      placeholder="Nom de l'entrée..."
-                      className='bg-c2 border border-c3 rounded-[8px] px-[15px] py-[10px] text-c6 text-[16px] focus:outline-none focus:border-action'
-                    />
-                  </div>
+                  <FormTextInput
+                    label='Titre'
+                    value={createItemSetTitle}
+                    onChange={setCreateItemSetTitle}
+                    placeholder="Nom de l'entrée..."
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void handleCreateItemSetResource();
+                    }}
+                  />
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant='light' onPress={onClose} className='text-c5'>Annuler</Button>
+                  <Button variant='light' onPress={onClose} className='text-c5 rounded-lg'>
+                    Annuler
+                  </Button>
                   <Button
                     onPress={() => void handleCreateItemSetResource()}
                     isLoading={createItemSetLoading}
                     isDisabled={!createItemSetTitle.trim()}
-                    className='bg-action text-selected'>
+                    className='bg-action text-selected rounded-lg'>
                     Créer
                   </Button>
                 </ModalFooter>
@@ -2655,47 +3223,87 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
           </ModalContent>
         </Modal>
 
-        {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={deleteModalState.isOpen} 
-        onClose={() => setDeleteModalState(prev => ({ ...prev, isOpen: false }))}
-        classNames={{
-          base: 'bg-c1 border-2 border-c3',
-          header: 'border-b border-c3',
-          body: 'py-6',
-          footer: 'border-t border-c3',
-        }}
-      >
-        <ModalContent>
-          {(onClose) => (
+        {/* Sélecteur de ressources liées (contributeurs + champs multiselection) */}
+        {activeResourceField && (
+          <ResourcePicker
+            isOpen={true}
+            onClose={() => setActiveResourceField(null)}
+            onSelect={(resources) => {
+              const field = activeResourceField;
+              if (!field) return;
+              const current: any[] = Array.isArray(formData[field.key]) ? formData[field.key] : [];
+              const newItems = resources.map((r) => {
+                const id = getLinkedResourceId(r);
+                return {
+                  id,
+                  'o:id': id,
+                  title: getLinkedResourceTitle(r, field.templateId),
+                  name: getLinkedResourceTitle(r, field.templateId),
+                };
+              });
+              const toAdd = newItems.filter(
+                (n) => n.id != null && !current.some((c: any) => String(getLinkedResourceId(c)) === String(n.id)),
+              );
+              resources.forEach((r) => {
+                if (r._sessionCreated && getLinkedResourceId(r) != null) {
+                  markResourceAsUserCreated(getLinkedResourceId(r)!);
+                }
+              });
+              const merged = [...current, ...toAdd];
+              setValue(field.key, merged);
+              if (config.contributorButtons?.some((btn) => btn.property === field.key)) {
+                setValue('personnes', merged);
+              }
+              setActiveResourceField(null);
+            }}
+            title={activeResourceField.label}
+            resourceTemplateId={activeResourceField.templateId}
+            multiSelect={true}
+            displayMode={activeResourceField.displayMode === 'alphabetic' ? 'alphabetic' : 'grid'}
+            allowCreate={
+              activeResourceField.displayMode === 'alphabetic'
+                ? activeResourceField.templateId === 34
+                : !!(getResourceConfigByTemplateId(activeResourceField.templateId)?.createUrl ||
+                    QUICK_CREATE_CONFIGS[activeResourceField.templateId])
+            }
+            selectedIds={[]}
+            filterFn={(resource) => {
+              const alreadySelected = (Array.isArray(formData[activeResourceField.key]) ? formData[activeResourceField.key] : [])
+                .map((r: any) => r.id)
+                .filter(Boolean);
+              const resourceId = resource['o:id'] || resource.id;
+              return !alreadySelected.includes(resourceId);
+            }}
+            onCreateOverride={
+              onCreateNewResource ? handleFieldCreateInTab : undefined
+            }
+          />
+        )}
+
+        <AlertModal
+          isOpen={deleteModalState.isOpen}
+          onClose={() => !isDeletingLinkedItem && setDeleteModalState((prev) => ({ ...prev, isOpen: false }))}
+          title='Confirmer la suppression'
+          type='danger'
+          confirmLabel='Supprimer'
+          onConfirm={handleConfirmDelete}
+          isLoading={isDeletingLinkedItem}
+          description={
             <>
-              <ModalHeader className='flex flex-col gap-1'>
-                <div className='flex items-center gap-2'>
-                  <div className='p-1 rounded-[10px] bg-red-500/20'>
-                    <TrashIcon size={20} className='text-[#FF0000]' />
-                  </div>
-                  <span className='text-c6'>Confirmer la suppression</span>
-                </div>
-              </ModalHeader>
-              <ModalBody>
-                <div className='flex flex-col justify-center gap-[30px]'>
-                  <p className='text-c5'>
-                    Cette action retirera l'élément de la liste (il ne sera pas supprimé de la base de données).
-                  </p>
-                </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant='light' onPress={onClose} className='text-c5 hover:text-c6 p-4 rounded-[6px]'>
-                  Annuler
-                </Button>
-                <Button onPress={handleConfirmDelete} className='bg-danger/100 hover:bg-danger/90 text-white p-4 rounded-[6px]'>
-                  Supprimer
-                </Button>
-              </ModalFooter>
+              <p>
+                {deleteModalState.itemTitle ? (
+                  <>
+                    Supprimer définitivement{' '}
+                    <span className='text-c6 font-medium'>&quot;{deleteModalState.itemTitle}&quot;</span> ?
+                  </>
+                ) : (
+                  'Supprimer définitivement cet élément ?'
+                )}
+              </p>
+              <p className='text-c4 text-sm mt-2.5'>Cette action est irréversible. L&apos;élément sera retiré de la base de données.</p>
             </>
-          )}
-        </ModalContent>
-      </Modal>
+          }
+        />
     </Layouts>
 
       {/* Fixed bottom save bar for edit/create mode - Outside Layouts for proper fixed positioning */}

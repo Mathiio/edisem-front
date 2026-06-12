@@ -1,148 +1,102 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@heroui/react';
-import { PlusIcon, LinkIcon, EditIcon, CrossIcon } from '@/components/ui/icons';
+import { AddIcon } from '@/components/ui/icons';
+import { splitBibliographyMediagraphyTemplateIds } from '@/config/resourceConfig';
+import type { LinkExistingOptions } from '@/pages/generic/config';
 
 export interface AddResourceCardProps {
-  resourceLabel: string;           // Ex: "Retour d'expérience", "Outil"
-  onLinkExisting: () => void;      // Appelé quand on veut lier une ressource existante
-  onCreateNew: () => void;         // Appelé quand on veut créer une nouvelle ressource
+  resourceLabel?: string;
+  /** Ouvre le ResourcePicker (sélection + création en nouvel onglet) */
+  onAdd: () => void;
   disabled?: boolean;
+  /** Pleine largeur du conteneur avec contenu centré (défaut: true) */
+  fullWidth?: boolean;
   className?: string;
 }
 
-/**
- * Carte "+ Ajouter [ressource]" avec options "Lier existant" ou "Créer nouveau"
- * Au clic, le trigger se divise en deux rectangles cote a cote
- */
-export const AddResourceCard: React.FC<AddResourceCardProps> = ({
-  resourceLabel,
+const DEFAULT_REFERENCE_TEMPLATE_IDS = [81, 99, 98, 83];
+
+/** Deux boutons distincts (bibliographie / médiagraphie) quand la vue mélange les deux types */
+export interface ReferenceAddButtonsProps {
+  viewKey: string;
+  templateIds?: number[];
+  onLinkExisting?: (viewKey: string, options?: LinkExistingOptions) => void;
+  className?: string;
+}
+
+export const ReferenceAddButtons: React.FC<ReferenceAddButtonsProps> = ({
+  viewKey,
+  templateIds = DEFAULT_REFERENCE_TEMPLATE_IDS,
   onLinkExisting,
-  onCreateNew,
-  disabled = false,
   className = '',
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  if (!onLinkExisting) return null;
 
-  const handleLinkExisting = () => {
-    setIsExpanded(false);
-    onLinkExisting();
-  };
+  const { bibliographies, mediagraphies, isMixed } = splitBibliographyMediagraphyTemplateIds(templateIds);
 
-  const handleCreateNew = () => {
-    setIsExpanded(false);
-    onCreateNew();
-  };
-
-  const handleTriggerClick = () => {
-    if (!disabled) {
-      setIsExpanded(true);
-    }
-  };
-
-  const handleClose = () => {
-    setIsExpanded(false);
-  };
-
-  // Style commun pour les cartes
-  const cardBaseClass = `
-    flex flex-col items-center justify-center
-    min-h-[120px] p-4
-    border-2 border-dashed border-c4 rounded-xl
-    cursor-pointer
-    transition-all duration-200
-    hover:border-action hover:bg-c2
-  `;
-
-  // Mode non-expande: afficher le trigger simple
-  if (!isExpanded) {
+  if (!isMixed) {
+    const ids = bibliographies.length > 0 ? bibliographies : mediagraphies;
+    const label = bibliographies.length > 0 ? 'une bibliographie' : 'une médiagraphie';
+    const pickerTitle = bibliographies.length > 0 ? 'Sélectionner une bibliographie' : 'Sélectionner une médiagraphie';
     return (
-      <div
-        onClick={handleTriggerClick}
-        role="button"
-        tabIndex={disabled ? -1 : 0}
-        onKeyDown={(e) => {
-          if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
-            handleTriggerClick();
-          }
-        }}
-        className={`
-          ${cardBaseClass}
-          ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-          ${className}
-        `}
-      >
-        <div className="flex items-center gap-2 text-c5">
-          <PlusIcon size={18} />
-          <span className="text-base font-medium">
-            Ajouter {resourceLabel}
-          </span>
-        </div>
-      </div>
+      <AddResourceCard
+        resourceLabel={label}
+        onAdd={() => onLinkExisting(viewKey, { resourceTemplateIds: ids, pickerTitle })}
+        className={className}
+      />
     );
   }
 
-  // Mode expande: afficher les deux options cote a cote
   return (
-    <div className={`relative ${className}`}>
-      {/* Bouton fermer */}
-      <button
-        onClick={handleClose}
-        className="absolute -top-2 -right-2 z-10 w-6 h-6 flex items-center justify-center bg-c3 hover:bg-c4 rounded-full transition-colors"
-        aria-label="Fermer"
-      >
-        <CrossIcon size={12} className="text-c6" />
-      </button>
-
-      <div className="flex gap-3">
-        {/* Option: Ajouter une ressource existante */}
-        <div
-          onClick={handleLinkExisting}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              handleLinkExisting();
-            }
-          }}
-          className={`
-            ${cardBaseClass}
-            flex-1
-          `}
-        >
-          <LinkIcon size={24} className="text-c5 mb-2" />
-          <span className="text-sm font-medium text-c5 text-center">
-            Lier une ressource existante
-          </span>
-        </div>
-
-        {/* Option: Creer une nouvelle ressource */}
-        <div
-          onClick={handleCreateNew}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              handleCreateNew();
-            }
-          }}
-          className={`
-            ${cardBaseClass}
-            flex-1
-          `}
-        >
-          <EditIcon size={24} className="text-c5 mb-2" />
-          <span className="text-sm font-medium text-c5 text-center">
-            Creer une nouvelle ressource
-          </span>
-        </div>
-      </div>
+    <div className={`flex flex-wrap gap-3 ${className}`}>
+      <AddResourceCard
+        resourceLabel='une médiagraphie'
+        fullWidth={false}
+        onAdd={() =>
+          onLinkExisting(viewKey, {
+            resourceTemplateIds: mediagraphies,
+            pickerTitle: 'Sélectionner une médiagraphie',
+          })
+        }
+      />
+      <AddResourceCard
+        resourceLabel='une bibliographie'
+        fullWidth={false}
+        onAdd={() =>
+          onLinkExisting(viewKey, {
+            resourceTemplateIds: bibliographies,
+            pickerTitle: 'Sélectionner une bibliographie',
+          })
+        }
+      />
     </div>
+  );
+};
+
+/** Bouton unique « Ajouter » — ouvre le ResourcePicker avec création intégrée */
+export const AddResourceCard: React.FC<AddResourceCardProps> = ({
+  resourceLabel,
+  onAdd,
+  disabled = false,
+  fullWidth = true,
+  className = '',
+}) => {
+  const label = resourceLabel ? `Ajouter ${resourceLabel}` : 'Ajouter';
+
+  return (
+    <button
+      type='button'
+      onClick={disabled ? undefined : onAdd}
+      disabled={disabled}
+      className={`flex items-center justify-center gap-2 h-12 px-4 rounded-lg border-2 border-c3 bg-c2 hover:bg-c3 text-c6 text-sm font-medium transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${fullWidth ? 'w-full' : ''} ${className}`}>
+      <AddIcon size={14} className='text-c4' />
+      {label}
+    </button>
   );
 };
 
 /**
  * Version simplifiée - juste un bouton "+" qui ouvre directement le ResourcePicker
- * Utilisée pour les keywords par exemple
  */
 export interface AddButtonProps {
   label?: string;
@@ -172,9 +126,8 @@ export const AddButton: React.FC<AddButtonProps> = ({
         size={size}
         onPress={onClick}
         isDisabled={disabled}
-        className="bg-c3 text-c6 hover:bg-action hover:text-selected rounded-full transition-all duration-200"
-      >
-        <PlusIcon size={size === 'sm' ? 14 : size === 'md' ? 16 : 20} />
+        className='bg-c3 text-c6 hover:bg-action hover:text-selected rounded-full transition-all duration-200'>
+        <AddIcon size={size === 'sm' ? 14 : size === 'md' ? 16 : 20} />
       </Button>
     );
   }
@@ -183,7 +136,7 @@ export const AddButton: React.FC<AddButtonProps> = ({
     return (
       <div
         onClickCapture={disabled ? undefined : onClick}
-        role="button"
+        role='button'
         tabIndex={disabled ? -1 : 0}
         onKeyDown={(e) => {
           if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
@@ -198,15 +151,13 @@ export const AddButton: React.FC<AddButtonProps> = ({
           transition-all duration-200
           hover:border-action hover:bg-c2
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-        `}
-      >
-        <PlusIcon size={20} className="text-c5" />
-        {label && <span className="text-xs text-c5 mt-px">{label}</span>}
+        `}>
+        <AddIcon size={20} className='text-c5' />
+        {label && <span className='text-xs text-c5 mt-px'>{label}</span>}
       </div>
     );
   }
 
-  // Default: chip style
   return (
     <Button
       size={size}
@@ -220,8 +171,7 @@ export const AddButton: React.FC<AddButtonProps> = ({
         transition-all duration-200
         flex items-center gap-px
       `}
-      startContent={<PlusIcon size={size === 'sm' ? 12 : 14} />}
-    >
+      startContent={<AddIcon size={size === 'sm' ? 12 : 14} />}>
       {label || 'Ajouter'}
     </Button>
   );

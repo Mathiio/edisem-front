@@ -14,7 +14,7 @@ import {
 import { Button } from '@/theme/components/button';
 import { Input, Select, SelectItem, Textarea, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@/theme/components';
 import { Layouts } from '@/components/layout/Layouts';
-import { PlusIcon, EditIcon, TrashIcon, UserIcon } from '@/components/ui/icons';
+import { AddIcon, EditIcon, TrashIcon, UserIcon } from '@/components/ui/icons';
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { AlertModal } from '@/components/ui/AlertModal';
 import { getCourses, createCourse, updateCourse, deleteCourse, getCourseStudents, type Course, type CourseFormData, type Student } from '@/services/StudentSpace';
@@ -297,7 +297,7 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({ embedded = f
             <p className='text-sm text-c5 mt-px'>{courses.length} cours</p>
             {/* Bouton de test du highlight - À SUPPRIMER */}
           </div>
-          <Button className='bg-action text-selected' startContent={<PlusIcon size={16} />} onPress={handleOpenCreate}>
+          <Button className='bg-action text-selected' startContent={<AddIcon size={16} />} onPress={handleOpenCreate}>
             Nouveau Cours
           </Button>
         </div>
@@ -369,7 +369,7 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({ embedded = f
           <ModalContent>
             <ModalHeader className='flex flex-col gap-px'>
               <ModalTitle
-                icon={editingCourse ? EditIcon : PlusIcon}
+                icon={editingCourse ? EditIcon : AddIcon}
                 iconColor='text-action'
                 iconBg='bg-action/20'
                 title={editingCourse ? 'Modifier le cours' : 'Nouveau cours'}

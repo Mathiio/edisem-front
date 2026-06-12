@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CameraIcon, UserIcon, ShareIcon, MovieIcon, ArrowIcon, SettingsIcon } from '@/components/ui/icons';
+import { ImageIcon, UserIcon, ShareIcon, MovieIcon, ArrowIcon, SettingsIcon } from '@/components/ui/icons';
 import { motion, Variants } from 'framer-motion';
 import { addToast, Skeleton, Button, cn, DropdownMenu, Dropdown, DropdownItem, DropdownTrigger } from '@heroui/react';
 import { Splide, SplideTrack, SplideSlide } from '@splidejs/react-splide';
@@ -376,7 +376,7 @@ export const RecitiaOverviewSkeleton: React.FC = () => {
 export const UnloadedCard: React.FC = () => {
   return (
     <div className='lg:w-[100%] lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px] flex flex-col items-center justify-center p-5 bg-c3 rounded-xl gap-5'>
-      <CameraIcon size={42} className='text-c4' />
+      <ImageIcon size={42} className='text-c4' />
       <div className='w-[80%] flex flex-col justify-center items-center gap-2.5'>
         <h2 className='text-c5 text-3xl font-medium'>Oups !</h2>
         <p className='w-[400px] text-c5 text-base text-regular text-center'>

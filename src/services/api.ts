@@ -1,4 +1,6 @@
 import * as Items from '@/services/Items';
+import { ApiProxy } from '@/services/ApiProxy';
+import { omekaApiUrl, OMEKA_API_BASE } from '@/utils/omekaApi';
 // import { Actant } from "@/types/ui";
 
 export async function getItemByID(id: string): Promise<any | null> {
@@ -223,42 +225,34 @@ export async function getEdisemCommentById(commentaireId: number): Promise<any> 
 }
 
 /**
- * Supprimer un commentaire Edisem (soft delete)
- *
- * @param commentaireId - ID du commentaire à supprimer
- * @returns Promise avec le résultat de la suppression
+ * Supprime définitivement un commentaire Edisem (DELETE Omeka S).
  */
 export async function deleteEdisemComment(commentaireId: number): Promise<any> {
   try {
-    const response = await fetch('https://tests.arcanes.ca/omk/s/edisem/page/ajax', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        helper: 'Query',
-        action: 'deleteResource',
-        json: '1',
-        id: commentaireId.toString(),
-      }).toString(),
-    });
+    let proxyError: string | undefined;
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    try {
+      const result = await ApiProxy.deleteItem(commentaireId);
+
+      if (result?.error) {
+        proxyError = typeof result.error === 'string' ? result.error : 'Erreur lors de la suppression du commentaire';
+      } else if (result?.success === false) {
+        proxyError = result.message || 'Erreur lors de la suppression du commentaire';
+      } else {
+        return { success: true, message: 'Commentaire supprimé avec succès' };
+      }
+    } catch (error) {
+      proxyError = error instanceof Error ? error.message : 'Erreur lors de la suppression du commentaire';
     }
 
-    const result = await response.json();
-
-    if (!result.success) {
-      throw new Error(result.message || 'Erreur lors de la suppression du commentaire');
+    const response = await fetch(omekaApiUrl(`${OMEKA_API_BASE}items/${commentaireId}`));
+    if (response.status === 404) {
+      return { success: true, message: 'Commentaire supprimé avec succès' };
     }
 
-    return {
-      success: true,
-      message: 'Commentaire supprimé avec succès',
-    };
+    throw new Error(proxyError || 'Erreur lors de la suppression du commentaire');
   } catch (error) {
     console.error('Erreur lors de la suppression du commentaire Edisem:', error);
-    throw new Error('Impossible de supprimer le commentaire');
+    throw new Error(error instanceof Error ? error.message : 'Impossible de supprimer le commentaire');
   }
 }

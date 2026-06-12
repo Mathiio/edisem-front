@@ -10,9 +10,30 @@ export const recitArtitstiqueConfigSimplified: SimplifiedDetailConfig = {
     title: { property: 'dcterms:title', type: 'title', zone: 'header' },
     date: { property: 'dcterms:date', type: 'date', zone: 'details' },
     description: { property: 'dcterms:abstract', type: 'textarea', label: 'Synopsis', zone: 'details' },
-    genre: { property: 'schema:genre', type: 'textarea', label: 'Genre du récit', zone: 'details' },
-    domaine: { property: 'dcterms:subject', type: 'textarea', label: 'Domaines du récit', zone: 'details' },
-    theme: { property: 'storyline:hasTheme', type: 'textarea', label: 'Récits artistiques', zone: 'details' },
+    credits: {
+      property: 'theatre:credit',
+      type: 'textarea',
+      label: 'Crédits complets',
+      zone: 'details',
+    },
+    centralQuestion: {
+      property: 'schema:about',
+      type: 'textarea',
+      label: 'Question centrale',
+      zone: 'details',
+    },
+    aiPosition: {
+      property: 'schema:characterAttribute',
+      type: 'textarea',
+      label: "Position de l'IA/Technologie",
+      zone: 'details',
+    },
+    criticalReception: {
+      property: 'schema:review',
+      type: 'textarea',
+      label: 'Réception critique',
+      zone: 'details',
+    },
     contributors: {
       property: 'schema:agent',
       type: 'resource',
@@ -30,6 +51,22 @@ export const recitArtitstiqueConfigSimplified: SimplifiedDetailConfig = {
       zone: 'header',
     },
     externalLink: { property: 'schema:url', type: 'url', label: 'Site web associé', placeholder: 'https://...', zone: 'details' },
+    domain: {
+      property: 'dcterms:subject',
+      type: 'itemset',
+      label: 'Domaine du récit',
+      itemSetId: 21318,
+      multiSelect: true,
+      zone: 'details',
+    },
+    genre: {
+      property: 'schema:genre',
+      type: 'itemset',
+      label: 'Genre du récit',
+      itemSetId: 19326,
+      multiSelect: true,
+      zone: 'details',
+    },
   },
 
   views: [
@@ -63,20 +100,7 @@ export const recitArtitstiqueConfigSimplified: SimplifiedDetailConfig = {
       property: 'schema:tool',
       renderType: 'items',
       urlPattern: '/corpus/outil/:id',
-      resourceTemplateIds: [114, 129],
-    },
-    {
-      key: 'Credits',
-      title: 'Crédits complets',
-      property: 'theatre:credit',
-      renderType: 'text',
-    },
-    {
-      key: 'Entrevue',
-      title: 'Entrevue Arcanes',
-      property: 'schema:holdingArchive',
-      renderType: 'references',
-      resourceTemplateIds: [81, 99, 98, 83],
+      resourceTemplateId: 114,
     },
     {
       key: 'ContentScient',
@@ -92,13 +116,6 @@ export const recitArtitstiqueConfigSimplified: SimplifiedDetailConfig = {
       renderType: 'references',
       resourceTemplateIds: [81, 99, 98, 83],
     },
-    {
-      key: 'Domaine',
-      title: 'Domaines du récit',
-      property: 'dcterms:subject',
-      renderType: 'items',
-      itemSetIds: [21318],
-    },
   ],
 
   showKeywords: true,
@@ -108,6 +125,11 @@ export const recitArtitstiqueConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'recit_artistique',
   defaultView: 'AnalyseCritique',
   formEnabled: true,
+
+  contributorButtons: [
+    { label: 'Ajouter Personne', templateId: 33, property: 'schema:agent' },
+    { label: 'Ajouter Organisation', templateId: 104, property: 'schema:agent' },
+  ],
 };
 
 export const recitArtitstiqueConfig = convertToGenericConfig(recitArtitstiqueConfigSimplified);

@@ -1,5 +1,8 @@
 import { Input as OInput, extendVariants } from '@heroui/react';
 
+/** Libellé des champs — aligné sur CreateModal */
+export const formFieldLabelClass = 'text-semibold text-c6 text-xl';
+
 const baseInputWrapper = [
   '!bg-c2',
   '!border-2',

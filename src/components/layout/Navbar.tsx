@@ -62,7 +62,7 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({ trigger, section
 
       { isOpen && (
         <div
-          className={`shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] absolute top-full columns-3 gap-10 p-6 shadow-2xl left-1/2 mt-2 bg-c2 rounded-3xl border-2 border-c3 z-50 ${listMode ? 'min-w-fit' : 'min-w-max'}    `}
+          className={`shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] absolute top-full columns-3 gap-10 p-4 shadow-2xl left-1/2 mt-2 bg-c2 rounded-2xl border-2 border-c3 z-50 ${listMode ? 'min-w-fit' : 'min-w-max'}    `}
           style={{
             animation: isAnimating ? 'dropdownDisappear 200ms ease-in forwards' : 'dropdownAppear 200ms ease-out forwards',
           }}>

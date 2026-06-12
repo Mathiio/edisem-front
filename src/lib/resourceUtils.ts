@@ -77,14 +77,74 @@ export const getSafeResourceUrl = (item: any): string => {
 };
 
 /**
+ * Miniature générique Omeka S (pas une vraie couverture)
+ */
+export const isOmekaPlaceholderThumbnail = (url: string | null | undefined): boolean => {
+  if (!url || typeof url !== 'string') return true;
+  const normalized = url.toLowerCase();
+  return (
+    normalized.includes('/application/asset/thumbnails/image.png') ||
+    normalized.endsWith('/thumbnails/image.png') ||
+    normalized.includes('/thumbnails/image.gif')
+  );
+};
+
+/**
+ * Convertit un chemin Omeka (URL absolue, chemin /files/… ou nom de fichier) en URL affichable.
+ * Préfixe /omk/ pour les chemins relatifs (same-origin, fonctionne en dev et prod).
+ */
+export function resolveOmekaPublicUrl(url: string | null | undefined): string | null {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith('/omk/')) return trimmed;
+
+  if (trimmed.startsWith('/')) {
+    return `/omk${trimmed}`;
+  }
+
+  if (trimmed.startsWith('files/')) {
+    return `/omk/${trimmed}`;
+  }
+
+  return `/omk/files/${trimmed}`;
+}
+
+export function resolveOmekaThumbnail(url: string | null | undefined): string | null {
+  const resolved = resolveOmekaPublicUrl(url);
+  if (!resolved || isOmekaPlaceholderThumbnail(resolved)) return null;
+  return resolved;
+}
+
+/**
  * Extract thumbnail from resource item.
  * Supports direct property or YouTube URL derivation.
  */
 export const getResourceThumbnail = (item: any): string => {
+    // 0. Omeka S thumbnail_display_urls (réponse API liste ou détail)
+    const displayUrls = item['thumbnail_display_urls'];
+    if (displayUrls) {
+        const raw = displayUrls.square || displayUrls.medium || displayUrls.large;
+        const resolved = resolveOmekaThumbnail(typeof raw === 'string' ? raw : null);
+        if (resolved) return resolved;
+    }
+
     // 1. Direct string properties
-    if (typeof item.thumbnail === 'string' && item.thumbnail) return item.thumbnail;
-    if (typeof item.image === 'string' && item.image) return item.image;
-    if (typeof item.picture === 'string' && item.picture) return item.picture;
+    const directThumb = resolveOmekaThumbnail(
+        typeof item.thumbnail === 'string' ? item.thumbnail : null,
+    );
+    if (directThumb) return directThumb;
+
+    const imageThumb = resolveOmekaThumbnail(typeof item.image === 'string' ? item.image : null);
+    if (imageThumb) return imageThumb;
+
+    const pictureThumb = resolveOmekaThumbnail(typeof item.picture === 'string' ? item.picture : null);
+    if (pictureThumb) return pictureThumb;
 
     // 2. Check for YouTube URL (for recits)
     if (item.url) {
@@ -96,17 +156,28 @@ export const getResourceThumbnail = (item: any): string => {
     if (item.thumbnail && typeof item.thumbnail === 'object') {
         const ytThumbFromObject = getYouTubeThumbnail(item.thumbnail.url);
         if (ytThumbFromObject) return ytThumbFromObject;
-        if (item.thumbnail.thumbnail) return item.thumbnail.thumbnail;
-        if (item.thumbnail.url) return item.thumbnail.url; // Fallback
+        if (item.thumbnail.thumbnail) {
+            const resolved = resolveOmekaThumbnail(item.thumbnail.thumbnail);
+            if (resolved) return resolved;
+        }
+        if (item.thumbnail.url) {
+            const resolved = resolveOmekaThumbnail(item.thumbnail.url);
+            if (resolved) return resolved;
+        }
     }
 
     // 4. Array properties (take first element)
     if (Array.isArray(item.thumbnail) && item.thumbnail.length > 0) {
-        return typeof item.thumbnail[0] === 'string' ? item.thumbnail[0] : item.thumbnail[0]?.url || '';
+        const first = typeof item.thumbnail[0] === 'string' ? item.thumbnail[0] : item.thumbnail[0]?.url || '';
+        const resolved = resolveOmekaThumbnail(first);
+        if (resolved) return resolved;
     }
 
     // 5. Associated Media
-    if (item.associatedMedia?.[0]?.thumbnail) return item.associatedMedia[0].thumbnail;
+    if (item.associatedMedia?.[0]?.thumbnail) {
+        const resolved = resolveOmekaThumbnail(item.associatedMedia[0].thumbnail);
+        if (resolved) return resolved;
+    }
 
     return '';
 };
@@ -131,8 +202,16 @@ export const getYouTubeThumbnail = (url: string | string[]): string | undefined 
  * - recit_citoyen: "Fondé : [date]"
  * - Other recits: "Publié : [date]"
  */
-export const getRecitDateLine = (item: any): string => {
-    const date = item.dateIssued || item.date || "Date inconnue";
-    if (item.type === 'recit_citoyen') return `Fondé : ${date}`;
-    return `Publié : ${date}`;
+export const formatResourceDisplayDate = (raw: string): string => {
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return raw;
+  return parsed.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });
+};
+
+export const getRecitDateLine = (item: any): string | undefined => {
+    const raw = item.dateIssued || item.date || item.created;
+    if (!raw) return undefined;
+    const formatted = formatResourceDisplayDate(String(raw));
+    if (item.type === 'recit_citoyen') return `Fondé : ${formatted}`;
+    return `Publié : ${formatted}`;
 };

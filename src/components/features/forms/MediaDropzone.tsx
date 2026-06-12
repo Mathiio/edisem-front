@@ -1,8 +1,31 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, addToast, Input } from '@heroui/react';
+import { addToast, Tabs, Tab } from '@heroui/react';
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  modalCloseButtonClasses,
+} from '@/theme/components/modal';
 import { Button } from '@/theme/components/button';
-import { CameraIcon, CrossIcon, UploadIcon, PlusIcon, MovieIcon } from '@/components/ui/icons';
+import { AlertModal } from '@/components/ui/AlertModal';
+import { FormTextInput } from '@/components/features/forms/FormFields';
+import { CrossIcon, UploadIcon, AddIcon, MovieIcon } from '@/components/ui/icons';
 import { isValidYouTubeUrl } from '@/lib/utils';
+
+export interface MediaAuthor {
+  id: number | string;
+  title?: string;
+  name?: string;
+  picture?: string;
+  thumbnailUrl?: string;
+  resource_template_id?: number;
+  type?: string;
+}
+
+/** Actant (72), Personne (33), Organisation (104), Étudiant (96) */
+export const DEFAULT_AUTHOR_TEMPLATE_IDS = [72, 33, 104, 96] as const;
 
 export interface MediaFile {
   id: string;
@@ -17,10 +40,10 @@ export interface MediaFile {
 export interface MediaDropzoneProps {
   value: MediaFile[];
   onChange: (files: MediaFile[]) => void;
-  existingMedias?: string[]; // URLs des médias déjà reliés
-  onRemoveExisting?: (index: number) => void; // Callback pour supprimer un média existant
-  youtubeUrls?: string[]; // URLs YouTube ajoutées
-  onYouTubeUrlsChange?: (urls: string[]) => void; // Callback pour modifier les URLs YouTube
+  existingMedias?: string[];
+  onRemoveExisting?: (index: number) => void;
+  youtubeUrls?: string[];
+  onYouTubeUrlsChange?: (urls: string[]) => void;
   maxFiles?: number;
   acceptedTypes?: string[];
   disabled?: boolean;
@@ -28,11 +51,6 @@ export interface MediaDropzoneProps {
   height?: string;
 }
 
-/**
- * Zone de drag & drop pour les médias avec prévisualisation
- * Style similaire au MediaViewer avec carrousel Splide
- */
-// Helper pour extraire l'ID YouTube et générer la thumbnail
 const getYouTubeThumbnail = (url: string): string => {
   const match = url.match(/(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   const videoId = match ? match[1] : null;
@@ -48,6 +66,24 @@ const getYouTubeEmbedUrl = (url: string): string => {
 const REJECTED_MIME_TYPES = ['image/webp'] as const;
 const REJECTED_FILE_EXTENSIONS = ['.webp'] as const;
 
+const MODAL_TAB_CLASS_NAMES = {
+  base: 'w-full',
+  tabList: 'w-full bg-c2 border-2 border-c3 rounded-xl p-px gap-px',
+  cursor: 'w-full bg-action rounded-lg',
+  tab: 'flex-1 px-4 py-2 text-c5 data-[selected=true]:text-white justify-center',
+  tabContent: 'group-data-[selected=true]:text-white',
+};
+
+const generateId = () => `media-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+
+const isVideo = (file: File | string): boolean => {
+  if (typeof file === 'string') {
+    return file.includes('.mov') || file.includes('.mp4') || file.includes('.webm');
+  }
+  return file.type.startsWith('video/');
+};
+
 export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
   value = [],
   onChange,
@@ -61,29 +97,17 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
   className = '',
   height = '450px',
 }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalTab, setModalTab] = useState<string>('media');
   const [isDragging, setIsDragging] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mediaToDelete, setMediaToDelete] = useState<MediaFile | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [youtubeUrlInput, setYoutubeUrlInput] = useState('');
-  const [showAddInterface, setShowAddInterface] = useState(false);
-  const [editingYoutubeUrl, setEditingYoutubeUrl] = useState<string | null>(null); // URL en cours d'édition
+  const [pendingFiles, setPendingFiles] = useState<MediaFile[]>([]);
+  const [youtubeDraft, setYoutubeDraft] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Generate unique ID
-  const generateId = () => `media-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-  // Determine if file is video
-  const isVideo = (file: File | string): boolean => {
-    if (typeof file === 'string') {
-      return file.includes('.mov') || file.includes('.mp4') || file.includes('.webm');
-    }
-    return file.type.startsWith('video/');
-  };
-
-  // Combine existing medias, new files, and YouTube URLs
   const allMediaItems: (MediaFile & { isYouTube?: boolean; youtubeUrl?: string })[] = [
-    // Médias existants (URLs) - détecter YouTube automatiquement
     ...existingMedias.map((url, index) => {
       const isYouTubeMedia = isValidYouTubeUrl(url);
       return {
@@ -97,13 +121,7 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
         youtubeUrl: isYouTubeMedia ? url : undefined,
       };
     }),
-    // Nouveaux fichiers uploadés
-    ...value.map((file) => ({
-      ...file,
-      isExisting: false,
-      isYouTube: false,
-    })),
-    // Vidéos YouTube
+    ...value.map((file) => ({ ...file, isExisting: false, isYouTube: false })),
     ...youtubeUrls.map((ytUrl, index) => ({
       id: `youtube-${index}`,
       url: getYouTubeEmbedUrl(ytUrl),
@@ -117,20 +135,42 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
   ];
 
   const currentMedia = allMediaItems[currentIndex];
+  const canAddMore = allMediaItems.length < maxFiles;
+  const showYoutubeTab = !!onYouTubeUrlsChange;
 
-  // Handle file selection
-  const handleFiles = useCallback(
-    (files: FileList | null) => {
+  const openModal = (tab: 'media' | 'youtube' = 'media') => {
+    if (disabled || !canAddMore) return;
+    setModalTab(tab);
+    setPendingFiles([]);
+    setYoutubeDraft('');
+    setIsModalOpen(true);
+  };
+
+  const closeModal = (options?: { revokePending?: boolean }) => {
+    const shouldRevokePending = options?.revokePending ?? true;
+    if (shouldRevokePending) {
+      pendingFiles.forEach((f) => {
+        if (f.file) URL.revokeObjectURL(f.preview);
+      });
+    }
+    setPendingFiles([]);
+    setYoutubeDraft('');
+    setIsDragging(false);
+    setIsModalOpen(false);
+  };
+
+  const processFiles = useCallback(
+    (files: FileList | null, target: 'pending' | 'immediate' = 'pending') => {
       if (!files || disabled) return;
 
       const newMediaFiles: MediaFile[] = [];
       const rejectedFiles: string[] = [];
-      const remainingSlots = maxFiles - allMediaItems.length;
+      const baseCount = allMediaItems.length + (target === 'pending' ? pendingFiles.length : 0);
+      const remainingSlots = maxFiles - baseCount;
 
       Array.from(files)
         .slice(0, remainingSlots)
         .forEach((file) => {
-          // Vérifier si le type ou l'extension est rejeté
           const isRejectedType = (REJECTED_MIME_TYPES as readonly string[]).includes(file.type);
           const isRejectedExtension = REJECTED_FILE_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext));
 
@@ -139,18 +179,16 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
             return;
           }
 
-          const preview = URL.createObjectURL(file);
           newMediaFiles.push({
             id: generateId(),
             file,
-            preview,
+            preview: URL.createObjectURL(file),
             type: isVideo(file) ? 'video' : 'image',
             name: file.name,
             isExisting: false,
           });
         });
 
-      // Afficher un message d'erreur pour les fichiers rejetés
       if (rejectedFiles.length > 0) {
         addToast({
           title: 'Format non supporté',
@@ -159,132 +197,139 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
         });
       }
 
-      if (newMediaFiles.length > 0) {
+      if (newMediaFiles.length === 0) return;
+
+      if (target === 'pending') {
+        setPendingFiles((prev) => [...prev, ...newMediaFiles]);
+      } else {
         onChange([...value, ...newMediaFiles]);
-        setShowAddInterface(false); // Fermer l'interface d'ajout après upload
       }
     },
-    [value, onChange, maxFiles, disabled, allMediaItems.length],
+    [disabled, allMediaItems.length, pendingFiles.length, maxFiles, onChange, value],
   );
 
-  // Handle drag events
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!disabled) setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    if (!disabled) {
-      handleFiles(e.dataTransfer.files);
+  const handleModalSave = () => {
+    if (modalTab === 'youtube') {
+      if (!isValidYouTubeUrl(youtubeDraft)) return;
+      onYouTubeUrlsChange?.([...youtubeUrls, youtubeDraft]);
+      setCurrentIndex(allMediaItems.length);
+      closeModal();
+      return;
     }
-  };
 
-  // Handle click to upload
-  const handleClick = () => {
-    if (!disabled && fileInputRef.current) {
-      fileInputRef.current.click();
+    if (pendingFiles.length > 0) {
+      onChange([...value, ...pendingFiles]);
+      setCurrentIndex(allMediaItems.length);
+      closeModal({ revokePending: false });
+      return;
     }
+    closeModal();
   };
 
-  // Handle file input change
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleFiles(e.target.files);
-    // Reset input to allow selecting same file again
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+  const removePendingFile = (id: string) => {
+    setPendingFiles((prev) => {
+      const removed = prev.find((f) => f.id === id);
+      if (removed?.file) URL.revokeObjectURL(removed.preview);
+      return prev.filter((f) => f.id !== id);
+    });
   };
 
-  // Open delete confirmation modal
   const handleRemoveClick = (media: MediaFile) => {
     setMediaToDelete(media);
     setIsDeleteModalOpen(true);
   };
 
-  // Confirm and remove a media file
   const handleConfirmRemove = () => {
     if (!mediaToDelete) return;
 
     const mediaWithYoutube = mediaToDelete as MediaFile & { isYouTube?: boolean; youtubeUrl?: string };
 
     if (mediaWithYoutube.isYouTube) {
-      // Supprimer une vidéo YouTube
       if (onYouTubeUrlsChange && mediaWithYoutube.youtubeUrl) {
-        const newUrls = youtubeUrls.filter((u) => u !== mediaWithYoutube.youtubeUrl);
-        onYouTubeUrlsChange(newUrls);
+        onYouTubeUrlsChange(youtubeUrls.filter((u) => u !== mediaWithYoutube.youtubeUrl));
       }
     } else if (mediaToDelete.isExisting) {
-      // Supprimer un média existant
       const existingIndex = existingMedias.findIndex((url) => url === mediaToDelete.url);
       if (existingIndex !== -1 && onRemoveExisting) {
         onRemoveExisting(existingIndex);
       }
     } else {
-      // Supprimer un nouveau fichier
       const mediaToRemoveFile = value.find((m) => m.id === mediaToDelete.id);
       if (mediaToRemoveFile?.file) {
         URL.revokeObjectURL(mediaToRemoveFile.preview);
       }
-      const newValue = value.filter((m) => m.id !== mediaToDelete.id);
-      onChange(newValue);
+      onChange(value.filter((m) => m.id !== mediaToDelete.id));
     }
 
-    // Adjust current index if needed
     if (currentIndex >= allMediaItems.length - 1 && currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
     } else if (allMediaItems.length <= 1) {
       setCurrentIndex(0);
     }
 
-    // Close modal and reset
     setIsDeleteModalOpen(false);
     setMediaToDelete(null);
   };
 
-  // Cancel deletion
-  const handleCancelRemove = () => {
-    setIsDeleteModalOpen(false);
-    setMediaToDelete(null);
-  };
+  const canSaveModal =
+    modalTab === 'youtube'
+      ? isValidYouTubeUrl(youtubeDraft)
+      : pendingFiles.length > 0;
+
+  const renderDropZone = (compact = false) => (
+    <div
+      className={`
+        flex flex-col items-center justify-center w-full
+        ${compact ? 'min-h-[220px] py-8' : 'h-full min-h-[280px]'}
+        bg-c2/50 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200
+        ${isDragging ? 'border-action bg-c3' : 'border-c4/50 hover:border-c4/75 hover:bg-c2'}
+      `}
+      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); if (!disabled) setIsDragging(true); }}
+      onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        if (!disabled) processFiles(e.dataTransfer.files);
+      }}
+      onClick={() => fileInputRef.current?.click()}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
+      role='button'
+      tabIndex={0}>
+      <UploadIcon size={compact ? 32 : 40} className='text-c4 mb-4' />
+      <p className='text-c5 text-sm font-medium mb-2 text-center max-w-[300px]'>
+        Glissez-déposez vos images ou vidéos ou cliquer pour parcourir les fichiers.
+      </p>
+    </div>
+  );
+
+  const renderPendingFileThumbnail = (file: MediaFile) => (
+    <div key={file.id} className='group relative w-24 h-16 rounded-lg overflow-hidden border-2 border-c3'>
+      {file.type === 'video' ? (
+        <video src={file.preview} className='w-full h-full object-cover' />
+      ) : (
+        <img src={file.preview} alt={file.name} className='w-full h-full object-cover' />
+      )}
+      <button
+        type='button'
+        onClick={() => removePendingFile(file.id)}
+        aria-label={`Retirer ${file.name}`}
+        className='absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer'>
+        <span className='absolute inset-0 bg-black/55' aria-hidden='true' />
+        <CrossIcon size={22} className='relative z-10 text-white' />
+      </button>
+    </div>
+  );
 
   return (
-    <div className={`flex flex-col gap-4 `}>
-      {/* Main display area */}
-      <div
-        className={`
-          relative rounded-xl overflow-hidden
-          transition-all duration-200
-          ${isDragging ? 'ring-2 ring-action bg-c2' : ''}
-          ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-        `}
-        style={{ height }}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}>
-        {allMediaItems.length > 0 && currentMedia && !showAddInterface ? (
-          // Show current media
+    <div className='flex flex-col gap-2'>
+      {/* Zone principale */}
+      <div className={`relative rounded-xl overflow-hidden ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ height }}>
+        {allMediaItems.length > 0 && currentMedia ? (
           <div className={`relative w-full h-full flex flex-col ${className}`}>
-            {/* Zone de prévisualisation */}
             <div className='relative flex-1 min-h-0'>
               {currentMedia.isYouTube ? (
-                // Afficher iframe YouTube
                 <iframe
                   src={currentMedia.url}
                   className='w-full h-full rounded-xl'
@@ -293,134 +338,56 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
                   title={currentMedia.name}
                 />
               ) : currentMedia.type === 'video' ? (
-                <video src={currentMedia.url || currentMedia.preview} className='w-full h-full object-cover' controls />
+                <video src={currentMedia.url || currentMedia.preview} className='w-full h-full object-cover rounded-xl' controls />
               ) : (
-                <img src={currentMedia.url || currentMedia.preview} alt={currentMedia.name} className='w-full h-full object-cover' />
+                <img src={currentMedia.url || currentMedia.preview} alt={currentMedia.name} className='w-full h-full object-cover rounded-xl' />
               )}
 
-              {/* Remove button */}
               {!disabled && (
                 <Button
                   isIconOnly
                   size='sm'
-                  className='absolute top-3 right-3 bg-c1/80 hover:bg-danger text-c6 hover:text-white rounded-full z-10 px-4 py-2 w-fit h-fit flex items-center justify-center !gap-2.5 rounded-xl'
+                  className='absolute top-3 right-3 bg-c1/80 hover:bg-danger text-c6 hover:text-white z-10 px-4 py-2 w-fit h-fit flex items-center justify-center !gap-2.5 rounded-lg'
                   onPress={() => handleRemoveClick(currentMedia)}>
                   <span>Supprimer</span>
-                  <CrossIcon size={14} className='text-sm w-[14px] h-[14px]' />
+                  <CrossIcon size={14} className='w-3.5 h-3.5' />
                 </Button>
               )}
             </div>
-
-            {/* Champ d'édition URL YouTube sous la preview */}
-            {currentMedia.isYouTube && !disabled && (
-              <div className='flex items-center gap-2.5 mt-2.5 p-2.5 bg-c2 rounded-xl border border-c3'>
-                <MovieIcon size={16} className='text-c5 flex-shrink-0' />
-                <Input
-                  type='url'
-                  value={editingYoutubeUrl !== null ? editingYoutubeUrl : currentMedia.youtubeUrl || ''}
-                  onChange={(e) => setEditingYoutubeUrl(e.target.value)}
-                  onBlur={() => {
-                    // Sauvegarder la modification
-                    if (editingYoutubeUrl !== null && isValidYouTubeUrl(editingYoutubeUrl)) {
-                      const ytIndex = youtubeUrls.findIndex((u) => u === currentMedia.youtubeUrl);
-                      if (ytIndex !== -1 && onYouTubeUrlsChange) {
-                        const newUrls = [...youtubeUrls];
-                        newUrls[ytIndex] = editingYoutubeUrl;
-                        onYouTubeUrlsChange(newUrls);
-                      }
-                    }
-                    setEditingYoutubeUrl(null);
-                  }}
-                  placeholder='URL YouTube'
-                  classNames={{
-                    inputWrapper: 'bg-c1 border border-c3 rounded-lg flex-1 min-h-[36px]',
-                    input: 'text-c6 text-sm',
-                  }}
-                />
-              </div>
-            )}
           </div>
         ) : (
-          // Interface d'ajout - divisée en deux (dropzone + YouTube)
-          <div className={`flex w-full h-full gap-4`}>
-            {/* Zone de drop pour fichiers */}
-            <div
-              className={`
-                flex flex-col items-center justify-center
-                ${onYouTubeUrlsChange ? 'flex-1' : 'w-full'} h-full bg-c3
-                border-2 border-dashed rounded-xl
-                ${isDragging ? 'border-action' : 'border-c4'}
-                cursor-pointer
-              `}
-              onDragEnter={handleDragEnter}
-              onDragLeave={handleDragLeave}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-              onClick={handleClick}>
-              <CameraIcon size={40} className='text-c4 mb-4' />
-              <p className='text-c5 text-sm font-medium mb-2 text-center px-4'>Glissez-déposez vos images ici</p>
-              <p className='text-c4 text-xs mb-4'>ou</p>
-              <Button size='sm' className='bg-action text-selected rounded-lg' startContent={<UploadIcon size={14} />} onPress={handleClick}>
-                Charger des fichiers
-              </Button>
+          <button
+            type='button'
+            disabled={disabled}
+            onClick={() => openModal('media')}
+            className={`
+              w-full h-full flex flex-col items-center justify-center gap-4
+              border-2 border-c3 rounded-xl
+              hover:bg-c3 bg-c2 transition-all duration-200
+              ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
+            `}>
+            <MovieIcon size={40} className='text-c4' />
+            <div className='flex flex-col items-center'>
+              <p className='text-c6 text-base font-medium'>Ajouter des médias</p>
+              <p className='text-c4 text-sm'>Cliquez pour ouvrir la fenêtre d&apos;ajout</p>
             </div>
-
-            {/* Zone YouTube séparée */}
-            {onYouTubeUrlsChange && (
-              <div className='flex flex-col items-center justify-center flex-1 h-full bg-c3 border-2 border-dashed border-c4 rounded-xl px-4'>
-                <MovieIcon size={40} className='text-c4 mb-4' />
-                <p className='text-c5 text-sm font-medium mb-4 text-center'>Ajouter une vidéo YouTube</p>
-                <div className='flex flex-col gap-2.5 w-full max-w-[300px]'>
-                  <Input
-                    type='url'
-                    placeholder='https://www.youtube.com/watch?v=...'
-                    value={youtubeUrlInput}
-                    onChange={(e) => setYoutubeUrlInput(e.target.value)}
-                    classNames={{
-                      inputWrapper: 'bg-c1 border border-c3 rounded-lg w-full min-h-[40px]',
-                      input: 'text-c6 text-sm',
-                    }}
-                  />
-                  <Button
-                    size='sm'
-                    className='bg-action text-selected rounded-lg w-full'
-                    isDisabled={!isValidYouTubeUrl(youtubeUrlInput)}
-                    onPress={() => {
-                      if (isValidYouTubeUrl(youtubeUrlInput)) {
-                        onYouTubeUrlsChange([...youtubeUrls, youtubeUrlInput]);
-                        setYoutubeUrlInput('');
-                        setShowAddInterface(false);
-                        // Sélectionner la nouvelle vidéo ajoutée
-                        setCurrentIndex(allMediaItems.length);
-                      }
-                    }}>
-                    Ajouter la vidéo
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+          </button>
         )}
       </div>
 
-      {/* Thumbnails Carousel - Toujours visible */}
+      {/* Vignettes */}
       <div className='flex w-full justify-start items-center gap-2.5 flex-wrap'>
-        {/* Thumbnails des médias existants */}
         {allMediaItems.map((media, index) => (
           <div key={media.id} className='relative'>
             <button
-              onClick={() => {
-                setCurrentIndex(index);
-                setShowAddInterface(false);
-                setEditingYoutubeUrl(null);
-              }}
+              type='button'
+              onClick={() => setCurrentIndex(index)}
               className={`
-                flex-shrink-0 w-[136px] h-[70px] rounded-xl overflow-hidden
-                transition-all duration-200
-                ${index === currentIndex && !showAddInterface ? 'border-2 border-c6' : 'border-2 border-transparent hover:border-gray-300'}
+                flex-shrink-0 w-[136px] h-[70px] rounded-lg overflow-hidden
+                transition-all duration-200 cursor-pointer
+                ${index === currentIndex ? 'border-2 border-c5' : 'border-2 border-transparent hover:border-c4'}
               `}>
               {media.isYouTube ? (
-                // Thumbnail YouTube
                 <div className='relative w-full h-full'>
                   <img src={media.preview} alt={media.name} className='w-full h-full object-cover' />
                   <div className='absolute inset-0 flex items-center justify-center bg-black/30'>
@@ -433,49 +400,138 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
                 <img src={media.url || media.preview} alt={media.name} className='w-full h-full object-cover' />
               )}
             </button>
-            {/* Badge for new files */}
-            {!media.isExisting && !media.isYouTube && (
-              <span className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-action text-selected text-[10px] px-2 py-px rounded-sm z-10'>+</span>
+            {media.isYouTube && (
+              <span className='absolute bottom-px right-px bg-red-600 text-white text-[8px] px-px rounded z-10'>YT</span>
             )}
-            {/* Badge YouTube */}
-            {media.isYouTube && <span className='absolute bottom-px right-px bg-red-600 text-white text-[8px] px-px rounded z-10'>YT</span>}
           </div>
         ))}
 
-        {/* Bouton + pour ajouter - toujours visible */}
-        {!disabled && allMediaItems.length < maxFiles && (
+        {!disabled && canAddMore && allMediaItems.length > 0 && (
           <button
-            onClick={() => setShowAddInterface(true)} // Afficher l'interface d'ajout
-            className={`flex-shrink-0 w-[136px] h-[70px] rounded-xl border-2 border-dashed flex items-center justify-center transition-all duration-200 ${
-              showAddInterface ? 'border-action bg-action/10' : 'border-c4 hover:border-action'
-            }`}>
-            <PlusIcon size={20} className={showAddInterface ? 'text-action' : 'text-c4'} />
+            type='button'
+            onClick={() => openModal('media')}
+            className='flex-shrink-0 w-[136px] h-[70px] rounded-lg border-2 cursor-pointer border-c3 bg-c2 hover:bg-c3 flex items-center justify-center transition-all duration-200'>
+            <AddIcon size={16} className='text-c4' />
           </button>
         )}
       </div>
 
-      {/* Hidden file input */}
-      <input ref={fileInputRef} type='file' multiple accept={acceptedTypes.join(',')} onChange={handleInputChange} className='hidden' />
 
-      {/* Delete confirmation modal */}
-      <Modal isOpen={isDeleteModalOpen} onClose={handleCancelRemove} size='sm'>
+      <input
+        ref={fileInputRef}
+        type='file'
+        multiple
+        accept={acceptedTypes.join(',')}
+        onChange={(e) => {
+          processFiles(e.target.files);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }}
+        className='hidden'
+      />
+
+      {/* Modal d'ajout */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        size='xl'
+        backdrop='blur'
+        scrollBehavior='inside'
+        classNames={{ closeButton: modalCloseButtonClasses }}>
         <ModalContent>
-          <ModalHeader className='flex flex-col gap-px !text-c6 text-base font-medium'>Confirmer la suppression</ModalHeader>
-          <ModalBody>
-            <p className='text-c4'>
-              {mediaToDelete?.isExisting ? 'Ce média sera définitivement supprimé. Cette action est irréversible.' : 'Voulez-vous retirer ce fichier de la liste ?'}
-            </p>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant='light' onPress={handleCancelRemove}>
-              Annuler
-            </Button>
-            <Button color='danger' onPress={handleConfirmRemove}>
-              Supprimer
-            </Button>
-          </ModalFooter>
+          {(onClose) => (
+            <>
+              <ModalHeader>
+                <span className='text-c6 font-semibold text-xl'>Ajouter un média</span>
+              </ModalHeader>
+
+              <ModalBody>
+                {showYoutubeTab ? (
+                  <Tabs
+                    fullWidth
+                    aria-label='Type de média'
+                    selectedKey={modalTab}
+                    onSelectionChange={(key) => setModalTab(String(key))}
+                    classNames={MODAL_TAB_CLASS_NAMES}>
+                    <Tab key='media' title='Médias'>
+                      <div className='flex flex-col gap-4 pt-4'>
+                        {renderDropZone(true)}
+                        {pendingFiles.length > 0 && (
+                          <div className='flex flex-col gap-2'>
+                            <p className='text-c5 text-sm font-medium'>
+                              {pendingFiles.length} fichier{pendingFiles.length > 1 ? 's' : ''} à ajouter
+                            </p>
+                            <div className='flex flex-wrap gap-2'>
+                              {pendingFiles.map(renderPendingFileThumbnail)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </Tab>
+                    <Tab key='youtube' title='Vidéo YouTube'>
+                      <div className='pt-4'>
+                        <FormTextInput
+                          label='URL YouTube'
+                          type='url'
+                          value={youtubeDraft}
+                          onChange={setYoutubeDraft}
+                          placeholder='https://www.youtube.com/watch?v=...'
+                        />
+                      </div>
+                    </Tab>
+                  </Tabs>
+                ) : (
+                  <div className='flex flex-col gap-4'>
+                    {renderDropZone(true)}
+                    {pendingFiles.length > 0 && (
+                      <div className='flex flex-wrap gap-2'>
+                        {pendingFiles.map(renderPendingFileThumbnail)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </ModalBody>
+
+              <ModalFooter>
+                <Button variant='light' onPress={onClose} className='text-c5 rounded-lg'>
+                  Annuler
+                </Button>
+                <Button
+                  onPress={handleModalSave}
+                  isDisabled={!canSaveModal}
+                  className='bg-action text-selected rounded-lg'>
+                  Enregistrer
+                </Button>
+              </ModalFooter>
+            </>
+          )}
         </ModalContent>
       </Modal>
+
+
+      <AlertModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => { setIsDeleteModalOpen(false); setMediaToDelete(null); }}
+        title='Confirmer la suppression'
+        type='danger'
+        confirmLabel='Supprimer'
+        onConfirm={handleConfirmRemove}
+        description={
+          <>
+            <p>
+              {mediaToDelete?.isExisting ? (
+                <>Supprimer le média <span className='text-c6 font-medium'>&quot;{mediaToDelete.name}&quot;</span> ?</>
+              ) : (
+                <>Retirer <span className='text-c6 font-medium'>&quot;{mediaToDelete?.name}&quot;</span> de la liste ?</>
+              )}
+            </p>
+            <p className='text-c4 text-sm mt-2.5'>
+              {mediaToDelete?.isExisting
+                ? 'Cette action est irréversible.'
+                : 'Le fichier ne sera pas envoyé lors de la sauvegarde.'}
+            </p>
+          </>
+        }
+      />
     </div>
   );
 };

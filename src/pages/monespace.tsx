@@ -1,22 +1,20 @@
 import { Layouts } from '@/components/layout/Layouts';
 import { PageBanner } from '@/components/ui/PageBanner';
 import { motion, Variants } from 'framer-motion';
-import { StudentCard, StudentCardSkeleton } from '@/components/features/espaceEtudiant/StudentCard';
+import { MySpaceResourceCard, MySpaceResourceCardSkeleton } from '@/components/features/espaceEtudiant/MySpaceResourceCard';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { getUserResources, getStudentCourses, getCourses, type Course } from '@/services/StudentSpace';
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, addToast } from '@heroui/react';
-import { ExperimentationIcon, UniversityIcon, PlusIcon, WarningIcon, BookIcon } from '@/components/ui/icons';
+import { getUserResources, getStudentCourses, getCourses, deleteUserResource, type Course } from '@/services/StudentSpace';
+import { addToast } from '@heroui/react';
+import { CreateResourceAction } from '@/components/features/espaceEtudiant/CreateResourceAction';
+import { ExperimentationIcon, UniversityIcon, WarningIcon, BookIcon } from '@/components/ui/icons';
 import { useNavigate } from 'react-router-dom';
 import { experimentationStudentConfigSimplified } from '@/pages/generic/config/experimentationStudentConfig';
-import { feedbackStudentConfigSimplified } from '@/pages/generic/config/feedbackStudentConfig';
 import { toolStudentConfigSimplified } from '@/pages/generic/config/toolConfig';
-import { bibliographyStudentConfigSimplified } from '@/pages/generic/config/bibliographyStudentConfig';
+import { bibliographyConfigSimplified } from '@/pages/generic/config/bibliographyConfig';
+import { getResourceEditUrl } from '@/config/resourceConfig';
 import { useAuth } from '@/hooks/useAuth';
-import type { Key } from 'react';
 import { AlertModal } from '@/components/ui/AlertModal';
 import { Select, SelectItem } from '@/theme/components';
-
-const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=StudentSpace';
 
 // Registre des configs créables avec leurs routes et icônes
 const createableConfigs = [
@@ -31,12 +29,7 @@ const createableConfigs = [
     icon: UniversityIcon,
   },
   {
-    config: feedbackStudentConfigSimplified,
-    route: '/add-resource/retour-experience',
-    icon: UniversityIcon,
-  },
-  {
-    config: bibliographyStudentConfigSimplified,
+    config: bibliographyConfigSimplified,
     route: '/add-resource/bibliographie',
     icon: BookIcon,
   },
@@ -105,16 +98,13 @@ export const MonEspace: React.FC = () => {
   void _fullName;
   void _userTypeLabel;
 
-  // Style identique au ProfilDropdown
-  const dropdownButtonClass =
-    'hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 flex flex-row rounded-lg border-2 border-c3 items-center justify-center px-4 py-2.5 text-base gap-2.5 text-c6 transition-all ease-in-out duration-200';
-
   const fetchExperimentations = useCallback(async () => {
     try {
       setLoading(true);
       const userId = localStorage.getItem('userId');
-      if (!userId) return;
-      const resources = await getUserResources(parseInt(userId));
+      const omekaUserId = userData?.omekaUserId ?? (localStorage.getItem('omekaUserId') ? parseInt(localStorage.getItem('omekaUserId')!, 10) : null);
+      if (!userId && !omekaUserId) return;
+      const resources = await getUserResources(userId ? parseInt(userId, 10) : 0, omekaUserId);
       resources.sort((a, b) => new Date(b.created || 0).getTime() - new Date(a.created || 0).getTime());
       setExperimentationsStudents(resources);
     } catch (error) {
@@ -122,7 +112,7 @@ export const MonEspace: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userData?.omekaUserId]);
 
   useEffect(() => {
     fetchExperimentations();
@@ -187,20 +177,11 @@ export const MonEspace: React.FC = () => {
   // Handler pour modifier une ressource - navigue vers la page de détail en mode édition
   const handleEdit = useCallback(
     (id: string, type?: string) => {
-      if (type === 'bibliographie') {
-        navigate(`/corpus/bibliographie/${id}?mode=edit`);
+      if (type) {
+        navigate(getResourceEditUrl(type, id));
         return;
       }
-
-      let baseRoute = 'experimentation';
-      if (type) {
-        if (type.includes('outil')) {
-          baseRoute = 'outil';
-        } else if (type.includes('retour') || type.includes('experience')) {
-          baseRoute = 'retour-experience';
-        }
-      }
-      navigate(`/espace-etudiant/${baseRoute}/${id}?mode=edit`);
+      navigate(getResourceEditUrl('experimentation_etudiant', id));
     },
     [navigate],
   );
@@ -208,7 +189,7 @@ export const MonEspace: React.FC = () => {
   // Handler pour ouvrir la modal de suppression
   const handleDeleteClick = useCallback(
     (id: string) => {
-      const item = experimentationsStudents.find((exp) => exp.id === id);
+      const item = experimentationsStudents.find((exp) => String(exp.id) === String(id));
       if (item) {
         setItemToDelete({ id, title: item.title || 'Sans titre' });
         setDeleteModalOpen(true);
@@ -217,53 +198,25 @@ export const MonEspace: React.FC = () => {
     [experimentationsStudents],
   );
 
-  // Handler pour confirmer la suppression (soft delete via API PHP)
+  // Handler pour confirmer la suppression définitive (DELETE Omeka S)
   const handleConfirmDelete = useCallback(async () => {
     if (!itemToDelete) return;
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`${API_BASE}&action=deleteResource&id=${itemToDelete.id}&json=1`);
-
-      let result;
-      if (!response.ok && response.status !== 500) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-
-      const text = await response.text();
-      try {
-        result = JSON.parse(text);
-      } catch {
-        // Si le parsing JSON échoue mais que le code est 200 ou 500 (cas du crash Doctrine après suppression)
-        if (response.ok || response.status === 500) {
-          result = { success: true };
-        } else {
-          throw new Error('Réponse invalide du serveur');
-        }
-      }
-
-      const isDoctrineFalseError =
-        result.error && result.error.includes('Doctrine\\ORM\\ORMInvalidArgumentException') && result.error.includes('Binding entities to query parameters');
-
-      if (result.success || result.id || isDoctrineFalseError) {
-        addToast({
-          title: 'Succès',
-          description: 'La ressource a été supprimée avec succès.',
-          color: 'success',
-        });
-        await fetchExperimentations();
-      } else {
-        addToast({
-          title: 'Erreur',
-          description: result.error || result.message || 'Une erreur est survenue lors de la suppression.',
-          color: 'danger',
-        });
-      }
+      await deleteUserResource(itemToDelete.id);
+      setExperimentationsStudents((prev) => prev.filter((item) => String(item.id) !== String(itemToDelete.id)));
+      addToast({
+        title: 'Succès',
+        description: 'La ressource a été supprimée avec succès.',
+        color: 'success',
+      });
+      await fetchExperimentations();
     } catch (error) {
       console.error('Error deleting resource:', error);
       addToast({
         title: 'Erreur',
-        description: 'Une erreur est survenue lors de la suppression.',
+        description: error instanceof Error ? error.message : 'Une erreur est survenue lors de la suppression.',
         color: 'danger',
       });
     } finally {
@@ -346,56 +299,30 @@ export const MonEspace: React.FC = () => {
           </Select>
         )}
 
-        {/* Dropdown d'ajout de ressource */}
         {canCreate && (
-          <Dropdown
-            classNames={{
-              content: 'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3 min-w-[200px]',
-            }}>
-            <DropdownTrigger>
-              <div className={dropdownButtonClass}>
-                Ajouter une ressource
-                <PlusIcon className='text-c6 rotate-90' size={14} />
-              </div>
-            </DropdownTrigger>
-            <DropdownMenu
-              aria-label="Actions d'ajout"
-              className='p-2'
-              classNames={{
-                base: 'bg-transparent shadow-none border-0',
-                list: 'bg-transparent',
-              }}
-              onAction={(key: Key) => {
-                const config = createableConfigs.find((c) => String(c.config.templateId) === String(key));
-                if (config) handleCreateResource(config.route);
-              }}>
-              {createableConfigs.map(({ config, icon: Icon }) => (
-                <DropdownItem
-                  key={String(config.templateId)}
-                  className='cursor-pointer text-c6 rounded-lg py-2 px-3 data-[hover=true]:!bg-c3 data-[selectable=true]:focus:!bg-c3'
-                  startContent={<Icon size={16} className='text-c5' />}>
-                  {config.resourceType}
-                </DropdownItem>
-              ))}
-            </DropdownMenu>
-          </Dropdown>
+          <CreateResourceAction
+            configs={createableConfigs}
+            onCreate={handleCreateResource}
+          />
         )}
       </div>
       <div className='flex flex-col gap-8 justify-center'>
         <h1 className='text-6xl text-c6 font-medium flex flex-col items-center text-center'>Mes ressources</h1>
         <div className='grid grid-cols-4 w-full gap-6'>
           {loading
-            ? Array.from({ length: 8 }).map((_, index) => <StudentCardSkeleton key={index} />)
+            ? Array.from({ length: 8 }).map((_, index) => <MySpaceResourceCardSkeleton key={index} />)
             : experimentationsStudents.map((item, index) => (
                 <motion.div key={`${item.type}-${item.id}`} initial='hidden' animate='visible' variants={fadeIn} custom={index}>
-                  <StudentCard
+                  <MySpaceResourceCard
                     id={String(item.id)}
                     title={item.title}
-                    thumbnail={item.thumbnail ? (item.thumbnail.startsWith('http') ? item.thumbnail : `https://tests.arcanes.ca/omk${item.thumbnail}`) : undefined}
+                    thumbnail={item.thumbnail ?? undefined}
+                    url={item.url}
+                    date={item.date}
                     actants={item.actants?.map((a: { id: number | string; title: string; picture: string | null }) => ({
                       id: String(a.id),
                       title: a.title,
-                      picture: a.picture ? (a.picture.startsWith('http') ? a.picture : `https://tests.arcanes.ca/omk${a.picture}`) : undefined,
+                      picture: a.picture ?? undefined,
                     }))}
                     type={item.type === 'experimentation' ? 'experimentationStudents' : item.type}
                     showActions

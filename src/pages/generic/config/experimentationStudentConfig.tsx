@@ -85,6 +85,10 @@ export const experimentationStudentConfigSimplified: SimplifiedDetailConfig = {
   defaultView: 'bibo:abstract',
   formEnabled: true,
 
+  contributorButtons: [
+    { label: 'Ajouter Étudiant', templateId: 96, property: 'schema:agent' },
+  ],
+
   smartRecommendations: {
     // Pas de getAllResourcesOfType - on n'affiche que les expérimentations du même cours
     // Si aucune expérimentation du même cours, la section sera masquée

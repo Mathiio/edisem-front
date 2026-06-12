@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Divider, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Link } from '@heroui/react';
-import { ArrowIcon, CrossIcon, PlusIcon } from '@/components/ui/icons';
+import { ArrowIcon, CrossIcon, AddIcon } from '@/components/ui/icons';
 import { ITEM_TYPES } from './FilterPopup';
 
 type Masque = {
@@ -99,7 +99,7 @@ const HidePopup: React.FC<HidePopupProps> = ({ onHide }) => {
           underline='none'
           size='sm'
           className='text-sm flex justify-start w-full gap-2 rounded-none text-c6 bg-transparent cursor-pointer'>
-          <PlusIcon size={12} />
+          <AddIcon size={12} />
           Ajouter un masque
         </Link>
         <Divider />

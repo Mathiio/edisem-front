@@ -8,6 +8,12 @@ export const analyseCritiqueConfigSimplified: SimplifiedDetailConfig = {
 
   fields: {
     title: { property: 'dcterms:title', type: 'title', label: 'Titre de la relation / annotation', zone: 'header' },
+    argument: {
+      property: 'dcterms:description',
+      type: 'textarea',
+      label: 'Analyse critique',
+      zone: 'details',
+    },
     keywords: {
       property: 'jdc:hasConcept',
       type: 'resource',
@@ -35,22 +41,11 @@ export const analyseCritiqueConfigSimplified: SimplifiedDetailConfig = {
 
   views: [
     {
-      key: 'argument',
-      title: 'Analyse critique',
-      property: 'dcterms:description',
-      renderType: 'text',
-    },
-    {
       key: 'target',
       title: 'Ressource analysée',
       property: 'oa:hasTarget',
       renderType: 'items',
-    },
-    {
-      key: 'related',
-      title: 'Ressources associées',
-      property: 'ma:hasRelatedResource',
-      renderType: 'items',
+      hiddenInForm: true,
     },
   ],
 
@@ -58,8 +53,12 @@ export const analyseCritiqueConfigSimplified: SimplifiedDetailConfig = {
   showRecommendations: false,
   showComments: true,
   recommendationsTitle: 'Autres analyses critiques',
-  defaultView: 'argument',
   formEnabled: true,
+
+  contributorButtons: [
+    { label: 'Ajouter Intervenant', templateId: 72, property: 'schema:contributor' },
+    { label: 'Ajouter Étudiant', templateId: 96, property: 'schema:contributor' },
+  ],
 };
 
 export const analyseCritiqueConfig = convertToGenericConfig(analyseCritiqueConfigSimplified);

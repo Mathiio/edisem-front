@@ -6,7 +6,7 @@ import { convertToGenericConfig } from '../simplifiedConfigAdapter';
  * Configuration simplifiée pour les bibliographies étudiantes
  * Template Omeka S: 81 (EdiSem bibliographie)
  */
-export const bibliographyStudentConfigSimplified: SimplifiedDetailConfig = {
+export const bibliographyConfigSimplified: SimplifiedDetailConfig = {
   resourceType: RESOURCE_TYPES.bibliographie.type,
   templateId: 81,
 
@@ -42,8 +42,8 @@ export const bibliographyStudentConfigSimplified: SimplifiedDetailConfig = {
 
   views: [
     {
-      key: 'details',
-      title: 'Informations',
+      key: 'authors',
+      title: 'Auteurs',
       renderType: 'categories',
       categories: [
         {
@@ -54,33 +54,54 @@ export const bibliographyStudentConfigSimplified: SimplifiedDetailConfig = {
             { key: 'editor', label: 'Directeur(s)', property: 'bibo:editor' },
           ],
         },
+      ],
+    },
+    {
+      key: 'publication',
+      title: 'Publication',
+      renderType: 'categories',
+      categories: [
         {
           key: 'publication',
           title: 'Publication',
           subcategories: [
-            { key: 'publisher', label: 'Éditeur / Revue', property: 'dcterms:publisher' },
-            { key: 'volume', label: 'Volume', property: 'bibo:volume' },
-            { key: 'issue', label: 'Numéro', property: 'bibo:issue' },
-            { key: 'pages', label: 'Pages', property: 'bibo:pages' },
-            { key: 'numPages', label: 'Nombre de pages', property: 'bibo:numPages' },
-            { key: 'collection', label: 'Collection', property: 'schema:collection' },
+            { key: 'publisher', label: 'Éditeur / Revue', property: 'dcterms:publisher', allowMultipleInputs: false },
+            { key: 'volume', label: 'Volume', property: 'bibo:volume', allowMultipleInputs: false },
+            { key: 'issue', label: 'Numéro', property: 'bibo:issue', allowMultipleInputs: false },
+            { key: 'pages', label: 'Pages', property: 'bibo:pages', allowMultipleInputs: false },
+            { key: 'numPages', label: 'Nombre de pages', property: 'bibo:numPages', allowMultipleInputs: false },
+            { key: 'collection', label: 'Collection', property: 'schema:collection', allowMultipleInputs: false },
           ],
         },
+      ],
+    },
+    {
+      key: 'identification',
+      title: 'Identification',
+      renderType: 'categories',
+      categories: [
         {
           key: 'identification',
           title: 'Identification',
           subcategories: [
-            { key: 'isbn', label: 'ISBN', property: 'jdc:hasConcept' },
-            { key: 'format', label: 'Format', property: 'dcterms:format' },
-            { key: 'type', label: 'Type', property: 'dcterms:type' },
+            { key: 'isbn', label: 'ISBN', property: 'jdc:hasConcept', allowMultipleInputs: false },
+            { key: 'format', label: 'Format', property: 'dcterms:format', allowMultipleInputs: false },
+            { key: 'type', label: 'Type', property: 'dcterms:type', allowMultipleInputs: false },
           ],
         },
+      ],
+    },
+    {
+      key: 'source',
+      title: 'Source',
+      renderType: 'categories',
+      categories: [
         {
           key: 'source',
           title: 'Source',
           subcategories: [
-            { key: 'bookTitle', label: 'Titre du livre', property: 'dcterms:isPartOf' },
-            { key: 'event', label: 'Événement', property: 'bibo:presentedAt' },
+            { key: 'bookTitle', label: 'Titre du livre', property: 'dcterms:isPartOf', allowMultipleInputs: false },
+            { key: 'event', label: 'Événement', property: 'bibo:presentedAt', allowMultipleInputs: false },
           ],
         },
       ],
@@ -90,9 +111,9 @@ export const bibliographyStudentConfigSimplified: SimplifiedDetailConfig = {
   showKeywords: false,
   showRecommendations: false,
   showComments: false,
-  defaultView: 'details',
+  defaultView: 'authors',
   formEnabled: true,
 };
 
 // Export de la config convertie pour utilisation avec ConfigurableDetailPage/GenericDetailPage
-export const bibliographyStudentConfig = convertToGenericConfig(bibliographyStudentConfigSimplified);
+export const bibliographyConfig = convertToGenericConfig(bibliographyConfigSimplified);
