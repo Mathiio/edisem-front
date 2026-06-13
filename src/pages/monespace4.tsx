@@ -160,9 +160,35 @@ export const MonEspace4: React.FC = () => {
     }
   }, [userData?.type]);
 
+  const CACHE_KEY = useMemo(() => {
+    const omekaUserId = userData?.omekaUserId ?? localStorage.getItem('omekaUserId');
+    return omekaUserId ? `monespace4_resources_${omekaUserId}` : null;
+  }, [userData?.omekaUserId]);
+
+  // Charger le cache session immédiatement (avant le premier fetch)
+  useEffect(() => {
+    if (!CACHE_KEY) return;
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed: StudentResourceCard[] = JSON.parse(cached);
+        if (parsed.length > 0) {
+          setAllResources(parsed);
+          setLoading(false); // Afficher le cache en attendant le rafraîchissement
+        }
+      }
+    } catch {
+      // Cache corrompu — ignorer
+    }
+  }, [CACHE_KEY]);
+
   const fetchResources = useCallback(async () => {
     try {
-      setLoading(true);
+      setLoading((prev) => {
+        // Ne pas afficher le spinner si on a déjà du contenu (re-fetch silencieux)
+        const hasCached = CACHE_KEY ? sessionStorage.getItem(CACHE_KEY) != null : false;
+        return hasCached ? false : true;
+      });
       const userId = localStorage.getItem('userId');
       const omekaUserId =
         userData?.omekaUserId ??
@@ -176,12 +202,21 @@ export const MonEspace4: React.FC = () => {
         .sort(sortByModifiedDesc);
 
       setAllResources(filtered);
+
+      // Mettre en cache pour la prochaine visite
+      if (CACHE_KEY && filtered.length > 0) {
+        try {
+          sessionStorage.setItem(CACHE_KEY, JSON.stringify(filtered));
+        } catch {
+          // sessionStorage plein — ignorer
+        }
+      }
     } catch (error) {
       console.error('Error loading resources:', error);
     } finally {
       setLoading(false);
     }
-  }, [userData?.omekaUserId]);
+  }, [userData?.omekaUserId, CACHE_KEY]);
 
   useEffect(() => {
     fetchResources();

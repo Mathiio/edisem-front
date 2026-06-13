@@ -8,6 +8,7 @@ import { Splide, SplideTrack, SplideSlide } from '@splidejs/react-splide';
 import MediaViewer from '../conference/MediaViewer';
 import { MediaFile } from '@/components/features/forms/MediaDropzone';
 import { carouselArrowButtonClass } from '@/components/ui/Carrousels';
+import { dropdownContentClassNames } from '@/theme/components/dropdown';
 
 // Helper function to get the correct route based on person type
 const getPersonRoute = (person: any): string => {
@@ -575,10 +576,7 @@ export const ExpOverviewCard: React.FC<ExpOverviewProps> = ({
                   ))}
                 {Array.isArray(personnes) && personnes.length > 1 && (
                   <Dropdown
-                    classNames={{
-                      content:
-                        'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3 min-w-[240px]',
-                    }}>
+                    classNames={dropdownContentClassNames}>
                     <DropdownTrigger className='p-0'>
                       <Button
                         size='md'

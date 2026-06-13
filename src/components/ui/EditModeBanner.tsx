@@ -13,7 +13,7 @@ interface EditModeBannerProps {
  */
 export const EditModeBanner: React.FC<EditModeBannerProps> = ({ mode, resourceType, className = '' }) => {
   const { label, icon: Icon, color } = getResourceDisplayTheme(resourceType);
-  const title = mode === 'create' ? 'Mode création' : 'Mode édition';
+  const title = 'Mode édition';
 
   return (
     <div className={`py-2.5 relative w-full ${className}`}>

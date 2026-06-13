@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Layouts } from '@/components/layout/Layouts';
 import { DotsIcon, FileIcon } from '@/components/ui/icons';
 import { Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Card, Skeleton } from '@heroui/react';
+import { dropdownContentClassNames, dropdownMenuClassNames } from '@/theme/components/dropdown';
 import { getResearchByActant } from '@/services/api';
 
 // Interface pour les propriétés de RechercheCard
@@ -74,24 +75,14 @@ const RechercheCard: React.FC<RechercheCardProps> = ({ recherche }) => {
               </div>
             </div>
             <div className='flex items-center gap-2'>
-              <Dropdown
-                classNames={{
-                  content:
-                    'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3 min-w-[220px]',
-                }}>
+              <Dropdown classNames={dropdownContentClassNames}>
                 <DropdownTrigger className='cursor-pointer text-c6 pt-[5px]' onClick={handleDropdownTriggerClick}>
                   <div className=''>
                     <DotsIcon className='mx-px' size={18} />
                   </div>
                 </DropdownTrigger>
 
-                <DropdownMenu
-                  aria-label='Menu de recherche'
-                  className='p-2 text-c6'
-                  classNames={{
-                    base: 'bg-transparent shadow-none border-0',
-                    list: 'bg-transparent',
-                  }}>
+                <DropdownMenu aria-label='Menu de recherche' className='p-2 text-c6' classNames={dropdownMenuClassNames}>
                   <DropdownItem
                     key='Save'
                     className='gap-2 cursor-pointer text-c6 rounded-lg py-2 px-3 data-[hover=true]:!bg-c3 data-[selectable=true]:focus:!bg-c3'

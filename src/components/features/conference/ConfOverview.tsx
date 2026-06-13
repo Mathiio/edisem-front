@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ImageIcon, UserIcon, ShareIcon, MovieIcon } from '@/components/ui/icons';
 import { motion, Variants } from 'framer-motion';
 import { addToast, Link, Button, cn, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/react';
+import { dropdownContentClassNames, dropdownMenuClassNames } from '@/theme/components/dropdown';
 import { Conference } from '@/types/ui';
 
 const itemVariants: Variants = {
@@ -166,10 +167,7 @@ export const ConfOverviewCard: React.FC<ConfOverviewProps> = ({ conf, currentTim
               )}
 
               {conf.actant && Array.isArray(conf.actant) && conf.actant.length > 1 && (
-                <Dropdown
-                  classNames={{
-                    content: 'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3',
-                  }}>
+                <Dropdown classNames={dropdownContentClassNames}>
                   <DropdownTrigger className='p-0'>
                     <Button
                       size='md'
@@ -178,10 +176,7 @@ export const ConfOverviewCard: React.FC<ConfOverviewProps> = ({ conf, currentTim
                     </Button>
                   </DropdownTrigger>
 
-                  <DropdownMenu
-                    aria-label='Autres intervenants'
-                    className='p-2'
-                    classNames={{ base: 'bg-transparent shadow-none border-0', list: 'bg-transparent' }}>
+                  <DropdownMenu aria-label='Autres intervenants' className='p-2' classNames={dropdownMenuClassNames}>
                     {conf.actant.slice(1).map((actant: any) => (
                       <DropdownItem
                         key={actant.id}
@@ -213,7 +208,7 @@ export const ConfOverviewCard: React.FC<ConfOverviewProps> = ({ conf, currentTim
 
             <div className='w-fit flex justify-between gap-2.5 items-center'>
               <Button
-                className='hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] h-fit cursor-pointer bg-c2 flex flex-row rounded-lg border-2 border-c3 items-center justify-center px-2.5 py-1.5 text-base gap-2.5 text-c6 transition-all ease-in-out duration-200'
+                className='hover:bg-c3 h-fit cursor-pointer bg-c2 flex flex-row rounded-lg border-2 border-c3 items-center justify-center px-2.5 py-1.5 text-base gap-2.5 text-c6 transition-all ease-in-out duration-200'
                 onClick={copyToClipboard}
                 onPress={() => {
                   addToast({
@@ -236,7 +231,7 @@ export const ConfOverviewCard: React.FC<ConfOverviewProps> = ({ conf, currentTim
                 conf.url !== conf.fullUrl && (
                   <Button
                     size='md'
-                    className='hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] h-fit cursor-pointer bg-c2 flex flex-row rounded-lg border-2 border-c3 items-center justify-center px-2.5 py-1.5 text-base gap-2.5 text-c6 transition-all ease-in-out duration-200'
+                    className='hover:bg-c3 h-fit cursor-pointer bg-c2 flex flex-row rounded-lg border-2 border-c3 items-center justify-center px-2.5 py-1.5 text-base gap-2.5 text-c6 transition-all ease-in-out duration-200'
                     onClick={changeLink}>
                     <MovieIcon size={12} />
                     {buttonText}

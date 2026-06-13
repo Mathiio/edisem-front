@@ -16,6 +16,7 @@ import {
   Select,
   SelectItem,
 } from '@heroui/react';
+import { dropdownContentClassNames, dropdownMenuClassNames } from '@/theme/components/dropdown';
 import { ArrowIcon, CrossIcon, AddIcon, DotsIcon } from '@/components/ui/icons';
 import { getItemByID } from '@/services/api';
 
@@ -594,17 +595,14 @@ export default function FilterPopup({ onSearch }: FilterPopupProps) {
               <Dropdown
                 className='min-w-0 w-fit'
                 classNames={{
-                  content:
-                    'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3 min-w-[8rem]',
+                  content: `${dropdownContentClassNames.content} min-w-[8rem]`,
                 }}>
                 <DropdownTrigger>
                   <Button className='text-c6 bg-transparent px-0.5 py-0.5 h-auto'>
                     <DotsIcon size={14} className='text-c6' />
                   </Button>
                 </DropdownTrigger>
-                <DropdownMenu
-                  className='p-2 w-32 text-c6'
-                  classNames={{ base: 'bg-transparent shadow-none border-0', list: 'bg-transparent' }}>
+                <DropdownMenu className='p-2 w-32 text-c6' classNames={dropdownMenuClassNames}>
                   <DropdownItem
                     className='cursor-pointer rounded-lg py-2 px-3 data-[hover=true]:!bg-c3 data-[selectable=true]:focus:!bg-c3'
                     onPress={() => {
@@ -635,12 +633,7 @@ export default function FilterPopup({ onSearch }: FilterPopupProps) {
               <div className='flex flex-col gap-4 mt-4'>
                 <div className='w-full flex gap-2 items-center'>
                   <p className='text-sm font-medium text-c6'>Ou</p>
-                  <Dropdown
-                    className='min-w-0 w-full'
-                    classNames={{
-                      content:
-                        'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3',
-                    }}>
+                  <Dropdown className='min-w-0 w-full' classNames={dropdownContentClassNames}>
                     <DropdownTrigger className='min-w-0 w-full'>
                       <Button className='h-auto text-sm text-extralight text-c6 px-2 py-1.5 flex justify-between gap-2.5 bg-transparent border-1.5 border-c4 rounded-lg w-full'>
                         {group.itemType
@@ -651,7 +644,7 @@ export default function FilterPopup({ onSearch }: FilterPopupProps) {
                     </DropdownTrigger>
                     <DropdownMenu
                       className='p-2 w-full'
-                      classNames={{ base: 'bg-transparent shadow-none border-0', list: 'bg-transparent' }}
+                      classNames={dropdownMenuClassNames}
                       selectionMode='single'
                       selectedKeys={group.itemType ? [group.itemType] : []}
                       onSelectionChange={(keys) => {
@@ -711,12 +704,7 @@ export default function FilterPopup({ onSearch }: FilterPopupProps) {
                 <div className={`flex flex-col gap-2 ${group.conditions.length > 0 ? 'mb-4' : ''}`}>
                   {group.conditions.map((condition, conditionIndex) => (
                     <div key={conditionIndex} className='flex items-center gap-2'>
-                      <Dropdown
-                        className='min-w-0 w-fit'
-                        classNames={{
-                          content:
-                            'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3',
-                        }}>
+                      <Dropdown className='min-w-0 w-fit' classNames={dropdownContentClassNames}>
                         <DropdownTrigger>
                           <Button className='h-auto text-sm text-extralight text-c6 px-2 py-1.5 flex gap-2.5 justify-between bg-transparent border-1.5 border-c4 rounded-lg min-w-[118px]'>
                             {(() => {
@@ -731,7 +719,7 @@ export default function FilterPopup({ onSearch }: FilterPopupProps) {
                         </DropdownTrigger>
                         <DropdownMenu
                           className='p-2'
-                          classNames={{ base: 'bg-transparent shadow-none border-0', list: 'bg-transparent' }}
+                          classNames={dropdownMenuClassNames}
                           selectionMode='single'
                           selectedKeys={[condition.property || getPropertiesByType(group.itemType)[0]?.key]}
                           onSelectionChange={(keys) => {
@@ -748,12 +736,7 @@ export default function FilterPopup({ onSearch }: FilterPopupProps) {
                         </DropdownMenu>
                       </Dropdown>
 
-                      <Dropdown
-                        className='min-w-0 w-fit'
-                        classNames={{
-                          content:
-                            'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3',
-                        }}>
+                      <Dropdown className='min-w-0 w-fit' classNames={dropdownContentClassNames}>
                         <DropdownTrigger>
                           <Button className='h-auto text-sm text-extralight text-c6 px-2 py-1.5 flex justify-between gap-2.5 bg-transparent border-1.5 border-c4 rounded-lg min-w-[110px]'>
                             {(() => {
@@ -765,7 +748,7 @@ export default function FilterPopup({ onSearch }: FilterPopupProps) {
                         </DropdownTrigger>
                         <DropdownMenu
                           className='p-2'
-                          classNames={{ base: 'bg-transparent shadow-none border-0', list: 'bg-transparent' }}
+                          classNames={dropdownMenuClassNames}
                           selectionMode='single'
                           selectedKeys={[condition.operator]}
                           onSelectionChange={(keys) => {

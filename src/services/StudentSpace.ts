@@ -321,47 +321,78 @@ function mapOmekaItemToStudentCard(item: Record<string, any>): StudentResourceCa
 }
 
 /**
- * Récupère toutes les ressources dont l'utilisateur Omeka S est propriétaire (o:owner)
+ * Récupère toutes les ressources dont l'utilisateur Omeka S est propriétaire (o:owner).
+ * Optimisations :
+ * - Première page chargée en priorité → résultats rapides
+ * - Pages suivantes en parallèle (via totalResults dans le header Omeka S)
+ * - Enrichissement des thumbnails limité à 5 requêtes simultanées
  */
 export async function fetchUserResourcesByOwnerFromOmeka(omekaUserId: number): Promise<StudentResourceCard[]> {
-  const allItems: Record<string, any>[] = [];
-  let page = 1;
   const perPage = 100;
+  const baseUrl = `${OMEKA_API_BASE}items?owner_id=${omekaUserId}&per_page=${perPage}&sort_by=modified&sort_order=desc`;
 
-  while (page <= 10) {
-    const url = omekaApiUrl(
-      `${OMEKA_API_BASE}items?owner_id=${omekaUserId}&per_page=${perPage}&page=${page}&sort_by=modified&sort_order=desc`,
-    );
-    const response = await fetch(url);
+  // Première page pour déterminer le total
+  const firstUrl = omekaApiUrl(`${baseUrl}&page=1`);
+  const firstResponse = await fetch(firstUrl);
+  if (!firstResponse.ok) {
+    throw new Error(`Erreur Omeka S (${firstResponse.status}) lors de la récupération des ressources par owner`);
+  }
+  const firstData = await firstResponse.json();
+  if (!Array.isArray(firstData) || firstData.length === 0) return [];
 
-    if (!response.ok) {
-      throw new Error(`Erreur Omeka S (${response.status}) lors de la récupération des ressources par owner`);
+  let allItems: Record<string, any>[] = [...firstData];
+
+  // Si la première page est pleine, charger les suivantes en parallèle
+  if (firstData.length === perPage) {
+    const totalHeader = firstResponse.headers.get('Omeka-S-Total-Results');
+    const total = totalHeader ? parseInt(totalHeader, 10) : null;
+    const maxPages = total ? Math.min(Math.ceil(total / perPage), 10) : 10;
+
+    if (maxPages > 1) {
+      const pageNumbers = Array.from({ length: maxPages - 1 }, (_, i) => i + 2);
+      const pageResults = await Promise.all(
+        pageNumbers.map(async (page) => {
+          try {
+            const r = await fetch(omekaApiUrl(`${baseUrl}&page=${page}`));
+            if (!r.ok) return [];
+            const d = await r.json();
+            return Array.isArray(d) ? d : [];
+          } catch {
+            return [];
+          }
+        }),
+      );
+      for (const pageData of pageResults) {
+        allItems.push(...pageData);
+        if (pageData.length < perPage) break; // Dernière page réelle
+      }
     }
-
-    const data = await response.json();
-    if (!Array.isArray(data) || data.length === 0) break;
-
-    allItems.push(...data);
-    if (data.length < perPage) break;
-    page++;
   }
 
   const cards = allItems
     .map(mapOmekaItemToStudentCard)
     .filter((card): card is StudentResourceCard => card !== null);
 
-  // Conférences / séminaires : la liste API omet parfois thumbnail_display_urls → charger o:media
-  await Promise.all(
-    cards.map(async (card, index) => {
-      if (card.thumbnail && !isOmekaPlaceholderThumbnail(card.thumbnail)) return;
+  // Enrichissement des thumbnails manquants — max 5 requêtes simultanées
+  const needsEnrichment = cards
+    .map((card, index) => {
       const rawItem = allItems.find((i) => i['o:id'] === card.id);
-      if (!rawItem?.['o:media']?.length) return;
-      const enriched = await enrichThumbnailFromMedia(rawItem);
-      if (enriched) {
-        cards[index] = { ...card, thumbnail: enriched };
-      }
-    }),
-  );
+      return (!card.thumbnail || isOmekaPlaceholderThumbnail(card.thumbnail)) && rawItem?.['o:media']?.length
+        ? { card, index, rawItem }
+        : null;
+    })
+    .filter(Boolean) as { card: StudentResourceCard; index: number; rawItem: any }[];
+
+  const CONCURRENCY = 5;
+  for (let i = 0; i < needsEnrichment.length; i += CONCURRENCY) {
+    const batch = needsEnrichment.slice(i, i + CONCURRENCY);
+    await Promise.all(
+      batch.map(async ({ index, rawItem }) => {
+        const enriched = await enrichThumbnailFromMedia(rawItem);
+        if (enriched) cards[index] = { ...cards[index], thumbnail: enriched };
+      }),
+    );
+  }
 
   return cards.map(normalizeStudentResourceCard);
 }

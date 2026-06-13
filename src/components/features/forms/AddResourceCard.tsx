@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@heroui/react';
 import { AddIcon } from '@/components/ui/icons';
+import { outlineButtonClass } from '@/theme/components/button';
 import { splitBibliographyMediagraphyTemplateIds } from '@/config/resourceConfig';
 import type { LinkExistingOptions } from '@/pages/generic/config';
 
@@ -88,7 +89,7 @@ export const AddResourceCard: React.FC<AddResourceCardProps> = ({
       type='button'
       onClick={disabled ? undefined : onAdd}
       disabled={disabled}
-      className={`flex items-center justify-center gap-2 h-12 px-4 rounded-lg border-2 border-c3 bg-c2 hover:bg-c3 text-c6 text-sm font-medium transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${fullWidth ? 'w-full' : ''} ${className}`}>
+      className={`${outlineButtonClass} disabled:opacity-50 disabled:cursor-not-allowed ${fullWidth ? 'w-full' : ''} ${className}`}>
       <AddIcon size={14} className='text-c4' />
       {label}
     </button>

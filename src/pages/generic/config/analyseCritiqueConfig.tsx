@@ -28,6 +28,7 @@ export const analyseCritiqueConfigSimplified: SimplifiedDetailConfig = {
       label: 'Contributeur(s)',
       multiSelect: true,
       zone: 'overview',
+      editable: false,
     },
     collection: {
       property: 'schema:collection',
@@ -54,11 +55,6 @@ export const analyseCritiqueConfigSimplified: SimplifiedDetailConfig = {
   showComments: true,
   recommendationsTitle: 'Autres analyses critiques',
   formEnabled: true,
-
-  contributorButtons: [
-    { label: 'Ajouter Intervenant', templateId: 72, property: 'schema:contributor' },
-    { label: 'Ajouter Étudiant', templateId: 96, property: 'schema:contributor' },
-  ],
 };
 
 export const analyseCritiqueConfig = convertToGenericConfig(analyseCritiqueConfigSimplified);

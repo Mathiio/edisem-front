@@ -11,12 +11,13 @@ import {
   addToast,
   Chip,
 } from '@heroui/react';
-import { Button } from '@/theme/components/button';
+import { Button, outlineButtonClass, primaryButtonClass, cancelButtonClass } from '@/theme/components/button';
 import { Input, Select, SelectItem, Textarea, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@/theme/components';
 import { Layouts } from '@/components/layout/Layouts';
 import { AddIcon, EditIcon, TrashIcon, UserIcon } from '@/components/ui/icons';
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { AlertModal } from '@/components/ui/AlertModal';
+import { MySpaceActionButton } from '@/components/features/espaceEtudiant/MySpaceResourceRow';
 import { getCourses, createCourse, updateCourse, deleteCourse, getCourseStudents, type Course, type CourseFormData, type Student } from '@/services/StudentSpace';
 
 // Sessions disponibles
@@ -297,7 +298,7 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({ embedded = f
             <p className='text-sm text-c5 mt-px'>{courses.length} cours</p>
             {/* Bouton de test du highlight - À SUPPRIMER */}
           </div>
-          <Button className='bg-action text-selected' startContent={<AddIcon size={16} />} onPress={handleOpenCreate}>
+          <Button className={outlineButtonClass} startContent={<AddIcon size={14} />} onPress={handleOpenCreate}>
             Nouveau Cours
           </Button>
         </div>
@@ -346,16 +347,16 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({ embedded = f
                     {course.studentCount} étudiant{course.studentCount !== 1 ? 's' : ''}
                   </TableCell>
                   <TableCell>
-                    <div className='flex items-center gap-2'>
-                      <Button isIconOnly variant='flat' className='bg-c3' onPress={() => handleViewStudents(course)}>
-                        <UserIcon size={18} />
-                      </Button>
-                      <Button isIconOnly variant='flat' className='bg-c3' onPress={() => handleOpenEdit(course)}>
-                        <EditIcon size={18} />
-                      </Button>
-                      <Button isIconOnly variant='flat' className='bg-danger/20 text-danger' onPress={() => openDeleteCourseModal(course)}>
-                        <TrashIcon size={18} />
-                      </Button>
+                    <div className='flex items-center gap-1.5'>
+                      <MySpaceActionButton onClick={() => handleViewStudents(course)} title='Voir les étudiants' aria-label='Voir les étudiants'>
+                        <UserIcon size={16} />
+                      </MySpaceActionButton>
+                      <MySpaceActionButton onClick={() => handleOpenEdit(course)} title='Modifier' aria-label='Modifier le cours'>
+                        <EditIcon size={16} />
+                      </MySpaceActionButton>
+                      <MySpaceActionButton variant='danger' onClick={() => openDeleteCourseModal(course)} title='Supprimer' aria-label='Supprimer le cours'>
+                        <TrashIcon size={16} />
+                      </MySpaceActionButton>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -447,10 +448,10 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({ embedded = f
               </div>
             </ModalBody>
             <ModalFooter>
-              <Button variant='flat' onPress={() => setIsModalOpen(false)} className='bg-c3 text-c6'>
+              <Button variant='light' onPress={() => setIsModalOpen(false)} className={cancelButtonClass}>
                 Annuler
               </Button>
-              <Button className='bg-action text-selected' onPress={handleSubmit} isLoading={submitting}>
+              <Button className={primaryButtonClass} onPress={handleSubmit} isLoading={submitting}>
                 {editingCourse ? 'Mettre à jour' : 'Créer'}
               </Button>
             </ModalFooter>
@@ -502,7 +503,7 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({ embedded = f
               )}
             </ModalBody>
             <ModalFooter>
-              <Button variant='flat' onPress={() => setIsStudentsModalOpen(false)} className='bg-c3 text-c6'>
+              <Button variant='light' onPress={() => setIsStudentsModalOpen(false)} className={cancelButtonClass}>
                 Fermer
               </Button>
             </ModalFooter>

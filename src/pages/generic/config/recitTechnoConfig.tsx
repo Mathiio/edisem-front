@@ -2,6 +2,7 @@ import { RESOURCE_TYPES } from '@/config/resourceConfig';
 import { SimplifiedDetailConfig } from '../simplifiedConfig';
 import { convertToGenericConfig } from '../simplifiedConfigAdapter';
 import { getRecitsTechnoCards } from '@/services/Items';
+import { IMAGINAIRE_IA_VOCAB_FIELDS } from './imagiaireIAConfig';
 
 export const recitTechnoConfigSimplified: SimplifiedDetailConfig = {
   resourceType: RESOURCE_TYPES.recit_techno_industriel.type,
@@ -83,6 +84,14 @@ export const recitTechnoConfigSimplified: SimplifiedDetailConfig = {
       property: 'schema:review',
       renderType: 'references',
       resourceTemplateIds: [81, 99, 98, 83],
+    },
+    {
+      key: 'ImagiaireIA',
+      title: "Imaginaire de l'IA",
+      property: 'schema:characterAttribute',
+      renderType: 'vocabGroup',
+      editable: true,
+      vocabFields: IMAGINAIRE_IA_VOCAB_FIELDS,
     },
   ],
 

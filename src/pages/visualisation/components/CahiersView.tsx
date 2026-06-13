@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DotsIcon } from '@/components/ui/icons';
 import { Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Card, Skeleton, Button } from '@heroui/react';
+import { dropdownContentClassNames, dropdownMenuClassNames } from '@/theme/components/dropdown';
 import { getResearchByActant } from '@/services/api';
 import { FilterGroup, NodePosition } from '@/components/features/datavisualisation/FilterPopup';
 import { LibraryBig, History, Trash2 } from 'lucide-react';
@@ -82,23 +83,13 @@ const RechercheCard: React.FC<RechercheCardProps> = ({ recherche, onSelect }) =>
               <h3 className='text-sm font-medium text-c6'>{recherche.title}</h3>
               <span className='text-xs text-c4'>{recherche.created}</span>
             </div>
-            <Dropdown
-              classNames={{
-                content:
-                  'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3 min-w-[220px]',
-              }}>
+            <Dropdown classNames={dropdownContentClassNames}>
               <DropdownTrigger className='cursor-pointer text-c6' onClick={handleDropdownTriggerClick}>
                 <div className='p-4 hover:bg-c3 rounded-md'>
                   <DotsIcon size={16} />
                 </div>
               </DropdownTrigger>
-              <DropdownMenu
-                aria-label='Menu de recherche'
-                className='p-2 text-c6'
-                classNames={{
-                  base: 'bg-transparent shadow-none border-0',
-                  list: 'bg-transparent',
-                }}>
+              <DropdownMenu aria-label='Menu de recherche' className='p-2 text-c6' classNames={dropdownMenuClassNames}>
                 <DropdownItem
                   key='Save'
                   className='gap-2 cursor-pointer text-c6 rounded-lg py-2 px-3 data-[hover=true]:!bg-c3 data-[selectable=true]:focus:!bg-c3'

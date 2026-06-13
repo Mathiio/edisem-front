@@ -10,12 +10,13 @@ import {
   addToast,
   Avatar,
 } from '@heroui/react';
-import { Button } from '@/theme/components/button';
+import { Button, primaryButtonClass, cancelButtonClass } from '@/theme/components/button';
 import { Select, SelectItem, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@/theme/components';
 import { Layouts } from '@/components/layout/Layouts';
 import { TrashIcon, EditIcon, ExperimentationIcon, UserIcon } from '@/components/ui/icons';
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { AlertModal } from '@/components/ui/AlertModal';
+import { MySpaceActionButton } from '@/components/features/espaceEtudiant/MySpaceResourceRow';
 import { getCourses, type Course, type StudentResourceCard, deleteUserResource } from '@/services/StudentSpace';
 import { getRessourceLabel } from '@/config/resourceConfig';
 
@@ -326,13 +327,13 @@ const ResourceManagement: React.FC<ResourceManagementProps> = ({ embedded = fals
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className='flex items-center gap-2'>
-                    <Button isIconOnly variant='flat' className='bg-c3' onPress={() => handleMoveClick(resource)}>
-                      <EditIcon size={18} />
-                    </Button>
-                    <Button isIconOnly variant='flat' className='bg-danger/20 text-danger' onPress={() => handleDeleteClick(resource)}>
-                      <TrashIcon size={18} />
-                    </Button>
+                  <div className='flex items-center gap-1.5'>
+                    <MySpaceActionButton onClick={() => handleMoveClick(resource)} title='Déplacer' aria-label='Déplacer la ressource'>
+                      <EditIcon size={16} />
+                    </MySpaceActionButton>
+                    <MySpaceActionButton variant='danger' onClick={() => handleDeleteClick(resource)} title='Supprimer' aria-label='Supprimer la ressource'>
+                      <TrashIcon size={16} />
+                    </MySpaceActionButton>
                   </div>
                 </TableCell>
               </TableRow>
@@ -384,10 +385,10 @@ const ResourceManagement: React.FC<ResourceManagementProps> = ({ embedded = fals
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant='flat' onPress={() => setMoveModalOpen(false)} className='bg-c3 text-c6'>
+            <Button variant='light' onPress={() => setMoveModalOpen(false)} className={cancelButtonClass}>
               Annuler
             </Button>
-            <Button onPress={handleConfirmMove} isLoading={submitting} className='bg-action text-selected'>
+            <Button onPress={handleConfirmMove} isLoading={submitting} className={primaryButtonClass}>
               Déplacer
             </Button>
           </ModalFooter>

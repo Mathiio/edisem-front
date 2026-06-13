@@ -5,9 +5,9 @@ import '@splidejs/react-splide/css';
 
 export const carouselArrowButtonClass =
   '!static !translate-y-0 !transform-none !left-auto !right-auto !top-auto !bottom-auto !opacity-100 ' +
-  '!w-10 !h-10 !min-w-10 !min-h-10 !max-w-10 !max-h-10 !p-0 !rounded-lg !border-2 !border-c3 !bg-c2 !text-c6 ' +
+  '!w-10 !h-10 !min-w-10 !min-h-10 !max-w-10 !max-h-10 !p-0 !rounded-xl !border-1 !border-c3 !bg-c2 !text-c6 ' +
   'splide__arrow !outline-none focus:!outline-none focus-visible:!outline-none !ring-0 focus:!ring-0 focus-visible:!ring-0 focus:!border-c3 focus-visible:!border-c3 hover:!bg-c3 ' +
-  'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] focus:!shadow-none focus-visible:!shadow-none cursor-pointer text-base transition-colors ease-in-out duration-200 ' +
+  'focus:!shadow-none focus-visible:!shadow-none cursor-pointer text-base transition-colors ease-in-out duration-200 ' +
   '[&>svg]:!w-4 [&>svg]:!h-4 [&>svg]:shrink-0';
 
 type FullCarrouselProps = {

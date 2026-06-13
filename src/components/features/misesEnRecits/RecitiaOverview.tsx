@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ImageIcon, UserIcon, ShareIcon, MovieIcon, ArrowIcon, SettingsIcon } from '@/components/ui/icons';
 import { motion, Variants } from 'framer-motion';
 import { addToast, Skeleton, Button, cn, DropdownMenu, Dropdown, DropdownItem, DropdownTrigger } from '@heroui/react';
+import { dropdownContentClassNames, dropdownMenuClassNames } from '@/theme/components/dropdown';
 import { Splide, SplideTrack, SplideSlide } from '@splidejs/react-splide';
 import MediaViewer from '../conference/MediaViewer';
 import { getYouTubeThumbnailUrl } from '@/lib/utils';
@@ -251,11 +252,7 @@ export const RecitiaOverviewCard: React.FC<RecitiaOverviewProps> = ({ id: _id, t
                   )
                 )}
                 {Array.isArray(personnes) && personnes.length > 1 && (
-                  <Dropdown
-                    classNames={{
-                      content:
-                        'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3 min-w-[240px]',
-                    }}>
+                  <Dropdown classNames={dropdownContentClassNames}>
                     <DropdownTrigger className='p-0'>
                       <Button
                         size='md'
@@ -264,13 +261,7 @@ export const RecitiaOverviewCard: React.FC<RecitiaOverviewProps> = ({ id: _id, t
                       </Button>
                     </DropdownTrigger>
 
-                    <DropdownMenu
-                      aria-label='View options'
-                      className='p-2'
-                      classNames={{
-                        base: 'bg-transparent shadow-none border-0',
-                        list: 'bg-transparent',
-                      }}>
+                    <DropdownMenu aria-label='View options' className='p-2' classNames={dropdownMenuClassNames}>
                       {Array.isArray(personnes) && personnes.length > 1
                         ? personnes.slice(1).map((option: any, index: number) => (
                             <DropdownItem

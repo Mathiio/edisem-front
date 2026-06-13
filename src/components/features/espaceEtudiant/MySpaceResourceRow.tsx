@@ -10,8 +10,29 @@ import {
 import { getResourceAuthors, getResourceSubtitle, resolveOmekaThumbnail } from '@/lib/resourceUtils';
 import type { StudentResourceCard } from '@/services/StudentSpace';
 
-const actionButtonClass =
+export const mySpaceActionButtonClass =
   'inline-flex items-center justify-center size-9 rounded-lg border-2 border-c3 bg-c2 hover:bg-c3 text-c6 transition-colors cursor-pointer shrink-0';
+
+export const mySpaceActionButtonDangerClass = `${mySpaceActionButtonClass} hover:text-danger`;
+
+type MySpaceActionButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: 'default' | 'danger';
+};
+
+export const MySpaceActionButton: React.FC<MySpaceActionButtonProps> = ({
+  variant = 'default',
+  className = '',
+  type = 'button',
+  children,
+  ...props
+}) => (
+  <button
+    type={type}
+    className={`${variant === 'danger' ? mySpaceActionButtonDangerClass : mySpaceActionButtonClass}${className ? ` ${className}` : ''}`}
+    {...props}>
+    {children}
+  </button>
+);
 
 /** Largeur fixe : 3 boutons (voir + éditer + supprimer) */
 export const MY_SPACE_ACTIONS_WIDTH = '7.5rem';
@@ -119,22 +140,17 @@ export const MySpaceResourceRow: React.FC<MySpaceResourceRowProps> = ({
         className='flex items-center gap-1.5 shrink-0 self-center justify-end'
         style={{ width: MY_SPACE_ACTIONS_WIDTH }}>
         {!formOnly && (
-          <button type='button' className={actionButtonClass} onClick={handleView} title='Voir' aria-label='Voir la ressource'>
+          <MySpaceActionButton onClick={handleView} title='Voir' aria-label='Voir la ressource'>
             <EyeIcon size={16} />
-          </button>
+          </MySpaceActionButton>
         )}
-        <button type='button' className={actionButtonClass} onClick={handleEdit} title='Modifier' aria-label='Modifier la ressource'>
+        <MySpaceActionButton onClick={handleEdit} title='Modifier' aria-label='Modifier la ressource'>
           <EditIcon size={16} />
-        </button>
+        </MySpaceActionButton>
         {onDelete && (
-          <button
-            type='button'
-            className={`${actionButtonClass} hover:text-danger`}
-            onClick={handleDelete}
-            title='Supprimer'
-            aria-label='Supprimer la ressource'>
+          <MySpaceActionButton variant='danger' onClick={handleDelete} title='Supprimer' aria-label='Supprimer la ressource'>
             <TrashIcon size={16} />
-          </button>
+          </MySpaceActionButton>
         )}
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { FC } from 'react';
 // import { ArrowIcon } from '@/components/utils/icons';
 import { Button, Dropdown, DropdownItem, DropdownMenu, DropdownTrigger } from '@heroui/react';
+import { dropdownContentClassNames, dropdownMenuClassNames } from '@/theme/components/dropdown';
 import { ITEM_TYPES } from './FilterPopup';
 
 interface MasquesProps {
@@ -17,23 +18,13 @@ const Masques: FC<MasquesProps> = ({ groupId, visibleTypes = [], availableTypes,
       className={` p-4 rounded-full transition-opacity duration-300 ${
         availableControl ? 'opacity-100' : 'opacity-0 pointer-events-none'
       }`}>
-      <Dropdown
-        classNames={{
-          content:
-            'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3 min-w-[200px]',
-        }}>
+      <Dropdown classNames={dropdownContentClassNames}>
         <DropdownTrigger>
           <Button size='lg' className='px-4 py-4 flex justify-between gap-2 text-c6 rounded-lg bg-c2'>
             Masquage {groupId}
           </Button>
         </DropdownTrigger>
-        <DropdownMenu
-          variant='flat'
-          className='p-2 gap-1.5'
-          classNames={{
-            base: 'bg-transparent shadow-none border-0',
-            list: 'bg-transparent',
-          }}>
+        <DropdownMenu variant='flat' className='p-2 gap-1.5' classNames={dropdownMenuClassNames}>
           {Object.entries(ITEM_TYPES)
             .filter(([, type]) => availableTypes.includes(type))
             .map(([label, type]) => {

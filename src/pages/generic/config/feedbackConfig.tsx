@@ -13,7 +13,15 @@ export const feedbackConfigSimplified: SimplifiedDetailConfig = {
   fields: {
     title: { property: 'dcterms:title', type: 'title', zone: 'header' },
     description: { property: 'dcterms:description', type: 'textarea', label: 'Description', placeholder: "Description du retour d'expérience...", zone: 'details' },
-    contributors: { property: 'schema:contributor', type: 'resource', label: 'Contributeurs', resourceTemplateId: 72, multiSelect: true, zone: 'overview' },
+    contributors: {
+      property: 'schema:contributor',
+      type: 'resource',
+      label: 'Contributeurs',
+      resourceTemplateId: 72,
+      multiSelect: true,
+      zone: 'overview',
+      editable: false,
+    },
   },
 
   views: [
@@ -80,11 +88,6 @@ export const feedbackConfigSimplified: SimplifiedDetailConfig = {
   recommendationsTitle: "Autres retours d'expérience",
   defaultView: 'experimentation',
   formEnabled: true,
-
-  contributorButtons: [
-    { label: 'Ajouter Intervenant', templateId: 72, property: 'schema:contributor' },
-    { label: 'Ajouter Étudiant', templateId: 96, property: 'schema:contributor' },
-  ],
 
   smartRecommendations: {
     maxRecommendations: 5,

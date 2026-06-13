@@ -11,12 +11,20 @@ import {
   Chip,
   Avatar,
 } from '@heroui/react';
-import { Button } from '@/theme/components/button';
+import {
+  Button,
+  outlineButtonClass,
+  outlineButtonCompactClass,
+  primaryButtonClass,
+  cancelButtonClass,
+  dangerOutlineButtonCompactClass,
+} from '@/theme/components/button';
 import { Input, Checkbox, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@/theme/components';
 import { Layouts } from '@/components/layout/Layouts';
 import { AddIcon, EditIcon, TrashIcon, ChainLinkIcon, ImportIcon, ExportIcon, SchoolIcon } from '@/components/ui/icons';
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { AlertModal } from '@/components/ui/AlertModal';
+import { MySpaceActionButton } from '@/components/features/espaceEtudiant/MySpaceResourceRow';
 import { getCourses, getStudentCourses, enrollStudent, unenrollStudent, type Course } from '@/services/StudentSpace';
 
 // Types
@@ -887,13 +895,13 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
             </p>
           </div>
           <div className='flex gap-2'>
-            <Button variant='flat' className='bg-c3 text-c6' startContent={<ExportIcon size={16} />} onPress={handleDownloadTemplate}>
+            <Button className={outlineButtonClass} startContent={<ExportIcon size={14} />} onPress={handleDownloadTemplate}>
               Template CSV
             </Button>
-            <Button variant='flat' className='bg-c3 text-c6' startContent={<ImportIcon size={16} />} onPress={() => setIsImportModalOpen(true)}>
+            <Button className={outlineButtonClass} startContent={<ImportIcon size={14} />} onPress={() => setIsImportModalOpen(true)}>
               Importer CSV
             </Button>
-            <Button className='bg-action text-selected' startContent={<AddIcon size={16} />} onPress={handleOpenCreate}>
+            <Button className={outlineButtonClass} startContent={<AddIcon size={14} />} onPress={handleOpenCreate}>
               Nouvel Étudiant
             </Button>
           </div>
@@ -908,10 +916,10 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
               </span>
             </div>
             <div className='flex items-center gap-2'>
-              <Button size='sm' variant='flat' className='bg-c3 border border-c4/10 text-c6' onPress={handleClearSelection}>
+              <Button size='sm' className={outlineButtonCompactClass} onPress={handleClearSelection}>
                 Annuler la sélection
               </Button>
-              <Button size='sm' className='bg-danger text-white' startContent={<TrashIcon size={16} />} onPress={openBatchDeleteModal} isLoading={deletingBatch}>
+              <Button size='sm' className={dangerOutlineButtonCompactClass} startContent={<TrashIcon size={16} />} onPress={openBatchDeleteModal} isLoading={deletingBatch}>
                 Supprimer ({selectedStudentIds.size})
               </Button>
             </div>
@@ -1011,19 +1019,19 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
                       {hasSelection ? (
                         <span className='text-c4 text-xs italic'>Sélection active</span>
                       ) : (
-                        <div className='flex items-center gap-2'>
-                          <Button isIconOnly variant='flat' className='bg-c3' onPress={() => handleOpenCourses(student)} title='Gérer les cours'>
-                            <SchoolIcon size={18} />
-                          </Button>
-                          <Button isIconOnly variant='flat' className='bg-c3' onPress={() => handleOpenLink(student)} title='Lier utilisateur'>
-                            <ChainLinkIcon size={18} />
-                          </Button>
-                          <Button isIconOnly variant='flat' className='bg-c3' onPress={() => handleOpenEdit(student)} title='Modifier'>
-                            <EditIcon size={18} />
-                          </Button>
-                          <Button isIconOnly variant='flat' className='bg-danger/20 text-danger' onPress={() => openDeleteStudentModal(student)} title='Supprimer'>
-                            <TrashIcon size={18} />
-                          </Button>
+                        <div className='flex items-center gap-1.5'>
+                          <MySpaceActionButton onClick={() => handleOpenCourses(student)} title='Gérer les cours' aria-label='Gérer les cours'>
+                            <SchoolIcon size={16} />
+                          </MySpaceActionButton>
+                          <MySpaceActionButton onClick={() => handleOpenLink(student)} title='Lier utilisateur' aria-label='Lier utilisateur'>
+                            <ChainLinkIcon size={16} />
+                          </MySpaceActionButton>
+                          <MySpaceActionButton onClick={() => handleOpenEdit(student)} title='Modifier' aria-label="Modifier l'étudiant">
+                            <EditIcon size={16} />
+                          </MySpaceActionButton>
+                          <MySpaceActionButton variant='danger' onClick={() => openDeleteStudentModal(student)} title='Supprimer' aria-label="Supprimer l'étudiant">
+                            <TrashIcon size={16} />
+                          </MySpaceActionButton>
                         </div>
                       )}
                     </TableCell>
@@ -1146,10 +1154,10 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
               )}
             </ModalBody>
             <ModalFooter>
-              <Button variant='flat' onPress={() => setIsModalOpen(false)} className='bg-c3 text-c6'>
+              <Button variant='light' onPress={() => setIsModalOpen(false)} className={cancelButtonClass}>
                 Annuler
               </Button>
-              <Button className='bg-action text-selected' onPress={handleSubmit} isLoading={submitting}>
+              <Button className={primaryButtonClass} onPress={handleSubmit} isLoading={submitting}>
                 {editingStudent ? 'Mettre à jour' : 'Créer'}
               </Button>
             </ModalFooter>
@@ -1195,10 +1203,10 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
               </div>
             </ModalBody>
             <ModalFooter>
-              <Button variant='flat' onPress={() => setIsLinkModalOpen(false)} className='bg-c3 text-c6'>
+              <Button variant='light' onPress={() => setIsLinkModalOpen(false)} className={cancelButtonClass}>
                 Annuler
               </Button>
-              <Button className='bg-action text-selected' onPress={handleLink} isLoading={submitting} isDisabled={!selectedUserId}>
+              <Button className={primaryButtonClass} onPress={handleLink} isLoading={submitting} isDisabled={!selectedUserId}>
                 Lier
               </Button>
             </ModalFooter>
@@ -1236,15 +1244,15 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
             </ModalBody>
             <ModalFooter>
               <Button
-                variant='flat'
+                variant='light'
                 onPress={() => {
                   setIsImportModalOpen(false);
                   setImportFile(null);
                 }}
-                className='bg-c3 text-c6'>
+                className={cancelButtonClass}>
                 Annuler
               </Button>
-              <Button className='bg-action text-selected' onPress={handleParseCSV} isDisabled={!importFile}>
+              <Button className={primaryButtonClass} onPress={handleParseCSV} isDisabled={!importFile}>
                 Prévisualiser
               </Button>
             </ModalFooter>
@@ -1271,13 +1279,13 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
             <ModalBody className='gap-4'>
               {/* Actions rapides */}
               <div className='flex gap-2 flex-wrap'>
-                <Button size='sm' variant='flat' className='bg-c3 text-c6' onPress={() => handleSelectAll(true)}>
+                <Button size='sm' className={outlineButtonCompactClass} onPress={() => handleSelectAll(true)}>
                   Tout sélectionner
                 </Button>
-                <Button size='sm' variant='flat' className='bg-c3 text-c6' onPress={() => handleSelectAll(false)}>
+                <Button size='sm' className={outlineButtonCompactClass} onPress={() => handleSelectAll(false)}>
                   Tout désélectionner
                 </Button>
-                <Button size='sm' variant='flat' className='bg-warning/20 text-warning' onPress={handleSelectNonDuplicates}>
+                <Button size='sm' className={`${outlineButtonCompactClass} text-warning hover:text-warning`} onPress={handleSelectNonDuplicates}>
                   Exclure les doublons
                 </Button>
               </div>
@@ -1425,11 +1433,11 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
               </div>
             </ModalBody>
             <ModalFooter>
-              <Button variant='flat' onPress={handleClosePreview} className='bg-c3 text-c6' isDisabled={importing}>
+              <Button variant='light' onPress={handleClosePreview} className={cancelButtonClass} isDisabled={importing}>
                 {importProgress.length > 0 ? 'Fermer' : 'Annuler'}
               </Button>
               <Button
-                className='bg-action text-selected'
+                className={primaryButtonClass}
                 onPress={handleConfirmImport}
                 isLoading={importing}
                 isDisabled={importing || previewRows.filter((r) => r.selected).length === 0}>
@@ -1458,7 +1466,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
               ) : allCourses.length === 0 ? (
                 <div className='text-center py-8'>
                   <p className='text-c4 mb-4'>Aucun cours disponible</p>
-                  <Button variant='flat' className='bg-c3 text-c6' onPress={() => (window.location.href = '/admin/cours')}>
+                  <Button className={outlineButtonClass} onPress={() => (window.location.href = '/admin/cours')}>
                     Créer un cours
                   </Button>
                 </div>
@@ -1500,7 +1508,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
               </p>
             </ModalBody>
             <ModalFooter>
-              <Button variant='flat' onPress={() => setIsCoursesModalOpen(false)} className='bg-c3 text-c6'>
+              <Button variant='light' onPress={() => setIsCoursesModalOpen(false)} className={cancelButtonClass}>
                 Fermer
               </Button>
             </ModalFooter>

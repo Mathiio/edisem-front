@@ -258,14 +258,14 @@ export const IntervenantNetwork: React.FC<IntervenantNetworkProps> = ({ currentA
       <div className='absolute bottom-1.5 right-1.5 flex z-20'>
         <div className='flex flex-col gap-2'>
           <button
-            className="focus:outline-none focus-visible:outline-none hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 text-base p-2.5 border-c3 border-2 rounded-lg text-c6 transition-colors ease-in-out duration-200"
+            className="focus:outline-none focus-visible:outline-none hover:bg-c3 cursor-pointer bg-c2 text-base p-2.5 border-c3 border-2 rounded-xl text-c6 transition-colors ease-in-out duration-200"
             onClick={() => setZoomLevel(z => Math.max(0.6, z - 0.2))}
             title="Dézoomer"
           >
             <ZoomOutIcon size={20} className="text-c6" />
           </button>
           <button
-            className="focus:outline-none focus-visible:outline-none hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 text-base p-2.5 border-c3 border-2 rounded-lg text-c6 transition-colors ease-in-out duration-200"
+            className="focus:outline-none focus-visible:outline-none hover:bg-c3 cursor-pointer bg-c2 text-base p-2.5 border-c3 border-2 rounded-xl text-c6 transition-colors ease-in-out duration-200"
             onClick={() => setZoomLevel(z => Math.min(2.0, z + 0.2))}
             title="Zoomer"
           >
@@ -276,24 +276,24 @@ export const IntervenantNetwork: React.FC<IntervenantNetworkProps> = ({ currentA
 
       {hoveredNode && hoveredNode.details && (
         <div 
-             className="absolute w-64 p-4 bg-c2 rounded-2xl border border-c3 shadow-xl z-20 flex flex-col gap-5 animate-fade-in pointer-events-none -translate-x-1/2 -translate-y-[calc(100%+20px)] shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] border-c3 border-2"
+             className="absolute w-64 p-2.5 bg-c2 rounded-2xl border border-c3 shadow-xl z-20 flex flex-col gap-3 animate-fade-in pointer-events-none -translate-x-1/2 -translate-y-[calc(100%+20px)] shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] border-c3 border-2"
              style={{
                  left: tooltipPos.x,
                  top: tooltipPos.y
              }}
         >
            {/* Header with Avatar and Name */}
-           <div className='bg-c3 p-2.5 rounded-lg flex flex-row items-center gap-3'>
+           <div className='bg-c3 p-2.5 rounded-xl flex flex-row items-center gap-3'>
               {hoveredNode.picture ? (
                 <img src={hoveredNode.picture} alt='Avatar' className='w-10 h-10 shrink-0 rounded-lg object-cover bg-c1' />
               ) : (
-                <div className='w-10 h-10 shrink-0 rounded-md bg-c1 flex items-center justify-center'>
+                <div className='w-10 h-10 shrink-0 rounded-lg bg-c1 flex items-center justify-center'>
                   <UserIcon size={22} className='text-c6' />
                 </div>
               )}
               <div className="flex flex-col gap-px">
-                  <span className='text-base font-medium text-c6 leading-tight'>{hoveredNode.name}</span>
-                  <span className='text-sm text-c5 font-medium'>Proximité de {Math.round(hoveredNode.similarity * 100)}%</span>
+                  <span className='text-base font-normal text-c6 leading-tight'>{hoveredNode.name}</span>
+                  <span className='text-xs text-c5 font-medium'>Proximité de {Math.round(hoveredNode.similarity * 100)}%</span>
               </div>
            </div>
 

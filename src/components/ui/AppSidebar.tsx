@@ -150,10 +150,10 @@ export const SidebarMenuItem = ({ icon, label, onClick, isActive = false, classN
         ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}
         ${
           isActive && !disabled
-            ? 'bg-c3 border-c3 text-c6 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)]'
+            ? 'bg-c3 border-c3 text-c6'
             : disabled
               ? 'border-transparent text-c4'
-              : 'border-transparent text-c5 hover:bg-c3 hover:border-c3 hover:text-c6 hover:shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)]'
+              : 'border-transparent text-c5 hover:bg-c3 hover:border-c3 hover:text-c6'
         }
         ${isCollapsed ? 'justify-center px-2.5' : ''}
         ${className}
@@ -207,7 +207,6 @@ export const SidebarTrigger = ({ className = '' }: SidebarTriggerProps) => {
         h-8 w-8 min-w-8 rounded-lg
         bg-c3 hover:bg-c4 text-c6
         border-2 border-c3 hover:border-c4
-        shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)]
         transition-all ease-in-out duration-200
         ${className}
       `}>

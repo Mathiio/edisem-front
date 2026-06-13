@@ -2,6 +2,7 @@ import { RESOURCE_TYPES } from '@/config/resourceConfig';
 import { SimplifiedDetailConfig } from '../simplifiedConfig';
 import { convertToGenericConfig } from '../simplifiedConfigAdapter';
 import { getRecitsMediatiquesCards } from '@/services/Items';
+import { IMAGINAIRE_IA_VOCAB_FIELDS } from './imagiaireIAConfig';
 
 export const recitMediatiqueConfigSimplified: SimplifiedDetailConfig = {
   resourceType: RESOURCE_TYPES.recit_mediatique.type,
@@ -76,6 +77,14 @@ export const recitMediatiqueConfigSimplified: SimplifiedDetailConfig = {
       property: 'schema:review',
       renderType: 'references',
       resourceTemplateIds: [81, 99, 98, 83],
+    },
+    {
+      key: 'ImagiaireIA',
+      title: "Imaginaire de l'IA",
+      property: 'schema:characterAttribute',
+      renderType: 'vocabGroup',
+      editable: true,
+      vocabFields: IMAGINAIRE_IA_VOCAB_FIELDS,
     },
   ],
 

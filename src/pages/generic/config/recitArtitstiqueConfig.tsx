@@ -1,6 +1,7 @@
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
 import { SimplifiedDetailConfig } from '../simplifiedConfig';
 import { convertToGenericConfig } from '../simplifiedConfigAdapter';
+import { IMAGINAIRE_IA_VOCAB_FIELDS } from './imagiaireIAConfig';
 
 export const recitArtitstiqueConfigSimplified: SimplifiedDetailConfig = {
   resourceType: RESOURCE_TYPES.recit_artistique.type,
@@ -20,12 +21,6 @@ export const recitArtitstiqueConfigSimplified: SimplifiedDetailConfig = {
       property: 'schema:about',
       type: 'textarea',
       label: 'Question centrale',
-      zone: 'details',
-    },
-    aiPosition: {
-      property: 'schema:characterAttribute',
-      type: 'textarea',
-      label: "Position de l'IA/Technologie",
       zone: 'details',
     },
     criticalReception: {
@@ -115,6 +110,14 @@ export const recitArtitstiqueConfigSimplified: SimplifiedDetailConfig = {
       property: 'dcterms:bibliographicCitation',
       renderType: 'references',
       resourceTemplateIds: [81, 99, 98, 83],
+    },
+    {
+      key: 'ImagiaireIA',
+      title: "Imaginaire de l'IA",
+      property: 'schema:characterAttribute',
+      renderType: 'vocabGroup',
+      editable: true,
+      vocabFields: IMAGINAIRE_IA_VOCAB_FIELDS,
     },
   ],
 

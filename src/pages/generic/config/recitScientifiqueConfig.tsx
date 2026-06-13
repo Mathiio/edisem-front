@@ -2,6 +2,7 @@ import { RESOURCE_TYPES } from '@/config/resourceConfig';
 import { SimplifiedDetailConfig } from '../simplifiedConfig';
 import { convertToGenericConfig } from '../simplifiedConfigAdapter';
 import { getRecitsScientifiquesCards } from '@/services/Items';
+import { IMAGINAIRE_IA_VOCAB_FIELDS } from './imagiaireIAConfig';
 
 export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
   resourceType: RESOURCE_TYPES.recit_scientifique.type,
@@ -82,6 +83,14 @@ export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
       property: 'schema:review',
       renderType: 'references',
       resourceTemplateIds: [81, 99, 98, 83],
+    },
+    {
+      key: 'ImagiaireIA',
+      title: "Imaginaire de l'IA",
+      property: 'schema:characterAttribute',
+      renderType: 'vocabGroup',
+      editable: true,
+      vocabFields: IMAGINAIRE_IA_VOCAB_FIELDS,
     },
   ],
 

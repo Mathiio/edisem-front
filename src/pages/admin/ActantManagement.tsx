@@ -11,12 +11,18 @@ import {
   Chip,
   Avatar,
 } from '@heroui/react';
-import { Button } from '@/theme/components/button';
+import {
+  Button,
+  outlineButtonClass,
+  primaryButtonClass,
+  cancelButtonClass,
+} from '@/theme/components/button';
 import { Input, Select, SelectItem, Textarea, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@/theme/components';
 import { Layouts } from '@/components/layout/Layouts';
 import { ChainLinkIcon, UserIcon, UploadIcon, TrashIcon, EditIcon } from '@/components/ui/icons';
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { AlertModal } from '@/components/ui/AlertModal';
+import { MySpaceActionButton } from '@/components/features/espaceEtudiant/MySpaceResourceRow';
 import { getActantsForLogin, linkActantToUser, createOmekaUserForActant, createActantWithUser, deleteActant, type Actant } from '@/services/StudentSpace';
 
 // Types
@@ -377,7 +383,7 @@ export const ActantManagement: React.FC<ActantManagementProps> = ({ embedded = f
               </span>
             </div>
             <Button
-              className='bg-action text-selected'
+              className={outlineButtonClass}
               startContent={<UploadIcon size={16} />}
               onPress={() => {
                 setBatchInput('');
@@ -434,16 +440,16 @@ export const ActantManagement: React.FC<ActantManagementProps> = ({ embedded = f
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className='flex items-center gap-2'>
-                      <Button isIconOnly variant='flat' className='bg-c3' onPress={() => handleOpenEdit(actant)} title="Modifier l'actant">
-                        <EditIcon size={18} />
-                      </Button>
-                      <Button isIconOnly variant='flat' className='bg-c3' onPress={() => handleOpenLink(actant)} title='Lier à un utilisateur Omeka S'>
-                        <ChainLinkIcon size={18} />
-                      </Button>
-                      <Button isIconOnly variant='flat' className='bg-danger/20 text-danger' onPress={() => handleOpenDelete(actant)} title='Supprimer'>
-                        <TrashIcon size={18} />
-                      </Button>
+                    <div className='flex items-center gap-1.5'>
+                      <MySpaceActionButton onClick={() => handleOpenEdit(actant)} title="Modifier l'actant" aria-label="Modifier l'actant">
+                        <EditIcon size={16} />
+                      </MySpaceActionButton>
+                      <MySpaceActionButton onClick={() => handleOpenLink(actant)} title='Lier à un utilisateur Omeka S' aria-label='Lier à un utilisateur Omeka S'>
+                        <ChainLinkIcon size={16} />
+                      </MySpaceActionButton>
+                      <MySpaceActionButton variant='danger' onClick={() => handleOpenDelete(actant)} title='Supprimer' aria-label="Supprimer l'actant">
+                        <TrashIcon size={16} />
+                      </MySpaceActionButton>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -472,12 +478,12 @@ export const ActantManagement: React.FC<ActantManagementProps> = ({ embedded = f
               <div className='flex gap-2 border-b border-c3 pb-2'>
                 <Button
                   onClick={() => setLinkMode('link')}
-                  className={`w-full ${linkMode === 'link' ? 'bg-action text-selected' : 'bg-c3 text-c5 hover:bg-c4/10'}`}>
+                  className={`w-full ${linkMode === 'link' ? primaryButtonClass : outlineButtonClass}`}>
                   Utilisateur existant
                 </Button>
                 <Button
                   onClick={() => setLinkMode('create')}
-                  className={`w-full ${linkMode === 'create' ? 'bg-action text-selected' : 'bg-c3 text-c5 hover:bg-c4/10'}`}>
+                  className={`w-full ${linkMode === 'create' ? primaryButtonClass : outlineButtonClass}`}>
                   Créer un utilisateur
                 </Button>
               </div>
@@ -545,15 +551,15 @@ export const ActantManagement: React.FC<ActantManagementProps> = ({ embedded = f
               )}
             </ModalBody>
             <ModalFooter>
-              <Button variant='flat' onPress={() => setIsLinkModalOpen(false)} className='bg-c3 text-c6'>
+              <Button variant='light' onPress={() => setIsLinkModalOpen(false)} className={cancelButtonClass}>
                 Annuler
               </Button>
               {linkMode === 'link' ? (
-                <Button className='bg-action text-selected' onPress={handleLink} isLoading={submitting} isDisabled={!selectedUserId}>
+                <Button className={primaryButtonClass} onPress={handleLink} isLoading={submitting} isDisabled={!selectedUserId}>
                   Lier
                 </Button>
               ) : (
-                <Button className='bg-action text-selected' onPress={handleCreateUser} isLoading={submitting} isDisabled={!newUserEmail || !newUserName}>
+                <Button className={primaryButtonClass} onPress={handleCreateUser} isLoading={submitting} isDisabled={!newUserEmail || !newUserName}>
                   Créer et lier
                 </Button>
               )}
@@ -622,10 +628,10 @@ export const ActantManagement: React.FC<ActantManagementProps> = ({ embedded = f
               )}
             </ModalBody>
             <ModalFooter>
-              <Button variant='flat' onPress={() => setIsBatchModalOpen(false)} className='bg-c3 text-c6' isDisabled={batchProcessing}>
+              <Button variant='light' onPress={() => setIsBatchModalOpen(false)} className={cancelButtonClass} isDisabled={batchProcessing}>
                 Fermer
               </Button>
-              <Button className='bg-action text-selected' onPress={handleBatchImport} isLoading={batchProcessing} isDisabled={!batchInput.trim() || batchProcessing}>
+              <Button className={primaryButtonClass} onPress={handleBatchImport} isLoading={batchProcessing} isDisabled={!batchInput.trim() || batchProcessing}>
                 Importer
               </Button>
             </ModalFooter>
@@ -711,10 +717,10 @@ export const ActantManagement: React.FC<ActantManagementProps> = ({ embedded = f
               )}
             </ModalBody>
             <ModalFooter>
-              <Button variant='flat' onPress={() => setIsEditModalOpen(false)} className='bg-c3 text-c6' isDisabled={saving}>
+              <Button variant='light' onPress={() => setIsEditModalOpen(false)} className={cancelButtonClass} isDisabled={saving}>
                 Annuler
               </Button>
-              <Button className='bg-action text-selected' onPress={handleSaveEdit} isLoading={saving}>
+              <Button className={primaryButtonClass} onPress={handleSaveEdit} isLoading={saving}>
                 Enregistrer
               </Button>
             </ModalFooter>

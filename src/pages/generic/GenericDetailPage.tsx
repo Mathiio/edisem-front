@@ -106,8 +106,8 @@ const ItemSetFormField: React.FC<{
               <DropdownTrigger>
                 <button
                   type='button'
-                  className='flex items-center gap-2 h-12 px-4 rounded-lg border-2 border-c3 bg-c2 hover:bg-c3 text-c6 text-sm font-medium transition-all duration-200 cursor-pointer'>
-                  <AddIcon size={14} className='text-c4' />
+                  className={dropdownTriggerButtonClass}>
+                  <AddIcon size={14} className='text-c4 shrink-0' />
                   Ajouter
                 </button>
               </DropdownTrigger>
@@ -152,7 +152,7 @@ const ItemSetFormField: React.FC<{
   );
 };
 
-const selectedResourceChipClass = 'flex items-center gap-2 pl-4 pr-2 h-12 border-2 border-c3 text-c6 rounded-lg text-sm';
+const selectedResourceChipClass = 'flex items-center gap-2 pl-4 pr-2 h-12 border-2 border-c3 text-c6 rounded-xl text-sm';
 const selectedResourceRemoveButtonClass = [
   modalCloseButtonClasses,
   'inline-flex items-center justify-center shrink-0 p-1 text-sm',
@@ -297,6 +297,10 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
   const formInitializedRef = useRef(false);
   const autoContributorAppliedRef = useRef(false);
+  const autoContributorConfig = useMemo(
+    () => getAutoContributorConfig(config.resourceTemplateId),
+    [config.resourceTemplateId],
+  );
   const prevIsDirtyRef = useRef(isDirty);
   useEffect(() => {
     // Only call if isDirty actually changed
@@ -323,7 +327,27 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
           return;
         }
 
-        const currentItems = formData[link.linkedField] || [];
+        // Résoudre les items actuels avec fallback sur itemDetails et la propriété Omeka
+        // (évite de perdre les items existants non encore chargés dans formData)
+        const resolveCurrentLinkedItems = (linkedField: string): any[] => {
+          if (Array.isArray(formData[linkedField])) return formData[linkedField];
+          if (Array.isArray(itemDetails?.[linkedField])) return itemDetails[linkedField];
+          const property = (config.viewKeyToProperty || {})[linkedField];
+          if (property && Array.isArray(itemDetails?.[property])) {
+            const cache = itemDetails?.resourceCache || {};
+            return itemDetails[property]
+              .map((ref: any) => {
+                const rid = ref.value_resource_id ?? ref.id ?? ref['o:id'];
+                if (rid == null) return null;
+                const c = cache[rid];
+                return { id: rid, 'o:id': rid, title: c?.title || ref['o:title'] || `Item #${rid}`, ownerId: c?.ownerId };
+              })
+              .filter(Boolean);
+          }
+          return [];
+        };
+
+        const currentItems = resolveCurrentLinkedItems(link.linkedField);
         const linkedViewOption = config.viewOptions.find((v) => v.key === link.linkedField);
         const linkedFormField = config.formFields?.find((f) => f.key === link.linkedField);
         const linkedTemplateId =
@@ -342,7 +366,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
           setValue(link.linkedField, [...currentItems, newItem]);
           markResourceAsUserCreated(link.resourceId);
 
-          if (config.contributorButtons?.some((btn) => btn.property === link.linkedField)) {
+          if (autoContributorConfig?.property === link.linkedField) {
             const personnes: any[] = Array.isArray(formData.personnes) ? formData.personnes : [];
             const alreadyInPersonnes = personnes.some(
               (p: any) => String(getLinkedResourceId(p)) === String(link.resourceId),
@@ -367,7 +391,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         }
       }
     }
-  }, [pendingLinks, formData, setValue, onPendingLinksProcessed, mode, id, markResourceAsUserCreated, config.viewOptions, config.formFields, config.contributorButtons, currentOmekaUserId]);
+  }, [pendingLinks, formData, setValue, onPendingLinksProcessed, mode, id, markResourceAsUserCreated, config.viewOptions, config.formFields, autoContributorConfig, currentOmekaUserId]);
 
   // Ref pour auto-save apres traitement des pendingLinks
   const shouldAutoSaveRef = useRef(false);
@@ -647,13 +671,13 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     if (mode !== 'create' || autoContributorAppliedRef.current) return;
 
     const values = buildAutoContributorFormValues(config.resourceTemplateId, userData, {
-      includePersonnes: Boolean(config.contributorButtons?.length),
+      includePersonnes: Boolean(autoContributorConfig),
     });
     if (!values) return;
 
     autoContributorAppliedRef.current = true;
     setFormData(values);
-  }, [mode, config.resourceTemplateId, config.contributorButtons, userData, setFormData]);
+  }, [mode, config.resourceTemplateId, autoContributorConfig, userData, setFormData]);
 
   const handleKeywordClick = (searchTerm: string) => {
     searchModalRef.current?.openWithSearch(searchTerm);
@@ -1050,6 +1074,53 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
             }))
             .filter((item: any) => item.value_resource_id);
           writtenOmekaProperties.add(omekaPropertyKey);
+        }
+        return;
+      }
+
+      // Si c'est un tableau de valeurs littérales (strings, ou objets Omeka literal/customvocab:N sans value_resource_id)
+      const isLiteralArray =
+        Array.isArray(value) &&
+        !isResourceArray &&
+        (value.length === 0 ||
+          typeof value[0] === 'string' ||
+          (typeof value[0] === 'object' && value[0]?.['@value'] !== undefined && !value[0]?.value_resource_id && !value[0]?.id));
+
+      if (isLiteralArray) {
+        const omekaKey = key.includes(':') ? key : (getFormFieldOmekaProperty(key) || findOmekaPropertyKey(updatedItem, key));
+        if (omekaKey && !writtenOmekaProperties.has(omekaKey)) {
+          const existingEntries: any[] = Array.isArray(updatedItem[omekaKey]) ? updatedItem[omekaKey] : [];
+          // Conserver le type customvocab:N si présent dans les données existantes
+          const existingOmekaType =
+            existingEntries.length > 0 && existingEntries[0]?.type?.startsWith('customvocab:')
+              ? existingEntries[0].type
+              : null;
+          const propertyId =
+            existingEntries[0]?.property_id ??
+            templatePropMap[omekaKey] ??
+            OMEKA_PROPERTY_IDS[omekaKey];
+          if (propertyId || value.length === 0) {
+            if (value.length === 0) {
+              updatedItem[omekaKey] = [];
+            } else {
+              updatedItem[omekaKey] = (value as any[])
+                .map((v: any) => {
+                  // Si c'est déjà un objet Omeka complet (a property_id et type), le passer tel quel
+                  if (typeof v === 'object' && v?.property_id && v?.type && v?.['@value']) return v;
+                  // Sinon convertir la string
+                  const str = typeof v === 'string' ? v : String(v?.['@value'] ?? '');
+                  if (!str.trim()) return null;
+                  return {
+                    type: existingOmekaType ?? 'literal',
+                    property_id: propertyId,
+                    '@value': str,
+                    is_public: true,
+                  };
+                })
+                .filter(Boolean);
+            }
+            writtenOmekaProperties.add(omekaKey);
+          }
         }
         return;
       }
@@ -1832,6 +1903,21 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   // Handle opening resource picker for a view, or an internal child tab when onCreateNewResource is available
   const openLinkedResourceCreate = useCallback(
     (viewKey: string, options?: { resourceTemplateIds?: number[]; pickerTitle?: string }) => {
+      // Les mots-clés s'ouvrent toujours dans le picker complet (jamais en création directe)
+      if (viewKey === 'keywords') {
+        setPickerState({
+          isOpen: true,
+          viewKey,
+          resourceTemplateId: 34,
+          resourceTemplateIds: undefined,
+          itemSetIds: undefined,
+          multiSelect: true,
+          pickerTitle: 'Ajouter des mots-clés',
+          createOnly: false,
+        });
+        return;
+      }
+
       const viewOption = config.viewOptions.find((v) => v.key === viewKey);
 
       const defaultTemplateIds: Record<string, number> = {
@@ -2550,7 +2636,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                         isLoading
                           ? 'text-c4 cursor-not-allowed'
                           : selected === option.key
-                            ? 'bg-action text-selected font-medium'
+                            ? 'bg-c3 text-c6 font-medium'
                             : 'text-c6 hover:bg-c3'
                       }`}>
                       {isLoading && <Spinner size='sm' className='mr-2 text-c6' />}
@@ -2604,10 +2690,12 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     const rootLabel = getRessourceLabel(config.type);
     if (!rootLabel) return undefined;
 
+    const singularize = (title: string): string =>
+      title.split(' ').map((w) => (w.length > 2 && w.endsWith('s') ? w.slice(0, -1) : w)).join(' ');
+
     const pluralize = (title: string, count: number): string => {
-      if (count <= 1) return `${count} ${title}`;
-      if (/[sx]$/i.test(title)) return `${count} ${title}`;
-      return `${count} ${title}s`;
+      if (count === 1) return `${count} ${singularize(title)}`;
+      return `${count} ${title}`;
     };
 
     const children = config.viewOptions
@@ -2693,8 +2781,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                       <button
                         type='button'
                         onClick={() => handleLinkExisting('keywords')}
-                        className='flex items-center gap-2 h-12 px-4 rounded-lg border-2 border-c3 bg-c2 hover:bg-c3 text-c6 text-sm font-medium transition-all duration-200 cursor-pointer'>
-                        <AddIcon size={14} className='text-c4' />
+                        className={dropdownTriggerButtonClass}>
+                        <AddIcon size={14} className='text-c4 shrink-0' />
                         Ajouter un mot-clé
                       </button>
                     </div>
@@ -2767,9 +2855,23 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
                     return (
                       <div className='flex flex-wrap gap-2 items-center w-full'>
-                        {allContributors.map((item: any, idx: number) => (
+                        {allContributors.map((item: any, idx: number) => {
+                          const isUserCreated =
+                            userCreatedResourceIds?.has(String(item.id)) ||
+                            String(item.ownerId) === String(currentOmekaUserId);
+                          const canEditChip = isUserCreated && onEditResource;
+                          const btn = config.contributorButtons!.find((b) => b.property === item._property);
+                          return (
                           <div key={item.id || idx} className={selectedResourceChipClass}>
-                            <span>{item.title || item.name}</span>
+                            <span
+                              onClick={() => {
+                                if (canEditChip && btn) {
+                                  onEditResource(item._property, item.id, btn.templateId);
+                                }
+                              }}
+                              className={canEditChip ? 'cursor-pointer hover:underline' : ''}>
+                              {item.title || item.name}
+                            </span>
                             <button
                               type='button'
                               onClick={() => {
@@ -2792,7 +2894,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                               <ModalCloseIcon />
                             </button>
                           </div>
-                        ))}
+                          );
+                        })}
                         {config.contributorButtons!.map((btn) => (
                           <button
                             key={`${btn.property}-${btn.templateId}`}
@@ -2804,8 +2907,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                                 templateId: btn.templateId,
                               })
                             }
-                            className='flex items-center gap-2 h-12 px-4 rounded-lg border-2 border-c3 bg-c2 hover:bg-c3 text-c6 text-sm font-medium transition-all duration-200 cursor-pointer'>
-                            <AddIcon size={14} className='text-c4' />
+                            className={dropdownTriggerButtonClass}>
+                            <AddIcon size={14} className='text-c4 shrink-0' />
                             {btn.label}
                           </button>
                         ))}
@@ -2953,12 +3056,11 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                   ))}
 
                 {/* Champs ressources liées (multiselection — ex: université, labo, etc.)
-                    Exclure contributors (géré par contributorButtons sous la dropzone)
-                    et keywords (géré par le carrousel au-dessus de la dropzone) */}
+                    Exclure le contributeur auto-rempli et keywords (carrousel) */}
                 {config.formFields
                   ?.filter((f) => f.type === 'multiselection' && f.selectionConfig?.templateId)
                   .filter((f) => {
-                    if (config.contributorButtons?.length && f.key === 'contributors') return false;
+                    if (autoContributorConfig && f.key === autoContributorConfig.fieldKey) return false;
                     if (config.showKeywords && f.key === 'keywords') return false;
                     return true;
                   })
@@ -2998,8 +3100,8 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                                 displayMode: config.resourcePickerDisplay,
                               })
                             }
-                            className='flex items-center gap-2 h-12 px-4 rounded-lg border-2 border-c3 bg-c2 hover:bg-c3 text-c6 text-sm font-medium transition-all duration-200 cursor-pointer'>
-                            <AddIcon size={14} className='text-c4' />
+                            className={dropdownTriggerButtonClass}>
+                            <AddIcon size={14} className='text-c4 shrink-0' />
                             Ajouter
                           </button>
                         </div>
@@ -3251,7 +3353,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
               });
               const merged = [...current, ...toAdd];
               setValue(field.key, merged);
-              if (config.contributorButtons?.some((btn) => btn.property === field.key)) {
+              if (autoContributorConfig && autoContributorConfig.fieldKey === field.key) {
                 setValue('personnes', merged);
               }
               setActiveResourceField(null);

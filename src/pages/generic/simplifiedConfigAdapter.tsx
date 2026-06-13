@@ -21,7 +21,7 @@ import { getTemplatePropertiesMap } from '@/services/Items';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl } from '@/utils/omekaApi';
 import { GenericDetailPageConfig, FetchResult, ViewOption, ProgressiveDataFetcher, ProgressCallback, FormFieldConfig, FormFieldType } from './config';
 import { SimplifiedDetailConfig, SimplifiedViewConfig, InternalFieldConfig, FieldType, extractFieldsFromConfig } from './simplifiedConfig';
-import { SimpleOverviewCard, SimpleDetailsCard, SimpleOverviewSkeleton, SimpleDetailsSkeleton } from './SimpleComponents';
+import { SimpleOverviewCard, SimpleDetailsCard, SimpleOverviewSkeleton, SimpleDetailsSkeleton, VocabGroupRenderer } from './SimpleComponents';
 import { ItemsList, SimpleTextBlock } from './components';
 import { Bibliographies } from '@/components/features/conference/BibliographyCards';
 import { Mediagraphies } from '@/components/features/conference/MediagraphyCards';
@@ -71,6 +71,7 @@ const MicroresumesView: React.FC<{ itemId: string | number; onTimeChange?: (time
   return <Microresumes microresumes={microresumes} loading={loading} onTimeChange={onTimeChange ?? (() => {})} />;
 };
 import { ReferenceAddButtons } from '@/components/features/forms/AddResourceCard';
+import { outlineButtonClass } from '@/theme/components/button';
 import { GenericDetailPage } from './GenericDetailPage';
 
 // ========================================
@@ -96,8 +97,6 @@ const inlineFieldClass =
 const inlineTimeFieldClass =
   'bg-c2 border-2 border-c3 rounded-lg px-3 py-2 text-c6 text-sm w-28 focus:outline-none focus:border-c3';
 const inlineRemoveButtonClass = [modalCloseButtonClasses, 'inline-flex items-center justify-center shrink-0 p-1.5 text-xl'].join(' ');
-const inlineAddButtonClass =
-  'flex items-center gap-1.5 h-12 px-4 rounded-lg border-2 border-c3 bg-c2 hover:bg-c3 text-c6 text-sm font-medium transition-all duration-200 cursor-pointer';
 
 // ========================================
 // Inline form: Ajouter des citations
@@ -152,7 +151,7 @@ const InlineCitationForm: React.FC<{
           />
         </div>
       ))}
-      <button type='button' onClick={add} className={inlineAddButtonClass}>
+      <button type='button' onClick={add} className={outlineButtonClass}>
         <AddIcon size={14} className='text-c4' />
         Ajouter une citation
       </button>
@@ -220,7 +219,7 @@ const InlineMicroresumeForm: React.FC<{
           />
         </div>
       ))}
-      <button type='button' onClick={add} className={inlineAddButtonClass}>
+      <button type='button' onClick={add} className={outlineButtonClass}>
         <AddIcon size={14} className='text-c4' />
         Ajouter un micro-résumé
       </button>
@@ -1269,6 +1268,21 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
         if (Array.isArray(raw)) return raw.length > 0 ? 1 : 0;
         return 0;
       }
+      case 'vocabGroup': {
+        if (!view.vocabFields) return 0;
+        const hasContent = view.vocabFields.some((f) => {
+          const raw = formData?.[f.property] ?? itemDetails?.[f.property];
+          if (!raw) return false;
+          if (typeof raw === 'string') return raw.trim() !== '';
+          if (Array.isArray(raw)) return raw.some((v: any) => {
+            if (typeof v === 'string') return v.trim() !== '';
+            if (v?.['@value']) return String(v['@value']).trim() !== '';
+            return !!v;
+          });
+          return true;
+        });
+        return hasContent ? 1 : 0;
+      }
       default:
         return 0;
     }
@@ -1277,7 +1291,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
   const viewKind: 'resources' | 'text' =
     view.renderType === 'items' || view.renderType === 'references' || view.renderType === 'microresumes' || view.renderType === 'citations'
       ? 'resources'
-      : 'text';
+      : 'text';  // vocabGroup, text, categories, custom → 'text' (pas de bouton add/link)
 
   return {
     key: view.key,
@@ -1682,7 +1696,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                               {allowMultiple && (
                                 <button
                                   type='button'
-                                  className={`w-fit ${inlineAddButtonClass}`}
+                                  className={`w-fit ${outlineButtonClass}`}
                                   onClick={() => {
                                     onItemsChange?.(subcategory.property, [...displayValues, '']);
                                   }}>
@@ -1759,6 +1773,19 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
         case 'custom': {
           if (!view.customRender) return null;
           return view.customRender(context);
+        }
+
+        case 'vocabGroup': {
+          if (!view.vocabFields || view.vocabFields.length === 0) return null;
+          return (
+            <VocabGroupRenderer
+              fields={view.vocabFields}
+              itemDetails={itemDetails}
+              formData={formData}
+              isEditing={isEditing ?? false}
+              onFieldChange={(property, value) => onItemsChange?.(property, Array.isArray(value) ? value : [value])}
+            />
+          );
         }
 
         default:

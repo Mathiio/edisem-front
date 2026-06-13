@@ -3,25 +3,14 @@ import type { Key } from 'react';
 import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/react';
 import { AddIcon } from '@/components/ui/icons';
 import { getRessourceLabel } from '@/config/resourceConfig';
-
-export const DROPDOWN_CONTENT_CLASSNAMES = {
-  content: 'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] bg-c2 rounded-xl border-2 border-c3',
-};
-
-const DROPDOWN_TRIGGER_BASE =
-  'hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 flex flex-row rounded-lg border-2 border-c3 items-center justify-center text-c6 transition-all ease-in-out duration-200';
-
-export const DROPDOWN_TRIGGER_CLASS = `${DROPDOWN_TRIGGER_BASE} px-4 py-2.5 text-base gap-2.5`;
-
-const COMPACT_TRIGGER_CLASS = `${DROPDOWN_TRIGGER_BASE} text-sm px-3 py-2 gap-2`;
-
-const DROPDOWN_MENU_CLASSNAMES = {
-  base: 'bg-transparent shadow-none border-0',
-  list: 'bg-transparent',
-};
-
-const DROPDOWN_ITEM_CLASS =
-  'cursor-pointer text-c6 rounded-lg py-2 px-3 data-[hover=true]:!bg-c3 data-[selectable=true]:focus:!bg-c3';
+import {
+  dropdownContentClassNames,
+  dropdownTriggerButtonClass,
+  dropdownTriggerButtonCompactClass,
+  dropdownMenuClassNames,
+  dropdownMenuItemClass,
+  dropdownItemInnerPadding,
+} from '@/theme/components/dropdown';
 
 export type CreateResourceConfigEntry = {
   config: { templateId?: number; resourceType: string };
@@ -42,7 +31,7 @@ interface CreateResourceActionProps {
 
 const CreateTriggerContent: React.FC<{ compact?: boolean; label?: string }> = ({ compact, label = 'Créer' }) => (
   <>
-    <AddIcon size={compact ? 14 : 16} className='text-c6 shrink-0' />
+    <AddIcon size={compact ? 12 : 14} className='text-c6 shrink-0' />
     <span>{label}</span>
   </>
 );
@@ -61,7 +50,7 @@ export const CreateResourceAction: React.FC<CreateResourceActionProps> = ({
 }) => {
   if (configs.length === 0) return null;
 
-  const triggerClass = className ?? (compact ? COMPACT_TRIGGER_CLASS : DROPDOWN_TRIGGER_CLASS);
+  const triggerClass = className ?? (compact ? dropdownTriggerButtonCompactClass : dropdownTriggerButtonClass);
 
   const renderTrigger = (props?: React.HTMLAttributes<HTMLDivElement>) => (
     <div className={triggerClass} {...props}>
@@ -86,22 +75,22 @@ export const CreateResourceAction: React.FC<CreateResourceActionProps> = ({
   }
 
   return (
-    <Dropdown classNames={DROPDOWN_CONTENT_CLASSNAMES}>
+    <Dropdown classNames={dropdownContentClassNames}>
       <DropdownTrigger>{renderTrigger()}</DropdownTrigger>
       <DropdownMenu
         aria-label={menuLabel}
         className={`p-2 ${compact ? 'min-w-[200px]' : 'min-w-[220px]'}`}
-        classNames={DROPDOWN_MENU_CLASSNAMES}
+        classNames={dropdownMenuClassNames}
         onAction={(key: Key) => {
           const entry = configs.find((c) => String(c.config.templateId) === String(key));
           if (entry) onCreate(entry.route);
         }}>
         {configs.map(({ config, icon: Icon }) => (
-          <DropdownItem
-            key={String(config.templateId)}
-            className={DROPDOWN_ITEM_CLASS}
-            startContent={<Icon size={16} className='text-c5' />}>
-            {getRessourceLabel(config.resourceType)}
+          <DropdownItem key={String(config.templateId)} className={dropdownMenuItemClass}>
+            <div className={`flex items-center gap-2 w-full ${dropdownItemInnerPadding} rounded-lg text-c6`}>
+              <Icon size={16} className='text-c5 shrink-0' />
+              <span>{getRessourceLabel(config.resourceType)}</span>
+            </div>
           </DropdownItem>
         ))}
       </DropdownMenu>

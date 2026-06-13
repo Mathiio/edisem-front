@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Divider, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Link } from '@heroui/react';
+import { dropdownContentClassNames, dropdownMenuClassNames } from '@/theme/components/dropdown';
 import { ArrowIcon, CrossIcon, AddIcon } from '@/components/ui/icons';
 import { ITEM_TYPES } from './FilterPopup';
 
@@ -108,12 +109,7 @@ const HidePopup: React.FC<HidePopupProps> = ({ onHide }) => {
       <div className='flex flex-col justify-start h-full gap-2 overflow-y-auto'>
         {filterGroups.map((masque, index) => (
           <div key={index} className='flex flex-row items-center gap-2'>
-            <Dropdown
-              className='w-full'
-              classNames={{
-                content:
-                  'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 rounded-xl border-2 border-c3',
-              }}>
+            <Dropdown className='w-full' classNames={dropdownContentClassNames}>
               <DropdownTrigger className='w-full'>
                 <Button className='text-sm text-c6 px-2 py-2 flex bg-transparent justify-between gap-2.5 bg-c4 border-2 rounded-lg w-full'>
                   {masque.displayType || 'Sélectionner un type'}
@@ -122,7 +118,7 @@ const HidePopup: React.FC<HidePopupProps> = ({ onHide }) => {
               </DropdownTrigger>
               <DropdownMenu
                 className='p-2 w-full'
-                classNames={{ base: 'bg-transparent shadow-none border-0', list: 'bg-transparent' }}
+                classNames={dropdownMenuClassNames}
                 aria-label="Sélectionner un type d'item"
                 selectionMode='single'
                 selectedKeys={[masque.displayType]}

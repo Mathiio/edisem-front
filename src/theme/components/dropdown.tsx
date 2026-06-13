@@ -5,14 +5,16 @@ import {
   DropdownSection as ODropdownSection,
   DropdownItem as ODropdownItem,
   extendVariants,
-} from "@heroui/react";
+} from '@heroui/react';
+import { outlineButtonClass, outlineButtonCompactClass } from './button';
 
 export const dropdownContentClassNames = {
-  content: 'shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] bg-c2 rounded-xl border-2 border-c3',
+  content: 'bg-c2 rounded-xl border-2 border-c3',
 };
 
-export const dropdownTriggerButtonClass =
-  'hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 flex flex-row rounded-lg border-2 border-c3 items-center justify-center px-4 py-2.5 text-base gap-2.5 text-c6 transition-all ease-in-out duration-200';
+export const dropdownTriggerButtonClass = outlineButtonClass;
+
+export const dropdownTriggerButtonCompactClass = outlineButtonCompactClass;
 
 export const dropdownMenuClassNames = {
   base: 'bg-transparent shadow-none border-0',

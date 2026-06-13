@@ -147,7 +147,28 @@ export interface SimplifiedFieldsMapping {
 // Types de rendu pour les vues
 // ========================================
 
-export type ViewRenderType = 'text' | 'items' | 'references' | 'categories' | 'citations' | 'microresumes' | 'custom';
+export type ViewRenderType = 'text' | 'items' | 'references' | 'categories' | 'citations' | 'microresumes' | 'custom' | 'vocabGroup';
+
+// ========================================
+// Configuration d'un champ vocabGroup
+// ========================================
+
+export type VocabGroupFieldType = 'textarea' | 'customVocab';
+
+export interface VocabGroupField {
+  /** Label affiché */
+  label: string;
+  /** Propriété Omeka S (ex: 'storyline:has_theme') */
+  property: string;
+  /** Type du champ : textarea libre ou sélection depuis custom-vocab */
+  type: VocabGroupFieldType;
+  /** ID du vocabulaire custom Omeka S (pour type = 'customVocab') */
+  vocabId?: number;
+  /** ID de la propriété Omeka S (pour la sauvegarde si l'item n'a pas encore de valeur) */
+  propertyId?: number;
+  /** Placeholder pour les textareas */
+  placeholder?: string;
+}
 
 // ========================================
 // Configuration d'une sous-catégorie (pour renderType='categories')
@@ -226,6 +247,9 @@ export interface SimplifiedViewConfig {
 
   /** Masquer la vue en mode création/édition (donnée gérée automatiquement, ex. oa:hasTarget) */
   hiddenInForm?: boolean;
+
+  /** Champs pour renderType='vocabGroup' (section avec plusieurs propriétés custom-vocab / textarea) */
+  vocabFields?: VocabGroupField[];
 }
 
 // ========================================

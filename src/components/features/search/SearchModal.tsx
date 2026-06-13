@@ -99,11 +99,11 @@ export const SearchModal = forwardRef<SearchModalRef, SearchModalProps>(
       <>
         {!notrigger && (
           <button
-            className="focus:outline-none focus-visible:outline-none hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 text-base p-4 border-c3 border-2 rounded-lg text-c6 transition-colors ease-in-out duration-200"
+            className="focus:outline-none focus-visible:outline-none hover:bg-c3 cursor-pointer bg-c2 text-base p-4 border-c3 border-2 rounded-xl text-c6 transition-colors ease-in-out duration-200"
             onClick={onOpen}
             title="Rechercher"
           >
-            <SearchIcon size={15} className="text-c6" />
+            <SearchIcon size={13} className="text-c6" />
           </button>
         )}
 

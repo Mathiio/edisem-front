@@ -122,9 +122,9 @@ export const ToolItem: React.FC<ToolItemProps> = ({
   };
 
   const thumbnail = getThumbnail();
-  const borderClass = isEditable && isHovered ? 'border-c4' : 'border-c3';
   const isClickable = isEditable || !disableNavigation;
-  const rowCursorClass = isEditable ? 'cursor-pointer hover:bg-c2/40' : isClickable ? 'cursor-pointer' : 'cursor-default';
+  const borderClass = isClickable && isHovered ? 'border-c4' : 'border-c3';
+  const rowCursorClass = isClickable ? 'cursor-pointer hover:bg-c2/40' : 'cursor-default';
 
   return (
     <div

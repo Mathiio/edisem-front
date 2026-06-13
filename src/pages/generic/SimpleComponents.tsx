@@ -15,7 +15,9 @@ import { carouselArrowButtonClass } from '@/components/ui/Carrousels';
 import { ImageIcon, UserIcon, ShareIcon, MovieIcon, ArrowIcon, AddIcon } from '@/components/ui/icons';
 import MediaViewer from '@/components/features/conference/MediaViewer';
 import { MediaDropzone, MediaFile } from '@/components/features/forms/MediaDropzone';
-import { InternalFieldConfig, getOverviewFields, getDetailsFields, getHeaderFields } from './simplifiedConfig';
+import { FormAutoResizeTextareaInput } from '@/components/features/forms/FormFields';
+import { InternalFieldConfig, getOverviewFields, getDetailsFields, getHeaderFields, VocabGroupField } from './simplifiedConfig';
+import { fetchCustomVocabTerms } from '@/utils/customVocab';
 import { getOmekaValue, getResourceIds } from './simplifiedConfigAdapter';
 import { isValidYouTubeUrl, getYouTubeThumbnailUrl } from '@/lib/utils';
 import { Select, SelectItem } from '@/theme/components/select';
@@ -421,11 +423,11 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
                     });
                   }}>
                   <ShareIcon size={14} className='text-c4 shrink-0' />
-                  <span className='text-sm font-medium'>Partager</span>
+                  <span>Partager</span>
                 </button>
                 {fullUrl && (
                   <Link href={fullUrl} isExternal underline='none' className={dropdownTriggerButtonClass}>
-                    <span className='text-sm font-medium'>Voir plus</span>
+                    <span>Voir plus</span>
                   </Link>
                 )}
               </div>
@@ -855,3 +857,196 @@ export const UnloadedCard: React.FC = () => (
     </div>
   </div>
 );
+
+// ========================================
+// VocabGroupRenderer
+// Section « Imaginaire de l'IA » : textarea + selects multi (custom vocab Omeka S)
+// ========================================
+
+interface VocabGroupRendererProps {
+  fields: VocabGroupField[];
+  itemDetails: any;
+  formData?: any;
+  isEditing: boolean;
+  onFieldChange?: (property: string, value: any) => void;
+}
+
+const getSelectedVocabValues = (raw: any): string[] => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw
+      .map((v: any) => (typeof v === 'string' ? v : v?.['@value'] ?? null))
+      .filter((v): v is string => v !== null && v.trim() !== '');
+  }
+  return [];
+};
+
+const getTextareaValue = (raw: any): string => {
+  if (!raw) return '';
+  if (typeof raw === 'string') return raw;
+  if (Array.isArray(raw) && raw.length > 0) {
+    const first = raw[0];
+    if (typeof first === 'string') return first;
+    if (first?.['@value']) return String(first['@value']);
+  }
+  return '';
+};
+
+const VocabField: React.FC<{
+  field: VocabGroupField;
+  itemDetails: any;
+  formData?: any;
+  isEditing: boolean;
+  onFieldChange?: (property: string, value: any) => void;
+}> = ({ field, itemDetails, formData, isEditing, onFieldChange }) => {
+  const [vocabTerms, setVocabTerms] = useState<string[]>([]);
+  const [loadingTerms, setLoadingTerms] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (field.type !== 'customVocab' || !field.vocabId) return;
+
+    let cancelled = false;
+    setLoadingTerms(true);
+    setFetchError(null);
+
+    fetchCustomVocabTerms(field.vocabId)
+      .then((terms) => {
+        if (!cancelled) setVocabTerms(terms);
+      })
+      .catch((e) => {
+        console.error(`[VocabGroup] Erreur chargement vocab ${field.vocabId}:`, e);
+        if (!cancelled) {
+          setFetchError('Impossible de charger la liste complète');
+          setVocabTerms([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingTerms(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [field.vocabId, field.type]);
+
+  const rawValue = formData?.[field.property] ?? itemDetails?.[field.property];
+
+  if (field.type === 'textarea') {
+    const text = getTextareaValue(rawValue);
+    if (isEditing) {
+      return (
+        <FormAutoResizeTextareaInput
+          label={field.label}
+          value={text}
+          placeholder={field.placeholder}
+          onChange={(val) => onFieldChange?.(field.property, [{ value: val, dataPath: field.property }])}
+        />
+      );
+    }
+    return text ? (
+      <div className='flex flex-col gap-1.5'>
+        <span className='text-xs font-medium text-c5'>{field.label}</span>
+        <p className='text-sm text-c6 whitespace-pre-wrap'>{text}</p>
+      </div>
+    ) : null;
+  }
+
+  // customVocab — select à choix multiples
+  const selected = getSelectedVocabValues(rawValue);
+  const existingEntries: any[] = Array.isArray(rawValue) ? rawValue : [];
+  const existingEntry = existingEntries.find((v: any) => v?.property_id);
+  const omekaType = `customvocab:${field.vocabId}`;
+  const propertyId: number | undefined = existingEntry?.property_id ?? field.propertyId;
+
+  const handleMultiSelectChange = (keys: 'all' | Set<React.Key>) => {
+    if (keys === 'all') return;
+    const nextTerms = Array.from(keys)
+      .map((k) => String(k))
+      .filter(Boolean);
+
+    const entries = nextTerms.map((term) =>
+      propertyId
+        ? { type: omekaType, property_id: propertyId, '@value': term, is_public: true }
+        : term,
+    );
+    onFieldChange?.(field.property, entries);
+  };
+
+  if (isEditing) {
+    return (
+      <div className='flex flex-col gap-2'>
+        <span className={fieldLabelClass}>{field.label}</span>
+        <Select
+          size='sm'
+          aria-label={field.label}
+          selectionMode='multiple'
+          placeholder={loadingTerms ? 'Chargement…' : 'Sélectionner…'}
+          isDisabled={loadingTerms || vocabTerms.length === 0}
+          selectedKeys={new Set(selected)}
+          onSelectionChange={handleMultiSelectChange}
+          className='w-full'>
+          {vocabTerms.map((term) => (
+            <SelectItem key={term} textValue={term} className='text-c6 hover:bg-c3'>
+              {term}
+            </SelectItem>
+          ))}
+        </Select>
+        {fetchError && (
+          <span className='text-xs text-amber-500 italic'>{fetchError}</span>
+        )}
+      </div>
+    );
+  }
+
+  // view mode
+  return selected.length > 0 ? (
+    <div className='flex flex-col gap-1.5'>
+      <span className='text-xs font-medium text-c5'>{field.label}</span>
+      <div className='flex flex-wrap gap-1.5'>
+        {selected.map((term) => (
+          <span key={term} className='text-sm px-2 py-2 rounded-lg bg-c2 border border-c3 text-c6'>
+            {term}
+          </span>
+        ))}
+      </div>
+    </div>
+  ) : null;
+};
+
+export const VocabGroupRenderer: React.FC<VocabGroupRendererProps> = ({
+  fields,
+  itemDetails,
+  formData,
+  isEditing,
+  onFieldChange,
+}) => {
+  const hasAnyContent = fields.some((f) => {
+    const raw = formData?.[f.property] ?? itemDetails?.[f.property];
+    if (f.type === 'textarea') return getTextareaValue(raw).trim() !== '';
+    return getSelectedVocabValues(raw).length > 0;
+  });
+
+  if (!isEditing && !hasAnyContent) {
+    return (
+      <div className='flex flex-col items-center justify-center py-8 gap-2 text-c4'>
+        <span className='text-sm'>Aucune donnée renseignée</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className='flex flex-col gap-5 py-2'>
+      {fields.map((field) => (
+        <VocabField
+          key={field.property}
+          field={field}
+          itemDetails={itemDetails}
+          formData={formData}
+          isEditing={isEditing}
+          onFieldChange={onFieldChange}
+        />
+      ))}
+    </div>
+  );
+};

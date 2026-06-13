@@ -97,7 +97,7 @@ export const IntervenantKeywordCloud: React.FC<IntervenantKeywordCloudProps> = (
                 <Tooltip 
                 key={`${stat.id}-${index}`}
                 content={
-                    <div className="p-2.5 gap-2 flex flex-col pointer-events-none ">
+                    <div className="p-2 gap-2 flex flex-col pointer-events-none ">
                       <p className="text-base font-bold uppercase">{stat.title}</p>
                       <div className="flex flex-col gap-px">
                         {isUsedByIntervenant ? (
@@ -105,11 +105,11 @@ export const IntervenantKeywordCloud: React.FC<IntervenantKeywordCloudProps> = (
                         ) : (
                             <p className="text-xs text-c5">Non utilisé par cet intervenant</p>
                         )}
-                        <p className="text-[10px] opacity-60">Total global: {stat.globalCount}</p>
+                        <p className="text-xs text-c4">Total global: {stat.globalCount}</p>
                       </div>
                     </div>
                 }
-                className="bg-c2 text-c6 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] border-c3 border-2"
+                className="bg-c2 text-c6 border-c3 border-2"
                 delay={0}
                 closeDelay={0}
                 >

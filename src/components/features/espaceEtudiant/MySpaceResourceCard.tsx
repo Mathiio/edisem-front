@@ -49,7 +49,7 @@ export const MySpaceResourceCard: React.FC<MySpaceResourceCardProps> = (props) =
       <DropdownTrigger>
         <button
           onClick={(e) => e.stopPropagation()}
-          className='hover:bg-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] cursor-pointer bg-c2 flex flex-row rounded-[8px] border-2 border-c4 items-center justify-center p-2 text-c6 transition-all ease-in-out duration-200'>
+          className='hover:bg-c3 cursor-pointer bg-c2 flex flex-row rounded-[8px] border-2 border-c4 items-center justify-center p-2 text-c6 transition-all ease-in-out duration-200'>
           <svg width='16' height='16' viewBox='0 0 24 24' fill='currentColor'>
             <circle cx='12' cy='5' r='2' />
             <circle cx='12' cy='12' r='2' />
@@ -57,7 +57,7 @@ export const MySpaceResourceCard: React.FC<MySpaceResourceCardProps> = (props) =
           </svg>
         </button>
       </DropdownTrigger>
-      <DropdownMenu aria-label='Actions' className='bg-c2 rounded-[12px] border-2 border-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] p-2 min-w-[140px]'>
+      <DropdownMenu aria-label='Actions' className='bg-c2 rounded-[12px] border-2 border-c3 p-2 min-w-[140px]'>
         {isFormOnly ? (
           <DropdownItem
             key='delete'

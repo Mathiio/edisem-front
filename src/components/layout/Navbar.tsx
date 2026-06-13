@@ -62,7 +62,7 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({ trigger, section
 
       { isOpen && (
         <div
-          className={`shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] absolute top-full columns-3 gap-10 p-4 shadow-2xl left-1/2 mt-2 bg-c2 rounded-2xl border-2 border-c3 z-50 ${listMode ? 'min-w-fit' : 'min-w-max'}    `}
+          className={`absolute top-full columns-3 gap-10 p-4 shadow-2xl left-1/2 mt-2 bg-c2 rounded-2xl border-2 border-c3 z-50 ${listMode ? 'min-w-fit' : 'min-w-max'}    `}
           style={{
             animation: isAnimating ? 'dropdownDisappear 200ms ease-in forwards' : 'dropdownAppear 200ms ease-out forwards',
           }}>
@@ -229,9 +229,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onReady }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const linkBaseClass = 'cursor-pointer flex flex-row items-center justify-center px-4 py-2.5 text-base gap-2.5 text-c6 rounded-lg border-2 transition-all ease-in-out duration-200';
-  const activeClass = 'bg-c2 border-c3 shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)]';
-  const hoverClass = 'hover:bg-c2 hover:border-c3 hover:shadow-[inset_0_0px_15px_rgba(255,255,255,0.05)] border-transparent';
+  const linkBaseClass = 'cursor-pointer flex flex-row items-center justify-center px-4 py-2.5 text-base gap-2.5 text-c6 rounded-xl border-2 transition-all ease-in-out duration-200';
+  const activeClass = 'bg-c2 border-c3';
+  const hoverClass = 'hover:bg-c2 hover:border-c3 border-transparent';
 
   return (
     <>
