@@ -184,7 +184,7 @@ export const MonEspace4: React.FC = () => {
 
   const fetchResources = useCallback(async () => {
     try {
-      setLoading((prev) => {
+      setLoading(() => {
         // Ne pas afficher le spinner si on a déjà du contenu (re-fetch silencieux)
         const hasCached = CACHE_KEY ? sessionStorage.getItem(CACHE_KEY) != null : false;
         return hasCached ? false : true;

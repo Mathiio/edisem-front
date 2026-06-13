@@ -11,7 +11,7 @@ interface EditModeBannerProps {
 /**
  * Bannière mode édition/création — alignée à gauche, point clignotant + type de ressource en dessous.
  */
-export const EditModeBanner: React.FC<EditModeBannerProps> = ({ mode, resourceType, className = '' }) => {
+export const EditModeBanner: React.FC<EditModeBannerProps> = ({ resourceType, className = '' }) => {
   const { label, icon: Icon, color } = getResourceDisplayTheme(resourceType);
   const title = 'Mode édition';
 
