@@ -139,6 +139,9 @@ export interface GenericDetailPageConfig {
   // Type à afficher à droite du titre
   type?: string;
 
+  /** Label de ressource affiché dans la bannière d'édition et le dropdown "Créer" (override du label du type) */
+  resourceLabel?: string;
+
   // Form support (optional - enables edit mode)
   formEnabled?: boolean;
   resourceTemplateId?: number; // Omeka S resource template ID for creation
@@ -188,6 +191,10 @@ export interface FormFieldConfig {
   min?: number; // Pour les sliders/numbers
   max?: number; // Pour les sliders/numbers
   step?: number; // Pour les sliders/numbers
+  /** Choix statiques pour un champ de type 'selection' sans itemSetId */
+  options?: { value: string; label: string }[];
+  /** ID du custom vocab Omeka S — sauvegardé comme customvocab:N au lieu de literal */
+  customVocabId?: number;
   selectionConfig?: {
     resourceType: string; // Type de ressource pour ResourcePicker
     templateId?: number; // Template ID Omeka S

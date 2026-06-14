@@ -16,6 +16,8 @@ export type CreateResourceConfigEntry = {
   config: { templateId?: number; resourceType: string };
   route: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
+  /** Remplace le label dérivé du type de ressource dans le dropdown */
+  label?: string;
 };
 
 interface CreateResourceActionProps {
@@ -85,11 +87,11 @@ export const CreateResourceAction: React.FC<CreateResourceActionProps> = ({
           const entry = configs.find((c) => String(c.config.templateId) === String(key));
           if (entry) onCreate(entry.route);
         }}>
-        {configs.map(({ config, icon: Icon }) => (
+        {configs.map(({ config, icon: Icon, label }) => (
           <DropdownItem key={String(config.templateId)} className={dropdownMenuItemClass}>
             <div className={`flex items-center gap-2 w-full ${dropdownItemInnerPadding} rounded-lg text-c6`}>
               <Icon size={16} className='text-c5 shrink-0' />
-              <span>{getRessourceLabel(config.resourceType)}</span>
+              <span>{label ?? getRessourceLabel(config.resourceType)}</span>
             </div>
           </DropdownItem>
         ))}

@@ -1,4 +1,9 @@
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
+import {
+  CONFERENCE_TYPE_PROPERTY,
+  CONFERENCE_TYPE_VOCAB_ID,
+  CONFERENCE_TYPE_TERMS,
+} from '@/config/conferenceTypeConfig';
 import { SimplifiedDetailConfig } from '../simplifiedConfig';
 import { convertToGenericConfig } from '../simplifiedConfigAdapter';
 
@@ -10,6 +15,18 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
     title: { property: 'dcterms:title', type: 'title', zone: 'header' },
     date: { property: 'dcterms:date', type: 'date', zone: 'details' },
     description: { property: 'dcterms:abstract', type: 'textarea', label: 'Résumé', zone: 'details' },
+    conferenceType: {
+      property: CONFERENCE_TYPE_PROPERTY,
+      type: 'select',
+      label: 'Type de conférence',
+      zone: 'details',
+      customVocabId: CONFERENCE_TYPE_VOCAB_ID,
+      options: [
+        { value: CONFERENCE_TYPE_TERMS.seminaire, label: 'Séminaire' },
+        { value: CONFERENCE_TYPE_TERMS.journee_etudes, label: "Journée d'études" },
+        { value: CONFERENCE_TYPE_TERMS.colloque, label: 'Colloque' },
+      ],
+    },
     contributors: {
       property: 'schema:agent',
       type: 'resource',
@@ -17,6 +34,7 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
       resourceTemplateId: 72,
       multiSelect: true,
       zone: 'overview',
+      editable: false,
     },
     keywords: {
       property: 'jdc:hasConcept',
@@ -60,6 +78,8 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
       editable: true,
     },
   ],
+
+  resourceLabel: 'Conférence',
 
   showKeywords: true,
   showRecommendations: true,

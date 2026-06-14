@@ -11,6 +11,16 @@
 import React from 'react';
 import { IconSvgProps } from '@/types/ui';
 import {
+  CONFERENCE_TEMPLATE_ID,
+  LEGACY_CONFERENCE_TEMPLATE_IDS,
+} from './conferenceTypeConfig';
+
+export {
+  CONFERENCE_TEMPLATE_ID,
+  resolveResourceTypeFromOmekaItem,
+  getConferenceDetailUrl,
+} from './conferenceTypeConfig';
+import {
   SeminaireIcon,
   ColloqueIcon,
   StudyDayIcon,
@@ -184,7 +194,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
     type: 'journee_etudes',
     label: 'Journée d\'études',
     icon: StudyDayIcon,
-    templateIds: [121],
+    templateIds: [CONFERENCE_TEMPLATE_ID],
     getUrl: (id) => `/corpus/journees-etudes/conference/${id}`,
     collectionUrl: '/corpus/journees-etudes',
     collectionLabel: 'Journées d\'études',
@@ -194,7 +204,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
     type: 'seminaire',
     label: 'Séminaire',
     icon: SeminaireIcon,
-    templateIds: [71],
+    templateIds: [CONFERENCE_TEMPLATE_ID],
     getUrl: (id) => `/corpus/seminaires/conference/${id}`,
     collectionUrl: '/corpus/seminaires',
     collectionLabel: 'Séminaires',
@@ -204,7 +214,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
     type: 'colloque',
     label: 'Colloque',
     icon: ColloqueIcon,
-    templateIds: [122],
+    templateIds: [CONFERENCE_TEMPLATE_ID],
     getUrl: (id) => `/corpus/colloques/conference/${id}`,
     collectionUrl: '/corpus/colloques',
     collectionLabel: 'Colloques',
@@ -380,17 +390,29 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
 export const OMEKA_PROPERTY_IDS: Record<string, number> = {
   'dcterms:references': 36,
   'dcterms:bibliographicCitation': 48,
+  'dcterms:type': 8,
 };
 
 /**
  * Map inversé: template_id -> ResourceType
+ * Le template 71 est partagé par séminaire / journée d'études / colloque — résolu via dcterms:type.
  */
-export const TEMPLATE_ID_TO_TYPE: Record<number, ResourceType> = Object.values(RESOURCE_TYPES).reduce((acc, config) => {
-  config.templateIds.forEach((templateId) => {
-    acc[templateId] = config.type;
+export const TEMPLATE_ID_TO_TYPE: Record<number, ResourceType> = (() => {
+  const acc: Record<number, ResourceType> = {
+    [CONFERENCE_TEMPLATE_ID]: 'seminaire',
+    [LEGACY_CONFERENCE_TEMPLATE_IDS.journee_etudes]: 'journee_etudes',
+    [LEGACY_CONFERENCE_TEMPLATE_IDS.colloque]: 'colloque',
+  };
+
+  Object.values(RESOURCE_TYPES).forEach((config) => {
+    config.templateIds.forEach((templateId) => {
+      if (templateId === CONFERENCE_TEMPLATE_ID) return;
+      acc[templateId] = config.type;
+    });
   });
+
   return acc;
-}, {} as Record<number, ResourceType>);
+})();
 
 /**
  * Récupère la config d'un type de ressource par son template_id

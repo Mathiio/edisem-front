@@ -3,7 +3,7 @@
  * Endpoints dédiés pour les ressources étudiantes (expérimentations, outils, feedbacks)
  */
 
-import { TEMPLATE_ID_TO_TYPE, filterMonEspaceResources, isParentLinkedOnlyResourceType } from '@/config/resourceConfig';
+import { TEMPLATE_ID_TO_TYPE, filterMonEspaceResources, isParentLinkedOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
 import { getYouTubeThumbnail, isOmekaPlaceholderThumbnail, resolveOmekaThumbnail } from '@/lib/resourceUtils';
 import { ApiProxy } from '@/services/ApiProxy';
 import { omekaApiUrl, OMEKA_API_BASE } from '@/utils/omekaApi';
@@ -160,6 +160,10 @@ export interface StudentResourceCard {
     | 'retour_experience'
     | 'outil'
     | 'seminaire'
+    | 'colloque'
+    | 'journee_etudes'
+    | 'personne'
+    | 'organisation'
     | 'recit_scientifique'
     | 'recit_artistique'
     | 'recit_techno_industriel'
@@ -305,7 +309,9 @@ function mapOmekaItemToStudentCard(item: Record<string, any>): StudentResourceCa
   const templateId = item['o:resource_template']?.['o:id'];
   if (!templateId) return null;
 
-  const type = TEMPLATE_ID_TO_TYPE[Number(templateId)];
+  const type =
+    resolveResourceTypeFromOmekaItem(item) ??
+    TEMPLATE_ID_TO_TYPE[Number(templateId)];
   if (!type || isParentLinkedOnlyResourceType(type)) return null;
 
   return {

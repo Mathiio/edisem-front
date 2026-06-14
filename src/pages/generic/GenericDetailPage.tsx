@@ -33,7 +33,15 @@ import { GenericDetailPageConfig, PageMode, FetchResult, ViewOption } from './co
 import { generateSmartRecommendations } from './helpers';
 import { ResourcePicker } from '@/components/features/forms/ResourcePicker';
 import { getTemplatePropertiesMap } from '@/services/Items';
-import { getRessourceLabel, getResourceConfigByTemplateId, getMonEspacePath, OMEKA_PROPERTY_IDS, TEMPLATE_ID_TO_TYPE } from '@/config/resourceConfig';
+import { getRessourceLabel, getResourceConfigByTemplateId, getMonEspacePath, OMEKA_PROPERTY_IDS, TEMPLATE_ID_TO_TYPE, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
+import {
+  buildConferenceTypeOmekaValue,
+  CONFERENCE_TEMPLATE_ID,
+  CONFERENCE_TYPE_PROPERTY_ID,
+  CONFERENCE_TYPE_TERMS,
+  CONFERENCE_TYPE_VOCAB_ID,
+  isConferenceTypeOmekaProperty,
+} from '@/config/conferenceTypeConfig';
 import { QUICK_CREATE_CONFIGS } from '@/components/features/forms/QuickCreateModal';
 import {
   getLinkedResourceId,
@@ -1090,9 +1098,11 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         const omekaKey = key.includes(':') ? key : (getFormFieldOmekaProperty(key) || findOmekaPropertyKey(updatedItem, key));
         if (omekaKey && !writtenOmekaProperties.has(omekaKey)) {
           const existingEntries: any[] = Array.isArray(updatedItem[omekaKey]) ? updatedItem[omekaKey] : [];
+          const useConferenceTypeVocab = isConferenceTypeOmekaProperty(omekaKey, templateId);
           // Conserver le type customvocab:N si présent dans les données existantes
-          const existingOmekaType =
-            existingEntries.length > 0 && existingEntries[0]?.type?.startsWith('customvocab:')
+          const existingOmekaType = useConferenceTypeVocab
+            ? `customvocab:${CONFERENCE_TYPE_VOCAB_ID}`
+            : existingEntries.length > 0 && existingEntries[0]?.type?.startsWith('customvocab:')
               ? existingEntries[0].type
               : null;
           const propertyId =
@@ -1759,6 +1769,14 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       }
     }
 
+    // Conférences : dcterms:type obligatoire (défaut « séminaire » à la création)
+    if (Number(config.resourceTemplateId) === CONFERENCE_TEMPLATE_ID && !itemData['dcterms:type']) {
+      const typePropertyId = propMap['dcterms:type'] ?? CONFERENCE_TYPE_PROPERTY_ID;
+      itemData['dcterms:type'] = [
+        buildConferenceTypeOmekaValue(CONFERENCE_TYPE_TERMS.seminaire, typePropertyId),
+      ];
+    }
+
     // Nettoyer les propriétés avec property_id null (pas dans le template)
     Object.keys(itemData).forEach((key) => {
       if (key.startsWith('o:')) return; // Garder les métadonnées Omeka
@@ -2205,7 +2223,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       // Déterminer le type basé sur le template ID
       let type = r.type;
       if (!type && templateId) {
-        type = TEMPLATE_ID_TO_TYPE[Number(templateId)];
+        type = resolveResourceTypeFromOmekaItem(r) ?? TEMPLATE_ID_TO_TYPE[Number(templateId)];
       }
 
       // Récupérer l'image/thumbnail
@@ -2716,7 +2734,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     return (
       <Layouts className='grid grid-cols-10 col-span-10 gap-12 overflow-visible z-0'>
         <div className='col-span-10 overflow-visible'>
-          <EditModeBanner mode={mode === 'create' ? 'create' : 'edit'} resourceType={config.type || 'Ressource'} />
+          <EditModeBanner mode={mode === 'create' ? 'create' : 'edit'} resourceType={config.type || 'Ressource'} labelOverride={config.resourceLabel} />
         </div>
         {/* Left column skeleton - matching loaded state structure */}
         <motion.div className='col-span-10 flex flex-col gap-4 h-fit items-center justify-center py-5' variants={fadeIn}>
@@ -2734,7 +2752,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         {/* Edit Mode Banner */}
         {isEditing && (
           <div className='col-span-10 overflow-visible'>
-            <EditModeBanner mode={mode === 'create' ? 'create' : 'edit'} resourceType={config.type || 'Ressource'} />
+            <EditModeBanner mode={mode === 'create' ? 'create' : 'edit'} resourceType={config.type || 'Ressource'} labelOverride={config.resourceLabel} />
           </div>
         )}
 
@@ -3032,6 +3050,29 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                         onChange={(value) => setValue(field.key, value)}
                         placeholder={field.placeholder}
                       />
+                    );
+                  })}
+
+                {/* Champs select statique (liste d'options prédéfinies) */}
+                {config.formFields
+                  ?.filter((f) => f.type === 'selection' && Array.isArray(f.options) && f.options.length > 0)
+                  .map((field) => {
+                    const currentValue = formData[field.key] || field.options![0].value;
+                    return (
+                      <Select
+                        key={field.key}
+                        label={field.label}
+                        selectedKeys={[currentValue]}
+                        onSelectionChange={(keys) => {
+                          const key = Array.from(keys)[0];
+                          if (key) setValue(field.key, String(key));
+                        }}>
+                        {field.options!.map((opt) => (
+                          <SelectItem key={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </Select>
                     );
                   })}
 

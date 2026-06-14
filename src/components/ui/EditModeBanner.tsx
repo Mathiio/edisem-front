@@ -5,14 +5,17 @@ import { getResourceDisplayTheme } from '@/config/resourceConfig';
 interface EditModeBannerProps {
   mode: 'create' | 'edit';
   resourceType: string;
+  /** Remplace le label dérivé du type (ex: "Conférence" au lieu de "Séminaire") */
+  labelOverride?: string;
   className?: string;
 }
 
 /**
  * Bannière mode édition/création — alignée à gauche, point clignotant + type de ressource en dessous.
  */
-export const EditModeBanner: React.FC<EditModeBannerProps> = ({ resourceType, className = '' }) => {
-  const { label, icon: Icon, color } = getResourceDisplayTheme(resourceType);
+export const EditModeBanner: React.FC<EditModeBannerProps> = ({ resourceType, labelOverride, className = '' }) => {
+  const { label: themeLabel, icon: Icon, color } = getResourceDisplayTheme(resourceType);
+  const label = labelOverride ?? themeLabel;
   const title = 'Mode édition';
 
   return (

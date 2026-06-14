@@ -226,7 +226,7 @@ const InlineMicroresumeForm: React.FC<{
     </div>
   );
 };
-import { getResourceUrl, getResourceConfigByTemplateId, isFormOnlyResourceType } from '@/config/resourceConfig';
+import { getResourceUrl, getResourceConfigByTemplateId, isFormOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
 import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/features/database/AutoResizingTextarea';
 import {
   CREATE_ONLY_TEMPLATE_IDS,
@@ -325,6 +325,7 @@ const fieldTypeToFormType: Record<FieldType, FormFieldType> = {
   url: 'url',
   resource: 'multiselection',
   itemset: 'selection',
+  select: 'selection',
   media: 'media',
   status: 'text',
   percentage: 'slider',
@@ -348,6 +349,8 @@ export const fieldToFormField = (field: InternalFieldConfig): FormFieldConfig =>
     min: field.min,
     max: field.max,
     step: field.step,
+    options: field.options,
+    customVocabId: field.customVocabId,
     selectionConfig: field.resourceTemplateId
       ? {
           resourceType: field.label,
@@ -538,7 +541,14 @@ export const resourceManagement = {
 /**
  * Détermine le type de ressource basé sur le template ID
  */
-const getResourceTypeFromTemplate = (templateId: number | undefined): string => {
+const getResourceTypeFromTemplate = (
+  templateId: number | undefined,
+  resourceData?: Record<string, unknown>,
+): string => {
+  if (resourceData) {
+    const fromItem = resolveResourceTypeFromOmekaItem(resourceData);
+    if (fromItem) return fromItem;
+  }
   if (!templateId) return 'unknown';
   const config = getResourceConfigByTemplateId(templateId);
   return config?.type || 'unknown';
@@ -855,7 +865,7 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
               }
 
               const templateId = resourceData['o:resource_template']?.['o:id'];
-              const resourceType = getResourceTypeFromTemplate(templateId);
+              const resourceType = getResourceTypeFromTemplate(templateId, resourceData);
               const externalUrl = resourceData['schema:url']?.[0]?.['@id'];
               const internalUrl = getResourceUrl(resourceType, resourceId);
 
@@ -1133,7 +1143,7 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
               }
 
               const templateId = resourceData['o:resource_template']?.['o:id'];
-              const resourceType = getResourceTypeFromTemplate(templateId);
+              const resourceType = getResourceTypeFromTemplate(templateId, resourceData);
               const externalUrl = resourceData['schema:url']?.[0]?.['@id'];
               const internalUrl = getResourceUrl(resourceType, resourceId);
 
@@ -1924,6 +1934,7 @@ export const convertToGenericConfig = (config: SimplifiedDetailConfig): GenericD
     // Type
     type: config.resourceType,
     resourceType: config.resourceType,
+    resourceLabel: config.resourceLabel,
     formOnly: isFormOnlyResourceType(config.resourceType),
 
     // Formulaire
@@ -1964,6 +1975,11 @@ interface SimpleDetailPageProps {
  */
 export const createHandleSave = (config: SimplifiedDetailConfig) => {
   const fields = extractFieldsFromConfig(config.fields);
+  // Index: omekaProperty → customVocabId (for fields that store custom-vocab terms)
+  const customVocabByProperty: Record<string, number> = {};
+  fields.forEach((f) => {
+    if (f.customVocabId) customVocabByProperty[f.property] = f.customVocabId;
+  });
 
   return async (data: any, itemId?: string | number): Promise<void> => {
     if (!itemId) {
@@ -2124,10 +2140,10 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
 
         // Traiter selon le type de valeur
         if (typeof value === 'string' || typeof value === 'number') {
-          // Valeur simple (string ou number)
+          const vocabId = customVocabByProperty[omekaProperty];
           updatedItem[omekaProperty] = [
             {
-              type: 'literal',
+              type: vocabId ? `customvocab:${vocabId}` : 'literal',
               property_id: propertyId,
               '@value': String(value),
               is_public: true,

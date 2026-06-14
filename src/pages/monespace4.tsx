@@ -52,7 +52,7 @@ const paginationClassNames = {
 const createableConfigs = [
   { config: experimentationConfigSimplified, route: '/add-resource/experimentation-chercheur', icon: ExperimentationIcon, category: 'experimentation', role: 'actant' as const },
   { config: toolConfigSimplified, route: '/add-resource/outil-chercheur', icon: UniversityIcon, category: 'outil', role: 'actant' as const },
-  { config: conferenceConfigSimplified, route: '/add-resource/conference', icon: SeminaireIcon, category: 'conference', role: 'actant' as const },
+  { config: conferenceConfigSimplified, route: '/add-resource/conference', icon: SeminaireIcon, category: 'conference', role: 'actant' as const, label: 'Conférence' },
   { config: personneConfigSimplified, route: '/add-resource/personne', icon: UserIcon, category: 'personne', role: 'actant' as const },
   { config: organisationConfigSimplified, route: '/add-resource/organisation', icon: BuildingIcon, category: 'organisation', role: 'actant' as const },
   { config: recitScientifiqueConfigSimplified, route: '/add-resource/recit-scientifique', icon: PratiqueNarrativeIcon, category: 'recit', role: 'actant' as const },

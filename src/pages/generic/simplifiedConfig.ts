@@ -44,6 +44,7 @@ export type FieldType =
   | 'url' // Lien externe
   | 'resource' // Ressource liée (avec vignette et nom)
   | 'itemset' // Sélection depuis un item set Omeka S
+  | 'select' // Sélection depuis une liste statique d'options
   | 'media' // Médias (images/vidéos)
   | 'status' // Statut (chip/badge)
   | 'percentage'; // Pourcentage avec barre de progression
@@ -100,6 +101,12 @@ export interface FieldDefinition {
 
   /** Pour itemset: ID de l'item set Omeka S */
   itemSetId?: number;
+
+  /** Pour select: liste statique de choix { value, label } */
+  options?: { value: string; label: string }[];
+
+  /** Pour select/customVocab: ID du custom vocab Omeka S (sauvegarde en customvocab:N) */
+  customVocabId?: number;
 
   /** Propriétés sources multiples (pour combiner plusieurs propriétés) */
   sourceProperties?: string[];
@@ -290,6 +297,12 @@ export interface SimplifiedDetailConfig {
   /** Vue par défaut */
   defaultView?: string;
 
+  /**
+   * Label affiché dans la bannière d'édition et le dropdown "Créer" (remplace le label du type).
+   * Utile quand plusieurs sous-types partagent un même formulaire (ex: conférences → "Conférence").
+   */
+  resourceLabel?: string;
+
   /** Formulaire d'édition activé */
   formEnabled?: boolean;
 
@@ -381,6 +394,12 @@ export interface InternalFieldConfig {
 
   /** Pour itemset */
   itemSetId?: number;
+
+  /** Pour select: liste statique de choix */
+  options?: { value: string; label: string }[];
+
+  /** Pour select/customVocab: ID du custom vocab Omeka S */
+  customVocabId?: number;
 
   /** Propriétés sources multiples */
   sourceProperties?: string[];
@@ -497,6 +516,8 @@ export const extractFieldsFromConfig = (fields: SimplifiedFieldsMapping): Intern
         resourceTemplateId: fieldValue.resourceTemplateId ?? defaults.resourceTemplateId,
         multiSelect: fieldValue.multiSelect ?? defaults.multiSelect,
         itemSetId: fieldValue.itemSetId,
+        options: fieldValue.options,
+        customVocabId: fieldValue.customVocabId,
         sourceProperties: fieldValue.sourceProperties,
       });
     }

@@ -8,6 +8,12 @@ import { Link } from 'react-router-dom';
 import { Layouts } from '@/components/layout/Layouts';
 import { Spinner } from '@/theme/components';
 import { Button } from '@/theme/components/button';
+import {
+  CONFERENCE_TEMPLATE_ID,
+  getConferenceDetailUrl,
+  LEGACY_CONFERENCE_TEMPLATE_IDS,
+  resolveConferenceResourceTypeFromTerm,
+} from '@/config/conferenceTypeConfig';
 
 const BASE_URL = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=MotsCles';
 
@@ -21,6 +27,8 @@ type ConferenceItem = {
   id: number; title: string;
   agent?: string | null;
   edition?: { id: number; title: string } | null;
+  /** Terme dcterms:type si renvoyé par l'API (ex. « colloque ») */
+  conference_type?: string | null;
 };
 
 type CitationItem = {
@@ -86,12 +94,30 @@ const parseIds = (raw: string): number[] =>
       .filter(n => !isNaN(n) && n > 0)
   )];
 
+/** Retourne le path de navigation pour une conférence */
+function conferenceItemPath(
+  template: number,
+  id: number,
+  conferenceTypeTerm?: string | null,
+): string {
+  const fromTerm = resolveConferenceResourceTypeFromTerm(conferenceTypeTerm);
+  if (fromTerm) return getConferenceDetailUrl(fromTerm, id);
+  if (template === LEGACY_CONFERENCE_TEMPLATE_IDS.journee_etudes) {
+    return getConferenceDetailUrl('journee_etudes', id);
+  }
+  if (template === LEGACY_CONFERENCE_TEMPLATE_IDS.colloque) {
+    return getConferenceDetailUrl('colloque', id);
+  }
+  return getConferenceDetailUrl('seminaire', id);
+}
+
 /** Retourne le path de navigation pour un item selon son template et son id */
-function itemPath(template: number, id: number, extra?: { conf_template?: number }): string | null {
+function itemPath(template: number, id: number, extra?: { conf_template?: number; conf_type?: string | null }): string | null {
   switch (template) {
-    case 71:  return `/corpus/seminaires/conference/${id}`;
-    case 121: return `/corpus/journees-etudes/conference/${id}`;
-    case 122: return `/corpus/colloques/conference/${id}`;
+    case CONFERENCE_TEMPLATE_ID:
+    case LEGACY_CONFERENCE_TEMPLATE_IDS.journee_etudes:
+    case LEGACY_CONFERENCE_TEMPLATE_IDS.colloque:
+      return conferenceItemPath(template, id, extra?.conf_type);
     case 81:  return `/corpus/bibliographie/${id}`;
     case 103: return `/corpus/recit-artistique/${id}`;
     case 108: return `/corpus/experimentation/${id}`;
@@ -105,22 +131,22 @@ function itemPath(template: number, id: number, extra?: { conf_template?: number
     case 80: {
       const ct = extra?.conf_template;
       if (!ct) return null;
-      const confId = id; // ici id = conf_id passé en extra
-      if (ct === 71)  return `/corpus/seminaires/conference/${confId}`;
-      if (ct === 121) return `/corpus/journees-etudes/conference/${confId}`;
-      if (ct === 122) return `/corpus/colloques/conference/${confId}`;
-      return null;
+      return conferenceItemPath(ct, id, extra?.conf_type);
     }
     default: return null;
   }
 }
 
-const CONF_TEMPLATES = new Set([71, 121, 122]);
+const CONF_TEMPLATES = new Set([
+  CONFERENCE_TEMPLATE_ID,
+  LEGACY_CONFERENCE_TEMPLATE_IDS.journee_etudes,
+  LEGACY_CONFERENCE_TEMPLATE_IDS.colloque,
+]);
 
 const USAGE_COLUMNS = [
-  { key: 'conf_seminaire',          label: 'Séminaire (71)' },
-  { key: 'journee_etudes',          label: "Journée d'études (121)" },
-  { key: 'colloque',                label: 'Colloque (122)' },
+  { key: 'conf_seminaire',          label: `Séminaire (${CONFERENCE_TEMPLATE_ID})` },
+  { key: 'journee_etudes',          label: "Journée d'études" },
+  { key: 'colloque',                label: 'Colloque' },
   { key: 'citation',                label: 'Citation (80)' },
   { key: 'micro_resume_ia',         label: 'Micro-résumé IA (125)' },
   { key: 'experimentation',         label: 'Expérimentation (108)' },
@@ -152,12 +178,15 @@ function ItemCard({ template, item }: { template: number; item: ConferenceItem |
 
   if (isConf) {
     const conf = item as ConferenceItem;
-    path     = itemPath(template, item.id);
+    path     = conferenceItemPath(template, item.id, conf.conference_type);
     subtitle = [conf.agent, conf.edition?.title].filter(Boolean).join(' — ') || null;
   } else if (isCitation) {
     const cit = item as CitationItem;
     if (cit.parent_conf) {
-      path     = itemPath(80, cit.parent_conf.id, { conf_template: cit.parent_conf.template });
+      path     = itemPath(80, cit.parent_conf.id, {
+        conf_template: cit.parent_conf.template,
+        conf_type: (cit.parent_conf as { conference_type?: string }).conference_type,
+      });
       subtitle = `→ ${cit.parent_conf.title}`;
     }
   } else {
