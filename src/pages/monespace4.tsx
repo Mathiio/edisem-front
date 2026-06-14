@@ -7,7 +7,6 @@ import { CreateResourceAction } from '@/components/features/espaceEtudiant/Creat
 import {
   MySpaceResourceRow,
   MySpaceResourceRowSkeleton,
-  MY_SPACE_ROW_GRID,
   getResourceRowSubtitle,
 } from '@/components/features/espaceEtudiant/MySpaceResourceRow';
 import { AlertModal } from '@/components/ui/AlertModal';
