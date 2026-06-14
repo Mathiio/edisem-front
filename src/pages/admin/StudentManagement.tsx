@@ -14,17 +14,25 @@ import {
 import {
   Button,
   outlineButtonClass,
-  outlineButtonCompactClass,
   primaryButtonClass,
   cancelButtonClass,
-  dangerOutlineButtonCompactClass,
 } from '@/theme/components/button';
-import { Input, Checkbox, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@/theme/components';
+import { Input, Checkbox, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Select, SelectItem } from '@/theme/components';
 import { Layouts } from '@/components/layout/Layouts';
 import { AddIcon, EditIcon, TrashIcon, ChainLinkIcon, ImportIcon, ExportIcon, SchoolIcon } from '@/components/ui/icons';
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { AlertModal } from '@/components/ui/AlertModal';
 import { MySpaceActionButton } from '@/components/features/espaceEtudiant/MySpaceResourceRow';
+import {
+  AdminListToolbar,
+  AdminListPagination,
+  AdminListEmptyState,
+  adminTableClassNames,
+  adminActionsWrapperClass,
+} from '@/components/features/admin/AdminListToolbar';
+import { matchesAdminSearch, sortByStringField } from '@/components/features/admin/adminListConfig';
+import { useAdminListControls } from '@/hooks/useAdminListControls';
+import { AdminSelectionBar } from '@/components/features/admin/AdminSelectionBar';
 import { getCourses, getStudentCourses, enrollStudent, unenrollStudent, type Course } from '@/services/StudentSpace';
 
 // Types
@@ -233,6 +241,8 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
   const [studentToDelete, setStudentToDelete] = useState<StudentItem | null>(null);
   const [deletingStudent, setDeletingStudent] = useState(false);
   const [batchDeleteModalOpen, setBatchDeleteModalOpen] = useState(false);
+  const [linkFilter, setLinkFilter] = useState<'all' | 'linked' | 'unlinked'>('all');
+  const [courseFilter, setCourseFilter] = useState<string>('all');
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -275,6 +285,58 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const filterFn = useCallback(
+    (student: StudentItem) => {
+      if (linkFilter === 'linked' && !student.omekaUserId) return false;
+      if (linkFilter === 'unlinked' && student.omekaUserId) return false;
+      if (courseFilter !== 'all') {
+        const courseId = parseInt(courseFilter, 10);
+        if (!student.courses?.some((c) => c.id === courseId)) return false;
+      }
+      return true;
+    },
+    [linkFilter, courseFilter],
+  );
+
+  const searchFn = useCallback((student: StudentItem, query: string) => {
+    const courseLabels = student.courses?.map((c) => c.title || c.code).join(' ') || '';
+    return matchesAdminSearch(
+      query,
+      student.title,
+      student.firstname,
+      student.lastname,
+      student.mail,
+      student.studentNumber,
+      student.classNumber,
+      courseLabels,
+    );
+  }, []);
+
+  const sortFn = useCallback(
+    (a: StudentItem, b: StudentItem, order: 'asc' | 'desc') => sortByStringField(a.title, b.title, order),
+    [],
+  );
+
+  const {
+    searchQuery,
+    setSearchQuery,
+    sortOrder,
+    setSortOrder,
+    page,
+    setPage,
+    filteredItems: filteredStudents,
+    paginatedItems: paginatedStudents,
+    totalPages,
+    totalCount,
+    pageSize,
+  } = useAdminListControls({
+    items: students,
+    filterFn,
+    searchFn,
+    sortFn,
+    filterDeps: [linkFilter, courseFilter],
+  });
 
   const handleOpenCreate = () => {
     setEditingStudent(null);
@@ -504,7 +566,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
 
   const handleSelectAllStudents = (selected: boolean) => {
     if (selected) {
-      setSelectedStudentIds(new Set(students.map((s) => s.id)));
+      setSelectedStudentIds(new Set(filteredStudents.map((s) => s.id)));
     } else {
       setSelectedStudentIds(new Set());
     }
@@ -908,38 +970,72 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
         </div>
 
         {/* Barre d'actions batch */}
-        {selectedStudentIds.size > 0 && (
-          <div className='bg-c2 rounded-xl p-4 flex items-center justify-between'>
-            <div className='flex items-center gap-3'>
-              <span className='text-c6 font-medium'>
-                {selectedStudentIds.size} étudiant{selectedStudentIds.size > 1 ? 's' : ''} sélectionné{selectedStudentIds.size > 1 ? 's' : ''}
-              </span>
-            </div>
-            <div className='flex items-center gap-2'>
-              <Button size='sm' className={outlineButtonCompactClass} onPress={handleClearSelection}>
-                Annuler la sélection
-              </Button>
-              <Button size='sm' className={dangerOutlineButtonCompactClass} startContent={<TrashIcon size={16} />} onPress={openBatchDeleteModal} isLoading={deletingBatch}>
-                Supprimer ({selectedStudentIds.size})
-              </Button>
-            </div>
-          </div>
-        )}
+        <AdminSelectionBar
+          count={selectedStudentIds.size}
+          itemLabel='étudiant'
+          onClearSelection={handleClearSelection}
+          onDelete={openBatchDeleteModal}
+          isDeleting={deletingBatch}
+        />
 
         {/* Table des étudiants */}
-        <div className='bg-c2 rounded-xl p-5'>
-          <Table
-            aria-label='Liste des étudiants'
-            classNames={{
-              wrapper: 'bg-transparent shadow-none rounded-xl',
-              th: 'bg-c3 text-c6 h-12 first:rounded-l-8 last:rounded-r-8',
-              td: 'text-c6',
-            }}>
+        <div className='bg-c2/50 rounded-xl p-5 flex flex-col gap-4'>
+          <AdminListToolbar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder='Rechercher un étudiant…'
+            totalCount={totalCount}
+            totalLabel='étudiant'
+            sortOrder={sortOrder}
+            onSortChange={setSortOrder}
+            filters={
+              <>
+                <Select
+                  size='sm'
+                  selectedKeys={[courseFilter]}
+                  onSelectionChange={(keys) => setCourseFilter(Array.from(keys)[0] as string)}
+                  className='w-full lg:w-56'
+                  aria-label='Filtrer par cours'>
+                  {[
+                    { id: 'all', label: 'Tous les cours' },
+                    ...allCourses.map((course) => ({ id: String(course.id), label: course.title })),
+                  ].map((option) => (
+                    <SelectItem key={option.id}>{option.label}</SelectItem>
+                  ))}
+                </Select>
+
+                <Select
+                  size='sm'
+                  selectedKeys={[linkFilter]}
+                  onSelectionChange={(keys) => {
+                    const key = Array.from(keys)[0];
+                    if (key === 'all' || key === 'linked' || key === 'unlinked') setLinkFilter(key);
+                  }}
+                  className='w-full lg:w-48'
+                  aria-label='Filtrer par liaison Omeka'>
+                  <SelectItem key='all'>Tous</SelectItem>
+                  <SelectItem key='linked'>Liés à Omeka</SelectItem>
+                  <SelectItem key='unlinked'>Non liés</SelectItem>
+                </Select>
+              </>
+            }
+          />
+
+          {paginatedStudents.length === 0 ? (
+            <AdminListEmptyState message='Aucun étudiant ne correspond à votre recherche.' />
+          ) : (
+            <Table aria-label='Liste des étudiants' classNames={adminTableClassNames}>
             <TableHeader>
               <TableColumn width={50}>
                 <Checkbox
-                  isSelected={students.length > 0 && selectedStudentIds.size === students.length}
-                  isIndeterminate={selectedStudentIds.size > 0 && selectedStudentIds.size < students.length}
+                  isSelected={
+                    filteredStudents.length > 0 &&
+                    filteredStudents.every((s) => selectedStudentIds.has(s.id))
+                  }
+                  isIndeterminate={
+                    filteredStudents.some((s) => selectedStudentIds.has(s.id)) &&
+                    !filteredStudents.every((s) => selectedStudentIds.has(s.id))
+                  }
                   onValueChange={handleSelectAllStudents}
                   size='sm'
                 />
@@ -949,10 +1045,12 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
               <TableColumn>COURS</TableColumn>
               <TableColumn>EMAIL</TableColumn>
               <TableColumn>UTILISATEUR OMEKA</TableColumn>
-              <TableColumn>ACTIONS</TableColumn>
+              <TableColumn className='text-left'>
+                <div className={adminActionsWrapperClass}>ACTIONS</div>
+              </TableColumn>
             </TableHeader>
             <TableBody emptyContent='Aucun étudiant'>
-              {students.map((student) => {
+              {paginatedStudents.map((student) => {
                 const isSelected = selectedStudentIds.has(student.id);
                 const hasSelection = selectedStudentIds.size > 0;
                 return (
@@ -1017,9 +1115,11 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
                     </TableCell>
                     <TableCell>
                       {hasSelection ? (
-                        <span className='text-c4 text-xs italic'>Sélection active</span>
+                        <div className={adminActionsWrapperClass}>
+                          <span className='text-c4 text-xs italic'>Sélection active</span>
+                        </div>
                       ) : (
-                        <div className='flex items-center gap-1.5'>
+                        <div className={adminActionsWrapperClass}>
                           <MySpaceActionButton onClick={() => handleOpenCourses(student)} title='Gérer les cours' aria-label='Gérer les cours'>
                             <SchoolIcon size={16} />
                           </MySpaceActionButton>
@@ -1040,6 +1140,15 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
               })}
             </TableBody>
           </Table>
+          )}
+
+          <AdminListPagination
+            totalCount={totalCount}
+            pageSize={pageSize}
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
         </div>
 
         {/* Modal Création/Édition */}
@@ -1278,14 +1387,14 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
             </ModalHeader>
             <ModalBody className='gap-4'>
               {/* Actions rapides */}
-              <div className='flex gap-2 flex-wrap'>
-                <Button size='sm' className={outlineButtonCompactClass} onPress={() => handleSelectAll(true)}>
+              <div className='flex gap-2.5 flex-wrap'>
+                <Button className={outlineButtonClass} onPress={() => handleSelectAll(true)}>
                   Tout sélectionner
                 </Button>
-                <Button size='sm' className={outlineButtonCompactClass} onPress={() => handleSelectAll(false)}>
+                <Button className={outlineButtonClass} onPress={() => handleSelectAll(false)}>
                   Tout désélectionner
                 </Button>
-                <Button size='sm' className={`${outlineButtonCompactClass} text-warning hover:text-warning`} onPress={handleSelectNonDuplicates}>
+                <Button className={`${outlineButtonClass} text-warning`} onPress={handleSelectNonDuplicates}>
                   Exclure les doublons
                 </Button>
               </div>

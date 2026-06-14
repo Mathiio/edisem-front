@@ -23,6 +23,15 @@ import { ChainLinkIcon, UserIcon, UploadIcon, TrashIcon, EditIcon } from '@/comp
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { AlertModal } from '@/components/ui/AlertModal';
 import { MySpaceActionButton } from '@/components/features/espaceEtudiant/MySpaceResourceRow';
+import {
+  AdminListToolbar,
+  AdminListPagination,
+  AdminListEmptyState,
+  adminTableClassNames,
+  adminActionsWrapperClass,
+} from '@/components/features/admin/AdminListToolbar';
+import { matchesAdminSearch, sortByStringField } from '@/components/features/admin/adminListConfig';
+import { useAdminListControls } from '@/hooks/useAdminListControls';
 import { getActantsForLogin, linkActantToUser, createOmekaUserForActant, createActantWithUser, deleteActant, type Actant } from '@/services/StudentSpace';
 
 // Types
@@ -85,6 +94,7 @@ export const ActantManagement: React.FC<ActantManagementProps> = ({ embedded = f
   const [editFirstname, setEditFirstname] = useState('');
   const [editLastname, setEditLastname] = useState('');
   const [saving, setSaving] = useState(false);
+  const [linkFilter, setLinkFilter] = useState<'all' | 'linked' | 'unlinked'>('all');
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -347,6 +357,52 @@ export const ActantManagement: React.FC<ActantManagementProps> = ({ embedded = f
   const linkedCount = actants.filter((a) => a.omekaUserId).length;
   const unlinkedCount = actants.length - linkedCount;
 
+  const filterFn = useCallback(
+    (actant: Actant) => {
+      if (linkFilter === 'linked') return Boolean(actant.omekaUserId);
+      if (linkFilter === 'unlinked') return !actant.omekaUserId;
+      return true;
+    },
+    [linkFilter],
+  );
+
+  const searchFn = useCallback((actant: Actant, query: string) => {
+    const displayName = actant.title || `${actant.firstname} ${actant.lastname}`.trim();
+    return matchesAdminSearch(
+      query,
+      displayName,
+      actant.mail,
+      actant.omekaUserName,
+      actant.omekaUserRole,
+      String(actant.id),
+    );
+  }, []);
+
+  const sortFn = useCallback((a: Actant, b: Actant, order: 'asc' | 'desc') => {
+    const nameA = a.title || `${a.firstname} ${a.lastname}`.trim();
+    const nameB = b.title || `${b.firstname} ${b.lastname}`.trim();
+    return sortByStringField(nameA, nameB, order);
+  }, []);
+
+  const {
+    searchQuery,
+    setSearchQuery,
+    sortOrder,
+    setSortOrder,
+    page,
+    setPage,
+    paginatedItems: paginatedActants,
+    totalPages,
+    totalCount,
+    pageSize,
+  } = useAdminListControls({
+    items: actants,
+    filterFn,
+    searchFn,
+    sortFn,
+    filterDeps: [linkFilter],
+  });
+
   const Wrapper = embedded ? React.Fragment : Layouts;
   const wrapperProps = embedded ? {} : { className: 'flex flex-col col-span-10 gap-6' };
 
@@ -396,22 +452,46 @@ export const ActantManagement: React.FC<ActantManagementProps> = ({ embedded = f
         </div>
 
         {/* Table des actants */}
-        <div className='bg-c2 rounded-xl p-5'>
-          <Table
-            aria-label='Liste des actants'
-            classNames={{
-              wrapper: 'bg-transparent shadow-none rounded-xl',
-              th: 'bg-c3 text-c6 h-12 first:rounded-l-8 last:rounded-r-8',
-              td: 'text-c6',
-            }}>
+        <div className='bg-c2/50 rounded-xl p-5 flex flex-col gap-4'>
+          <AdminListToolbar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder='Rechercher un actant…'
+            totalCount={totalCount}
+            totalLabel='actant'
+            sortOrder={sortOrder}
+            onSortChange={setSortOrder}
+            filters={
+              <Select
+                size='sm'
+                selectedKeys={[linkFilter]}
+                onSelectionChange={(keys) => {
+                  const key = Array.from(keys)[0];
+                  if (key === 'all' || key === 'linked' || key === 'unlinked') setLinkFilter(key);
+                }}
+                className='w-full lg:w-48'
+                aria-label='Filtrer par liaison Omeka'>
+                <SelectItem key='all'>Tous</SelectItem>
+                <SelectItem key='linked'>Liés à Omeka</SelectItem>
+                <SelectItem key='unlinked'>Non liés</SelectItem>
+              </Select>
+            }
+          />
+
+          {paginatedActants.length === 0 ? (
+            <AdminListEmptyState message='Aucun actant ne correspond à votre recherche.' />
+          ) : (
+            <Table aria-label='Liste des actants' classNames={adminTableClassNames}>
             <TableHeader>
               <TableColumn>ACTANT</TableColumn>
               <TableColumn>EMAIL</TableColumn>
               <TableColumn>UTILISATEUR OMEKA S</TableColumn>
-              <TableColumn>ACTIONS</TableColumn>
+              <TableColumn className='text-left'>
+                <div className={adminActionsWrapperClass}>ACTIONS</div>
+              </TableColumn>
             </TableHeader>
             <TableBody emptyContent='Aucun actant trouvé'>
-              {actants.map((actant) => (
+              {paginatedActants.map((actant) => (
                 <TableRow key={actant.id}>
                   <TableCell>
                     <div className='flex items-center gap-3'>
@@ -440,7 +520,7 @@ export const ActantManagement: React.FC<ActantManagementProps> = ({ embedded = f
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className='flex items-center gap-1.5'>
+                    <div className={adminActionsWrapperClass}>
                       <MySpaceActionButton onClick={() => handleOpenEdit(actant)} title="Modifier l'actant" aria-label="Modifier l'actant">
                         <EditIcon size={16} />
                       </MySpaceActionButton>
@@ -456,6 +536,15 @@ export const ActantManagement: React.FC<ActantManagementProps> = ({ embedded = f
               ))}
             </TableBody>
           </Table>
+          )}
+
+          <AdminListPagination
+            totalCount={totalCount}
+            pageSize={pageSize}
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
         </div>
 
         {/* Modal Liaison / Création Utilisateur */}

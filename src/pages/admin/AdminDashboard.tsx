@@ -40,8 +40,8 @@ export const AdminDashboard: React.FC = () => {
         selectedKey={activeTab}
         onSelectionChange={(key) => setActiveTab(key as TabKey)}
         classNames={{
-          tabList: 'bg-c2 rounded-xl border border-c3 p-2',
-          cursor: 'w-full shadow-lg rounded-lg',
+          tabList: 'bg-c2 rounded-xl border-2 border-c3 p-2',
+          cursor: 'w-full shadow-lg rounded-lg bg-c3',
           tab: 'p-4 text-c4 data-[selected=true]:text-selected font-medium transition-all',
           tabContent: 'group-data-[selected=true]:font-medium flex items-center justify-center gap-2',
         }}>

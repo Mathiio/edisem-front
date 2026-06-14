@@ -102,7 +102,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
   return (
     <div
       onClick={handleClick}
-      className={`group shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 cursor-pointer p-5 rounded-2xl justify-between flex flex-col gap-5 hover:bg-c2 h-full transition-all ease-in-out duration-300 relative ${className}`}
+      className={`group border-c3 border-2 cursor-pointer p-5 rounded-3xl justify-between flex flex-col gap-5 hover:bg-c3/50 bg-c2/50 h-full transition-all ease-in-out duration-300 relative ${className}`}
     >
       <div className="flex flex-col gap-2.5 justify-between">
         {/* Thumbnail */}
@@ -179,7 +179,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
 
 export const ResourceCardSkeleton: React.FC = () => {
     return (
-      <div className='shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 p-5 rounded-2xl flex flex-col gap-5 h-full animate-pulse'>
+      <div className='border-c3 border-2 p-5 rounded-3xl flex flex-col gap-5 h-full animate-pulse'>
         <div className="flex flex-col gap-2.5 justify-between">
           <div className="w-full aspect-[2/1] h-36 rounded-xl bg-c3/50" />
           <div className="flex flex-col gap-2 mt-2">

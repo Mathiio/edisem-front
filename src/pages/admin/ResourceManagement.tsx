@@ -17,6 +17,15 @@ import { TrashIcon, EditIcon, ExperimentationIcon, UserIcon } from '@/components
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { AlertModal } from '@/components/ui/AlertModal';
 import { MySpaceActionButton } from '@/components/features/espaceEtudiant/MySpaceResourceRow';
+import {
+  AdminListToolbar,
+  AdminListPagination,
+  AdminListEmptyState,
+  adminTableClassNames,
+  adminActionsWrapperClass,
+} from '@/components/features/admin/AdminListToolbar';
+import { matchesAdminSearch, sortByStringField } from '@/components/features/admin/adminListConfig';
+import { useAdminListControls } from '@/hooks/useAdminListControls';
 import { getCourses, type Course, type StudentResourceCard, deleteUserResource } from '@/services/StudentSpace';
 import { getRessourceLabel } from '@/config/resourceConfig';
 
@@ -104,16 +113,51 @@ const ResourceManagement: React.FC<ResourceManagementProps> = ({ embedded = fals
   }, [loadData]);
 
   // Filtrer les ressources
-  const filteredResources = resources.filter((resource) => {
-    // Filtre par cours
-    if (filterCourse !== 'all') {
-      if (filterCourse === 'none' && resource.courseId !== null) return false;
-      if (filterCourse === 'teacher' && resource.courseId !== null) return false;
-      if (filterCourse !== 'none' && filterCourse !== 'teacher' && String(resource.courseId) !== filterCourse) return false;
-    }
-    // Filtre par type
-    if (filterType !== 'all' && resource.type !== filterType) return false;
-    return true;
+  const filterFn = useCallback(
+    (resource: ResourceWithCourse) => {
+      if (filterCourse !== 'all') {
+        if (filterCourse === 'none' && resource.courseId !== null) return false;
+        if (filterCourse === 'teacher' && resource.courseId !== null) return false;
+        if (filterCourse !== 'none' && filterCourse !== 'teacher' && String(resource.courseId) !== filterCourse) return false;
+      }
+      if (filterType !== 'all' && resource.type !== filterType) return false;
+      return true;
+    },
+    [filterCourse, filterType],
+  );
+
+  const searchFn = useCallback((resource: ResourceWithCourse, query: string) => {
+    const courseLabel =
+      resource.courseId != null
+        ? courses.find((c) => c.id === resource.courseId)?.code || resource.courseTitle
+        : 'Enseignant';
+    const actantNames = resource.actants?.map((a) => a.title).join(' ') || '';
+    return matchesAdminSearch(query, resource.title, getRessourceLabel(resource.type), courseLabel, actantNames);
+  }, [courses]);
+
+  const sortFn = useCallback(
+    (a: ResourceWithCourse, b: ResourceWithCourse, order: 'asc' | 'desc') =>
+      sortByStringField(a.title, b.title, order),
+    [],
+  );
+
+  const {
+    searchQuery,
+    setSearchQuery,
+    sortOrder,
+    setSortOrder,
+    page,
+    setPage,
+    paginatedItems: paginatedResources,
+    totalPages,
+    totalCount,
+    pageSize,
+  } = useAdminListControls({
+    items: resources,
+    filterFn,
+    searchFn,
+    sortFn,
+    filterDeps: [filterCourse, filterType],
   });
 
   // Statistiques
@@ -215,7 +259,7 @@ const ResourceManagement: React.FC<ResourceManagementProps> = ({ embedded = fals
   return (
     <Wrapper embedded={embedded}>
       {/* Header */}
-      <div className='flex items-center justify-between'>
+      <div className='flex items-center justify-between flex-wrap gap-4'>
         <div>
           <h1 className='text-3xl font-medium text-c6'>Gestion des Ressources</h1>
           <p className='text-sm text-c5 mt-px'>
@@ -223,62 +267,67 @@ const ResourceManagement: React.FC<ResourceManagementProps> = ({ embedded = fals
             {stats.teacherResources > 1 ? 's' : ''}
           </p>
         </div>
-        <div className='flex gap-2.5 pb-6'>
-          <Select
-            label='Filtrer par cours'
-            labelPlacement='outside-top'
-            selectedKeys={[filterCourse]}
-            onSelectionChange={(keys) => setFilterCourse(Array.from(keys)[0] as string)}
-            className='max-w-lg'
-            classNames={{ trigger: 'min-w-[200px]' }}
-            >
-            {[{ id: 'all', label: 'Tous les cours' }, { id: 'teacher', label: 'Ressources enseignantes' }, ...courses.map((c) => ({ id: String(c.id), label: c.title }))].map(
-              (option) => (
-                <SelectItem key={option.id}>{option.label}</SelectItem>
-              ),
-            )}
-          </Select>
-
-          <Select
-            label='Filtrer par type'
-            labelPlacement='outside-top'
-            selectedKeys={[filterType]}
-            onSelectionChange={(keys) => setFilterType(Array.from(keys)[0] as string)}
-            className='max-w-lg'
-            classNames={{ trigger: 'min-w-[200px]' }}
-            >
-            {[
-              { id: 'all', label: 'Tous les types' },
-              { id: 'experimentation_etudiant', label: 'Expérimentations' },
-              { id: 'outil_etudiant', label: 'Outils' },
-              { id: 'retour_experience_etudiant', label: "Retours d'expérience" },
-            ].map((option) => (
-              <SelectItem key={option.id}>{option.label}</SelectItem>
-            ))}
-          </Select>
-        </div>
       </div>
 
       {/* Tableau */}
-      <div className='bg-c2 rounded-xl p-5'>
-        <Table
-          aria-label='Tableau des ressources'
-          classNames={{
-            wrapper: 'bg-transparent shadow-none rounded-xl',
-            th: 'bg-c3 text-c6 h-12 first:rounded-l-8 last:rounded-r-8',
-            td: 'text-c6',
-          }}>
+      <div className='bg-c2/50 rounded-xl p-5 flex flex-col gap-4'>
+        <AdminListToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder='Rechercher une ressource…'
+          totalCount={totalCount}
+          totalLabel='ressource'
+          sortOrder={sortOrder}
+          onSortChange={setSortOrder}
+          filters={
+            <>
+              <Select
+                size='sm'
+                selectedKeys={[filterCourse]}
+                onSelectionChange={(keys) => setFilterCourse(Array.from(keys)[0] as string)}
+                className='w-full lg:w-56'
+                aria-label='Filtrer par cours'>
+                {[{ id: 'all', label: 'Tous les cours' }, { id: 'teacher', label: 'Ressources enseignantes' }, ...courses.map((c) => ({ id: String(c.id), label: c.title }))].map(
+                  (option) => (
+                    <SelectItem key={option.id}>{option.label}</SelectItem>
+                  ),
+                )}
+              </Select>
+
+              <Select
+                size='sm'
+                selectedKeys={[filterType]}
+                onSelectionChange={(keys) => setFilterType(Array.from(keys)[0] as string)}
+                className='w-full lg:w-48'
+                aria-label='Filtrer par type'>
+                {[
+                  { id: 'all', label: 'Tous les types' },
+                  { id: 'experimentation_etudiant', label: 'Expérimentations' },
+                  { id: 'outil_etudiant', label: 'Outils' },
+                  { id: 'retour_experience_etudiant', label: "Retours d'expérience" },
+                ].map((option) => (
+                  <SelectItem key={option.id}>{option.label}</SelectItem>
+                ))}
+              </Select>
+            </>
+          }
+        />
+
+        {paginatedResources.length === 0 ? (
+          <AdminListEmptyState message='Aucune ressource ne correspond à votre recherche.' />
+        ) : (
+          <Table aria-label='Tableau des ressources' classNames={adminTableClassNames}>
           <TableHeader>
             <TableColumn>RESSOURCE</TableColumn>
             <TableColumn>TYPE</TableColumn>
             <TableColumn>COURS</TableColumn>
             <TableColumn>CRÉATEUR(S)</TableColumn>
-            <TableColumn>ACTIONS</TableColumn>
+            <TableColumn className='text-left'>
+              <div className={adminActionsWrapperClass}>ACTIONS</div>
+            </TableColumn>
           </TableHeader>
-          <TableBody 
-            emptyContent='Aucune ressource trouvée'
-          >
-            {filteredResources.map((resource) => (
+          <TableBody emptyContent='Aucune ressource trouvée'>
+            {paginatedResources.map((resource) => (
               <TableRow key={resource.id}>
                 <TableCell>
                   <div className='flex items-center gap-2.5'>
@@ -327,7 +376,7 @@ const ResourceManagement: React.FC<ResourceManagementProps> = ({ embedded = fals
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className='flex items-center gap-1.5'>
+                  <div className={adminActionsWrapperClass}>
                     <MySpaceActionButton onClick={() => handleMoveClick(resource)} title='Déplacer' aria-label='Déplacer la ressource'>
                       <EditIcon size={16} />
                     </MySpaceActionButton>
@@ -340,6 +389,15 @@ const ResourceManagement: React.FC<ResourceManagementProps> = ({ embedded = fals
             ))}
           </TableBody>
         </Table>
+        )}
+
+        <AdminListPagination
+          totalCount={totalCount}
+          pageSize={pageSize}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
       </div>
 
       {/* Modal Déplacer */}

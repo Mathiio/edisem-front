@@ -13,11 +13,11 @@ export const primaryButtonClass = 'bg-action text-selected rounded-lg';
 /** Bouton annuler / secondaire texte */
 export const cancelButtonClass = 'text-c5 rounded-lg';
 
-/** Bouton destructif contour */
+/** Bouton destructif contour — même gabarit que outlineButtonClass */
 export const dangerOutlineButtonClass =
-  'inline-flex items-center justify-center gap-2 rounded-xl border-2 border-c3 bg-c2 hover:bg-c3 hover:text-danger text-c6 transition-all ease-in-out duration-200';
+  'hover:bg-c3 cursor-pointer bg-c2 flex flex-row rounded-xl border-2 border-c3 items-center justify-center px-4 py-2.5 text-base gap-2.5 text-danger transition-all ease-in-out duration-200';
 
-export const dangerOutlineButtonCompactClass = `${dangerOutlineButtonClass} text-sm px-3 py-2`;
+export const dangerOutlineButtonCompactClass = `${dangerOutlineButtonClass} text-sm px-3 py-2 min-h-[32px] h-[32px]`;
 
 export const Button = extendVariants(OButton, {
   variants: {

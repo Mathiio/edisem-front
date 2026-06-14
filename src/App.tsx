@@ -49,7 +49,6 @@ import { bibliographyConfig } from './pages/generic/config/bibliographyConfig';
 import { mediagraphyConfig } from './pages/generic/config/mediagraphyConfig';
 import { MonEspace } from './pages/monespace';
 
-import { MonEspace3 } from './pages/monespace3';
 import { MonEspace4 } from './pages/monespace4';
 import { MotsClesPage } from '@/pages/mots-cles';
 import TestOmekaEdit from './pages/test-omeka-edit';
@@ -125,7 +124,6 @@ function App() {
             <Route path='/espace-etudiant' Component={EspaceEtudiant} />
             <Route path='/mon-espace' Component={MonEspace} />
 
-            <Route path='/mon-espace-3' Component={MonEspace3} />
             <Route path='/mon-espace-4' Component={MonEspace4} />
             <Route path='/test-omeka-edit' Component={TestOmekaEdit} />
 

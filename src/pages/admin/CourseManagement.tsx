@@ -18,6 +18,15 @@ import { AddIcon, EditIcon, TrashIcon, UserIcon } from '@/components/ui/icons';
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { AlertModal } from '@/components/ui/AlertModal';
 import { MySpaceActionButton } from '@/components/features/espaceEtudiant/MySpaceResourceRow';
+import {
+  AdminListToolbar,
+  AdminListPagination,
+  AdminListEmptyState,
+  adminTableClassNames,
+  adminActionsWrapperClass,
+} from '@/components/features/admin/AdminListToolbar';
+import { matchesAdminSearch, sortByStringField } from '@/components/features/admin/adminListConfig';
+import { useAdminListControls } from '@/hooks/useAdminListControls';
 import { getCourses, createCourse, updateCourse, deleteCourse, getCourseStudents, type Course, type CourseFormData, type Student } from '@/services/StudentSpace';
 
 // Sessions disponibles
@@ -274,6 +283,40 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({ embedded = f
     }
   };
 
+  const searchFn = useCallback((course: Course, query: string) => {
+    return matchesAdminSearch(
+      query,
+      course.title,
+      course.description,
+      course.code,
+      course.level,
+      course.session,
+      course.year,
+    );
+  }, []);
+
+  const sortFn = useCallback(
+    (a: Course, b: Course, order: 'asc' | 'desc') => sortByStringField(a.title, b.title, order),
+    [],
+  );
+
+  const {
+    searchQuery,
+    setSearchQuery,
+    sortOrder,
+    setSortOrder,
+    page,
+    setPage,
+    paginatedItems: paginatedCourses,
+    totalPages,
+    totalCount,
+    pageSize,
+  } = useAdminListControls({
+    items: courses,
+    searchFn,
+    sortFn,
+  });
+
   const Wrapper = embedded ? React.Fragment : Layouts;
   const wrapperProps = embedded ? {} : { className: 'flex flex-col col-span-10 gap-6' };
 
@@ -304,14 +347,21 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({ embedded = f
         </div>
 
         {/* Table des cours */}
-        <div className='bg-c2 rounded-xl p-5'>
-          <Table
-            aria-label='Liste des cours'
-            classNames={{
-              wrapper: 'bg-transparent shadow-none rounded-xl',
-              th: 'bg-c3 text-c6 h-12 first:rounded-l-8 last:rounded-r-8',
-              td: 'text-c6',
-            }}>
+        <div className='bg-c2/50 rounded-xl p-5 flex flex-col gap-4'>
+          <AdminListToolbar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder='Rechercher un cours…'
+            totalCount={totalCount}
+            totalLabel='cours'
+            sortOrder={sortOrder}
+            onSortChange={setSortOrder}
+          />
+
+          {paginatedCourses.length === 0 ? (
+            <AdminListEmptyState message='Aucun cours ne correspond à votre recherche.' />
+          ) : (
+            <Table aria-label='Liste des cours' classNames={adminTableClassNames}>
             <TableHeader>
               <TableColumn>COURS</TableColumn>
               <TableColumn>CODE</TableColumn>
@@ -319,10 +369,12 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({ embedded = f
               <TableColumn>SESSION</TableColumn>
               <TableColumn>ANNÉE</TableColumn>
               <TableColumn>ÉTUDIANTS</TableColumn>
-              <TableColumn>ACTIONS</TableColumn>
+              <TableColumn className='text-left'>
+                <div className={adminActionsWrapperClass}>ACTIONS</div>
+              </TableColumn>
             </TableHeader>
             <TableBody emptyContent='Aucun cours'>
-              {courses.map((course) => (
+              {paginatedCourses.map((course) => (
                 <TableRow key={course.id}>
                   <TableCell>
                     <span id={`course-marker-${course.id}`} className='hidden' />
@@ -347,7 +399,7 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({ embedded = f
                     {course.studentCount} étudiant{course.studentCount !== 1 ? 's' : ''}
                   </TableCell>
                   <TableCell>
-                    <div className='flex items-center gap-1.5'>
+                    <div className={adminActionsWrapperClass}>
                       <MySpaceActionButton onClick={() => handleViewStudents(course)} title='Voir les étudiants' aria-label='Voir les étudiants'>
                         <UserIcon size={16} />
                       </MySpaceActionButton>
@@ -363,6 +415,15 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({ embedded = f
               ))}
             </TableBody>
           </Table>
+          )}
+
+          <AdminListPagination
+            totalCount={totalCount}
+            pageSize={pageSize}
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
         </div>
 
         {/* Modal Création/Édition */}

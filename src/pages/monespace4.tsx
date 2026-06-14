@@ -340,14 +340,6 @@ export const MonEspace4: React.FC = () => {
       <section className='flex flex-col gap-4'>
         <h2 className='text-xl text-c6 font-semibold'>Dernières modifications</h2>
 
-        <div className={`hidden lg:grid ${MY_SPACE_ROW_GRID} gap-x-4 px-4 text-c4 text-xs uppercase tracking-wide`}>
-          <span className='w-12' />
-          <span>Titre</span>
-          <span>Contributeur / org.</span>
-          <span>Type</span>
-          <span className='text-right pr-1'>Actions</span>
-        </div>
-
         {loading ? (
           <div className='flex flex-col gap-2'>
             {Array.from({ length: 3 }).map((_, i) => (
@@ -423,14 +415,6 @@ export const MonEspace4: React.FC = () => {
               Z → A
             </SelectItem>
           </Select>
-        </div>
-
-        <div className={`hidden lg:grid ${MY_SPACE_ROW_GRID} gap-x-4 px-4 text-c4 text-xs uppercase tracking-wide`}>
-          <span className='w-12' />
-          <span>Titre</span>
-          <span>Contributeur / org.</span>
-          <span>Type</span>
-          <span className='text-right pr-1'>Actions</span>
         </div>
 
         {loading ? (
