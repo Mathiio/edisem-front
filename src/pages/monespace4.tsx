@@ -403,7 +403,9 @@ export const MonEspace4: React.FC = () => {
             ))}
           </div>
         ) : recentResources.length === 0 ? (
-          <p className='text-c4 text-sm py-4'>Aucune ressource pour le moment.</p>
+          <div className='border-2 border-c3 rounded-xl py-12 text-center text-c4 text-sm'>
+            Aucune ressource créée pour le moment.
+          </div>
         ) : (
           <div className='flex flex-col gap-2'>
             {recentResources.map((item) => (
@@ -480,7 +482,7 @@ export const MonEspace4: React.FC = () => {
             ))}
           </div>
         ) : paginatedResources.length === 0 ? (
-          <div className='border-2 border-dashed border-c3 rounded-xl py-12 text-center text-c4 text-sm'>
+          <div className='border-2 border-c3 rounded-xl py-12 text-center text-c4 text-sm'>
             Aucune ressource ne correspond à votre recherche.
           </div>
         ) : (
