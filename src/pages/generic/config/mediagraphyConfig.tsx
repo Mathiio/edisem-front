@@ -9,6 +9,7 @@ import { convertToGenericConfig } from '../simplifiedConfigAdapter';
 export const mediagraphyConfigSimplified: SimplifiedDetailConfig = {
   resourceType: RESOURCE_TYPES.mediagraphie.type,
   templateId: 83,
+  editSingleColumn: true,
 
   fields: {
     title: {
@@ -38,80 +39,104 @@ export const mediagraphyConfigSimplified: SimplifiedDetailConfig = {
       placeholder: 'https://...',
       zone: 'details',
     },
+    creator: {
+      property: 'dcterms:creator',
+      type: 'text',
+      label: 'Auteur(s)',
+      placeholder: 'Auteur(s)...',
+      zone: 'details',
+    },
+    director: {
+      property: 'bibo:director',
+      type: 'text',
+      label: 'Directeur(s)',
+      placeholder: 'Directeur(s)...',
+      zone: 'details',
+    },
+    accountName: {
+      property: 'foaf:accountName',
+      type: 'text',
+      label: 'Pseudonyme (ex. compte YouTube)',
+      placeholder: 'Pseudonyme...',
+      zone: 'details',
+    },
+    publisher: {
+      property: 'dcterms:publisher',
+      type: 'text',
+      label: 'Éditeur / Plateforme',
+      placeholder: 'Éditeur ou plateforme...',
+      zone: 'details',
+    },
+    format: {
+      property: 'dcterms:format',
+      type: 'text',
+      label: 'Format',
+      placeholder: 'Format...',
+      zone: 'details',
+    },
+    medium: {
+      property: 'dcterms:medium',
+      type: 'text',
+      label: 'Support',
+      placeholder: 'Support...',
+      zone: 'details',
+    },
+    version: {
+      property: 'schema:version',
+      type: 'text',
+      label: 'Version',
+      placeholder: 'Version...',
+      zone: 'details',
+    },
+    collection: {
+      property: 'schema:collection',
+      type: 'text',
+      label: 'Collection',
+      placeholder: 'Collection...',
+      zone: 'details',
+    },
+    season: {
+      property: 'schema:season',
+      type: 'text',
+      label: 'Saison',
+      placeholder: 'Saison...',
+      zone: 'details',
+    },
+    episodeNumber: {
+      property: 'schema:episodeNumber',
+      type: 'text',
+      label: "Numéro d'épisode",
+      placeholder: "Numéro d'épisode...",
+      zone: 'details',
+    },
+    isPartOf: {
+      property: 'dcterms:isPartOf',
+      type: 'text',
+      label: 'Titre du livre / série / émission',
+      placeholder: 'Titre du livre, de la série ou de l\'émission...',
+      zone: 'details',
+    },
+    presentedAt: {
+      property: 'bibo:presentedAt',
+      type: 'text',
+      label: 'Événement',
+      placeholder: 'Événement...',
+      zone: 'details',
+    },
+    venue: {
+      property: 'theatre:venue',
+      type: 'text',
+      label: 'Ville',
+      placeholder: 'Ville...',
+      zone: 'details',
+    },
   },
 
-  views: [
-    {
-      key: 'authors',
-      title: 'Auteurs',
-      renderType: 'categories',
-      categories: [
-        {
-          key: 'authors',
-          title: 'Auteurs',
-          subcategories: [
-            { key: 'creator', label: 'Auteur(s)', property: 'dcterms:creator' },
-            { key: 'director', label: 'Directeur(s)', property: 'bibo:director' },
-            { key: 'accountName', label: 'Pseudonyme (ex. compte YouTube)', property: 'foaf:accountName', allowMultipleInputs: false },
-          ],
-        },
-      ],
-    },
-    {
-      key: 'publication',
-      title: 'Publication',
-      renderType: 'categories',
-      categories: [
-        {
-          key: 'publication',
-          title: 'Publication',
-          subcategories: [
-            { key: 'publisher', label: 'Éditeur / Plateforme', property: 'dcterms:publisher', allowMultipleInputs: false },
-            { key: 'format', label: 'Format', property: 'dcterms:format', allowMultipleInputs: false },
-            { key: 'medium', label: 'Support', property: 'dcterms:medium', allowMultipleInputs: false },
-            { key: 'version', label: 'Version', property: 'schema:version', allowMultipleInputs: false },
-            { key: 'collection', label: 'Collection', property: 'schema:collection', allowMultipleInputs: false },
-          ],
-        },
-      ],
-    },
-    {
-      key: 'serie',
-      title: 'Série',
-      renderType: 'categories',
-      categories: [
-        {
-          key: 'serie',
-          title: 'Série',
-          subcategories: [
-            { key: 'season', label: 'Saison', property: 'schema:season', allowMultipleInputs: false },
-            { key: 'episodeNumber', label: "Numéro d'épisode", property: 'schema:episodeNumber', allowMultipleInputs: false },
-          ],
-        },
-      ],
-    },
-    {
-      key: 'source',
-      title: 'Source',
-      renderType: 'categories',
-      categories: [
-        {
-          key: 'source',
-          title: 'Source',
-          subcategories: [
-            { key: 'isPartOf', label: 'Titre du livre / série / émission', property: 'dcterms:isPartOf', allowMultipleInputs: false },
-            { key: 'presentedAt', label: 'Événement', property: 'bibo:presentedAt', allowMultipleInputs: false },
-            { key: 'venue', label: 'Ville', property: 'theatre:venue', allowMultipleInputs: false },
-          ],
-        },
-      ],
-    },
-  ],
+  views: [],
 
   showKeywords: false,
   showRecommendations: false,
   showComments: false,
-  defaultView: 'authors',
   formEnabled: true,
 };
 

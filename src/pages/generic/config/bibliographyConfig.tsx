@@ -9,6 +9,7 @@ import { convertToGenericConfig } from '../simplifiedConfigAdapter';
 export const bibliographyConfigSimplified: SimplifiedDetailConfig = {
   resourceType: RESOURCE_TYPES.bibliographie.type,
   templateId: 81,
+  editSingleColumn: true,
 
   fields: {
     title: {
@@ -38,82 +39,105 @@ export const bibliographyConfigSimplified: SimplifiedDetailConfig = {
       placeholder: 'https://...',
       zone: 'details',
     },
+    creator: {
+      property: 'dcterms:creator',
+      type: 'text',
+      label: 'Auteur(s)',
+      placeholder: 'Auteur(s)...',
+      zone: 'details',
+    },
+    editor: {
+      property: 'bibo:editor',
+      type: 'text',
+      label: 'Directeur(s)',
+      placeholder: 'Directeur(s)...',
+      zone: 'details',
+    },
+    publisher: {
+      property: 'dcterms:publisher',
+      type: 'text',
+      label: 'Éditeur / Revue',
+      placeholder: 'Éditeur ou revue...',
+      zone: 'details',
+    },
+    volume: {
+      property: 'bibo:volume',
+      type: 'text',
+      label: 'Volume',
+      placeholder: 'Volume...',
+      zone: 'details',
+    },
+    issue: {
+      property: 'bibo:issue',
+      type: 'text',
+      label: 'Numéro',
+      placeholder: 'Numéro...',
+      zone: 'details',
+    },
+    pages: {
+      property: 'bibo:pages',
+      type: 'text',
+      label: 'Pages',
+      placeholder: 'Ex. 12-34',
+      zone: 'details',
+    },
+    numPages: {
+      property: 'bibo:numPages',
+      type: 'text',
+      label: 'Nombre de pages',
+      placeholder: 'Nombre de pages...',
+      zone: 'details',
+    },
+    collection: {
+      property: 'schema:collection',
+      type: 'text',
+      label: 'Collection',
+      placeholder: 'Collection...',
+      zone: 'details',
+    },
+    isbn: {
+      property: 'jdc:hasConcept',
+      type: 'text',
+      label: 'ISBN',
+      placeholder: 'ISBN...',
+      zone: 'details',
+    },
+    format: {
+      property: 'dcterms:format',
+      type: 'text',
+      label: 'Format',
+      placeholder: 'Format...',
+      zone: 'details',
+    },
+    type: {
+      property: 'dcterms:type',
+      type: 'text',
+      label: 'Type',
+      placeholder: 'Type de document...',
+      zone: 'details',
+    },
+    bookTitle: {
+      property: 'dcterms:isPartOf',
+      type: 'text',
+      label: 'Titre du livre',
+      placeholder: 'Titre du livre ou de la revue...',
+      zone: 'details',
+    },
+    event: {
+      property: 'bibo:presentedAt',
+      type: 'text',
+      label: 'Événement',
+      placeholder: 'Événement...',
+      zone: 'details',
+    },
   },
 
-  views: [
-    {
-      key: 'authors',
-      title: 'Auteurs',
-      renderType: 'categories',
-      categories: [
-        {
-          key: 'authors',
-          title: 'Auteurs',
-          subcategories: [
-            { key: 'creator', label: 'Auteur(s)', property: 'dcterms:creator' },
-            { key: 'editor', label: 'Directeur(s)', property: 'bibo:editor' },
-          ],
-        },
-      ],
-    },
-    {
-      key: 'publication',
-      title: 'Publication',
-      renderType: 'categories',
-      categories: [
-        {
-          key: 'publication',
-          title: 'Publication',
-          subcategories: [
-            { key: 'publisher', label: 'Éditeur / Revue', property: 'dcterms:publisher', allowMultipleInputs: false },
-            { key: 'volume', label: 'Volume', property: 'bibo:volume', allowMultipleInputs: false },
-            { key: 'issue', label: 'Numéro', property: 'bibo:issue', allowMultipleInputs: false },
-            { key: 'pages', label: 'Pages', property: 'bibo:pages', allowMultipleInputs: false },
-            { key: 'numPages', label: 'Nombre de pages', property: 'bibo:numPages', allowMultipleInputs: false },
-            { key: 'collection', label: 'Collection', property: 'schema:collection', allowMultipleInputs: false },
-          ],
-        },
-      ],
-    },
-    {
-      key: 'identification',
-      title: 'Identification',
-      renderType: 'categories',
-      categories: [
-        {
-          key: 'identification',
-          title: 'Identification',
-          subcategories: [
-            { key: 'isbn', label: 'ISBN', property: 'jdc:hasConcept', allowMultipleInputs: false },
-            { key: 'format', label: 'Format', property: 'dcterms:format', allowMultipleInputs: false },
-            { key: 'type', label: 'Type', property: 'dcterms:type', allowMultipleInputs: false },
-          ],
-        },
-      ],
-    },
-    {
-      key: 'source',
-      title: 'Source',
-      renderType: 'categories',
-      categories: [
-        {
-          key: 'source',
-          title: 'Source',
-          subcategories: [
-            { key: 'bookTitle', label: 'Titre du livre', property: 'dcterms:isPartOf', allowMultipleInputs: false },
-            { key: 'event', label: 'Événement', property: 'bibo:presentedAt', allowMultipleInputs: false },
-          ],
-        },
-      ],
-    },
-  ],
+  views: [],
 
   showKeywords: false,
   showRecommendations: false,
   showComments: false,
-  defaultView: 'authors',
   formEnabled: true,
 };
 
-// Export de la config convertie pour utilisation avec ConfigurableDetailPage/GenericDetailPage
 export const bibliographyConfig = convertToGenericConfig(bibliographyConfigSimplified);
