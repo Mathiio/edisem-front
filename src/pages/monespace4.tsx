@@ -1,7 +1,7 @@
 import { Layouts } from '@/components/layout/Layouts';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { addToast } from '@heroui/react';
+import { addToast } from '@/theme/components';
 import { Input, Select, SelectItem, Pagination } from '@/theme/components';
 import { CreateResourceAction } from '@/components/features/espaceEtudiant/CreateResourceAction';
 import {
@@ -337,9 +337,13 @@ export const MonEspace4: React.FC = () => {
     setIsDeleting(true);
     try {
       await deleteUserResource(itemToDelete.id);
-      setAllResources((prev) => prev.filter((item) => String(item.id) !== String(itemToDelete.id)));
+      const deletedId = String(itemToDelete.id);
+      setAllResources((prev) => prev.filter((item) => String(item.id) !== deletedId));
+      setRecentResources((prev) => prev.filter((item) => String(item.id) !== deletedId));
+      setDeleteModalOpen(false);
+      setItemToDelete(null);
       addToast({ title: 'Succès', description: 'Ressource supprimée.', color: 'success' });
-      await fetchResources();
+      void fetchResources();
     } catch (error) {
       console.error('Error deleting:', error);
       addToast({
@@ -349,8 +353,6 @@ export const MonEspace4: React.FC = () => {
       });
     } finally {
       setIsDeleting(false);
-      setDeleteModalOpen(false);
-      setItemToDelete(null);
     }
   }, [itemToDelete, fetchResources]);
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { addToast } from '@heroui/react';
+import { addToast } from '@/theme/components';
 import { IconSvgProps } from '@/types/ui';
 import { ThumbnailIcon, UserIcon, SeminaireIcon, BookMarkIcon } from '@/components/ui/icons';
 import { getResourceAuthors, getResourceSubtitle, getSafeResourceUrl, getResourceThumbnail } from '@/lib/resourceUtils';

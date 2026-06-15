@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Input, Spinner } from '@heroui/react';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@/theme/components/modal';
-import { addToast } from '@heroui/react';
+import { addToast } from '@/theme/components';
 
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '@/utils/omekaApi';
 

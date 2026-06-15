@@ -32,3 +32,4 @@ export * from './progress';
 export * from './kbd';
 export * from './circular-progress';
 export * from './user';
+export * from './toast';

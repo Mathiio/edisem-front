@@ -7,7 +7,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, Variants } from 'framer-motion';
-import { Spinner, Input, Textarea, Slider, Button, Link, addToast, cn } from '@heroui/react';
+import { Spinner, Input, Textarea, Slider, Button, Link, cn } from '@heroui/react';
+import { addToast } from '@/theme/components';
 import { DatePicker } from '@heroui/react';
 import { parseDate, type DateValue } from '@internationalized/date';
 import { Splide, SplideTrack, SplideSlide } from '@splidejs/react-splide';

@@ -7,10 +7,10 @@ import {
   TableRow,
   TableCell,
   Spinner,
-  addToast,
   Chip,
   Avatar,
 } from '@heroui/react';
+import { addToast } from '@/theme/components';
 import {
   Button,
   outlineButtonClass,

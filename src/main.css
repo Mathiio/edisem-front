@@ -54,6 +54,15 @@ textarea,
   transition: background-color 200ms ease-in-out;
 }
 
+/* Toasts HeroUI — marge basse alignée sur le padding interne du toast (1rem) */
+[data-placement='bottom'],
+[data-placement='bottom-center'],
+[data-placement='bottom-left'],
+[data-placement='bottom-right'] {
+  bottom: 1rem !important;
+  padding-bottom: 0;
+}
+
 /* Curseur des tabs - utiliser la classe bg-c4 définie dans les composants */
 [role='tablist'] span:not([data-slot='cursor']) {
   background-color: hsl(var(--nextui-action)) !important;

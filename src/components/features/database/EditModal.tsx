@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Spinner, Button, ModalBody, ModalFooter, ModalContent, Modal, ModalHeader, LinkIcon, addToast } from '@heroui/react';
+import { Input, Spinner, Button, ModalBody, ModalFooter, ModalContent, Modal, ModalHeader, LinkIcon } from '@heroui/react';
+import { addToast } from '@/theme/components';
 import { modalCloseButtonClasses } from '@/theme/components/modal';
 import { useGetDataByClassDetails } from '@/hooks/useFetchData';
 import { SelectionInput } from '@/components/features/database/SelectionInput';

@@ -7,7 +7,7 @@ import { LoginPage } from '@/pages/login';
 import { CahierRecherche } from '@/pages/cahierRecherche';
 import { withAuth } from '@/pages/withAuth';
 import Visualisation from '@/pages/visualisation';
-import { ToastProvider } from '@heroui/react';
+import { AppToastProvider } from '@/theme/components';
 import { Intervenants } from '@/pages/intervenants';
 import { Colloques } from '@/pages/corpus/Colloques';
 import { PratiquesNarratives } from '@/pages/corpus/pratiquesNarratives';
@@ -105,15 +105,7 @@ function App() {
 
   return (
     <>
-      <ToastProvider
-        placement='bottom-center'
-        toastProps={{
-          classNames: {
-            closeButton: 'opacity-100 absolute right-4 top-1/2 -translate-y-1/2',
-            base: 'relative',
-          },
-        }}
-      />
+      <AppToastProvider />
       <LoadingScreen isLoading={isLoading} />
       <NavbarReadyContext.Provider value={{ onNavbarReady: handleNavbarReady }}>
         <NavigationTrailProvider>

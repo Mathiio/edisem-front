@@ -3,7 +3,7 @@
  * Endpoints via UserSpaceViewHelper
  */
 
-import { TEMPLATE_ID_TO_TYPE, filterMonEspaceResources, isParentLinkedOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
+import { TEMPLATE_ID_TO_TYPE, filterMonEspaceResources, getCascadeDeleteWithParentTemplateIds, isParentLinkedOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
 import { getYouTubeThumbnail, isOmekaPlaceholderThumbnail, resolveOmekaThumbnail } from '@/lib/resourceUtils';
 import { ApiProxy } from '@/services/ApiProxy';
 import { omekaApiUrl, OMEKA_API_BASE } from '@/utils/omekaApi';
@@ -959,16 +959,68 @@ async function isOmekaItemDeleted(itemId: number): Promise<boolean> {
   }
 }
 
-/**
- * Supprime définitivement une ressource Omeka S (DELETE via ApiProxy).
- * Le backend peut renvoyer une 500 Doctrine après suppression réussie : on vérifie l'absence de l'item.
- */
-export async function deleteUserResource(id: string | number): Promise<{ success: boolean; message?: string }> {
-  const itemId = Number(id);
-  if (!itemId) {
-    throw new Error('ID de ressource invalide');
+function extractLinkedResourceIdsFromOmekaItem(item: Record<string, unknown>): number[] {
+  const ids = new Set<number>();
+  for (const value of Object.values(item)) {
+    if (!Array.isArray(value)) continue;
+    for (const entry of value) {
+      if (!entry || typeof entry !== 'object') continue;
+      const record = entry as Record<string, unknown>;
+      if (record.type !== 'resource') continue;
+      const linkedId = record.value_resource_id ?? record['o:id'];
+      if (linkedId != null && Number.isFinite(Number(linkedId))) {
+        ids.add(Number(linkedId));
+      }
+    }
+  }
+  return Array.from(ids);
+}
+
+async function fetchOmekaItemTemplateId(itemId: number): Promise<number | null> {
+  try {
+    const response = await fetch(omekaApiUrl(`${OMEKA_API_BASE}items/${itemId}`));
+    if (!response.ok) return null;
+    const item = await response.json();
+    const templateId = item?.['o:resource_template']?.['o:id'];
+    return templateId != null && Number.isFinite(Number(templateId)) ? Number(templateId) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Ressources liées au parent à supprimer en cascade (analyses, retours, éléments narratif/esthétique). */
+async function collectCascadeDeleteChildIds(parentItemId: number): Promise<number[]> {
+  const cascadeTemplateIds = new Set(getCascadeDeleteWithParentTemplateIds());
+
+  let item: Record<string, unknown>;
+  try {
+    const response = await fetch(omekaApiUrl(`${OMEKA_API_BASE}items/${parentItemId}`));
+    if (!response.ok) return [];
+    item = await response.json();
+  } catch {
+    return [];
   }
 
+  const linkedIds = extractLinkedResourceIdsFromOmekaItem(item);
+  if (linkedIds.length === 0) return [];
+
+  const childIds: number[] = [];
+  const CONCURRENCY = 5;
+  for (let i = 0; i < linkedIds.length; i += CONCURRENCY) {
+    const batch = linkedIds.slice(i, i + CONCURRENCY);
+    const templates = await Promise.all(batch.map((id) => fetchOmekaItemTemplateId(id)));
+    batch.forEach((id, index) => {
+      const templateId = templates[index];
+      if (templateId != null && cascadeTemplateIds.has(templateId)) {
+        childIds.push(id);
+      }
+    });
+  }
+
+  return childIds;
+}
+
+async function deleteSingleOmekaItem(itemId: number): Promise<{ success: boolean; message?: string }> {
   let proxyError: string | undefined;
 
   try {
@@ -993,6 +1045,26 @@ export async function deleteUserResource(id: string | number): Promise<{ success
   }
 
   throw new Error(proxyError || 'Erreur lors de la suppression');
+}
+
+/**
+ * Supprime définitivement une ressource Omeka S (DELETE via ApiProxy).
+ * Supprime aussi en cascade les ressources liées non transverses (analyse critique,
+ * retour d'expérience, élément narratif, élément esthétique).
+ * Le backend peut renvoyer une 500 Doctrine après suppression réussie : on vérifie l'absence de l'item.
+ */
+export async function deleteUserResource(id: string | number): Promise<{ success: boolean; message?: string }> {
+  const itemId = Number(id);
+  if (!itemId) {
+    throw new Error('ID de ressource invalide');
+  }
+
+  const childIds = await collectCascadeDeleteChildIds(itemId);
+  for (const childId of childIds) {
+    await deleteSingleOmekaItem(childId);
+  }
+
+  return deleteSingleOmekaItem(itemId);
 }
 
 /**

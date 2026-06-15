@@ -7,9 +7,9 @@ import {
   TableRow,
   TableCell,
   Spinner,
-  addToast,
   Avatar,
 } from '@heroui/react';
+import { addToast } from '@/theme/components';
 import { Button, primaryButtonClass, cancelButtonClass } from '@/theme/components/button';
 import { Select, SelectItem, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@/theme/components';
 import { Layouts } from '@/components/layout/Layouts';
@@ -225,12 +225,14 @@ const ResourceManagement: React.FC<ResourceManagementProps> = ({ embedded = fals
     setIsDeleting(true);
     try {
       await deleteUserResource(resourceToDelete.id);
+      setDeleteModalOpen(false);
+      setResourceToDelete(null);
       addToast({
         title: 'Succès',
         description: 'La ressource a été supprimée',
         color: 'success',
       });
-      await loadData();
+      void loadData();
     } catch (error: any) {
       console.error('Error deleting resource:', error);
       addToast({
@@ -240,8 +242,6 @@ const ResourceManagement: React.FC<ResourceManagementProps> = ({ embedded = fals
       });
     } finally {
       setIsDeleting(false);
-      setDeleteModalOpen(false);
-      setResourceToDelete(null);
     }
   };
 

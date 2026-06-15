@@ -1,5 +1,6 @@
 import React from 'react';
-import { addToast, Button, Checkbox, cn, Divider, Input } from '@heroui/react';
+import { Button, Checkbox, cn, Divider, Input } from '@heroui/react';
+import { addToast } from '@/theme/components';
 import { useState } from 'react';
 import { GeneratedImage } from '@/pages/visualisation';
 import { ShareIcon } from '@/components/ui/icons';

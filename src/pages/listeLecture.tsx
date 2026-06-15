@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
-import { addToast } from '@heroui/react';
+import { addToast } from '@/theme/components';
 import { Layouts } from '@/components/layout/Layouts';
 import { ResourceCard, ResourceCardSkeleton } from '@/components/features/corpus/ResourceCard';
 import { PageBanner } from '@/components/ui/PageBanner';

@@ -8,9 +8,9 @@ import {
   TableRow,
   TableCell,
   Spinner,
-  addToast,
   Chip,
 } from '@heroui/react';
+import { addToast } from '@/theme/components';
 import { Button, outlineButtonClass, primaryButtonClass, cancelButtonClass } from '@/theme/components/button';
 import { Input, Select, SelectItem, Textarea, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@/theme/components';
 import { Layouts } from '@/components/layout/Layouts';

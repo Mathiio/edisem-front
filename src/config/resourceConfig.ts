@@ -543,6 +543,27 @@ export function getParentLinkedOnlyTemplateIds(): number[] {
     .flatMap((c) => c.templateIds);
 }
 
+/** Types supprimés en cascade avec leur ressource parente (non transverses). */
+const CASCADE_DELETE_WITH_PARENT_TYPES = new Set<ResourceType>([
+  'annotation',
+  'retour_experience',
+  'retour_experience_etudiant',
+  'element_narratif',
+  'element_esthetique',
+]);
+
+/** Templates Omeka supprimés automatiquement quand on supprime le parent. */
+export function getCascadeDeleteWithParentTemplateIds(): number[] {
+  return Object.values(RESOURCE_TYPES)
+    .filter((c) => CASCADE_DELETE_WITH_PARENT_TYPES.has(c.type))
+    .flatMap((c) => c.templateIds);
+}
+
+export function isCascadeDeleteWithParentTemplate(templateId?: number | null): boolean {
+  if (templateId == null) return false;
+  return getCascadeDeleteWithParentTemplateIds().includes(Number(templateId));
+}
+
 /** URL d'édition full-page pour un type de ressource */
 export function getResourceEditUrl(type: string, id: string | number): string {
   const url = getResourceUrl(type, id);

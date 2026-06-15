@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { addToast, Tabs, Tab } from '@heroui/react';
+import { Tabs, Tab } from '@heroui/react';
+import { addToast } from '@/theme/components';
 import {
   Modal,
   ModalContent,

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, Variants } from 'framer-motion';
-import { Spinner, addToast } from '@heroui/react';
+import { Spinner } from '@heroui/react';
+import { addToast } from '@/theme/components';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, modalCloseButtonClasses, ModalCloseIcon } from '@/theme/components';
 import { Button } from '@/theme/components/button';
 import { ModalTitle } from '@/components/ui/ModalTitle';

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, Popover, PopoverTrigger, PopoverContent, Input, Checkbox, addToast, cn } from '@heroui/react';
+import { Button, Popover, PopoverTrigger, PopoverContent, Input, Checkbox, cn } from '@heroui/react';
+import { addToast } from '@/theme/components';
 import { ExportIcon, ShareIcon } from '@/components/ui/icons';
 import { GeneratedImage } from '@/pages/visualisation';
 import { saveResearch } from '@/services/UserSpace';

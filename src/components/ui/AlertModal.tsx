@@ -2,9 +2,9 @@ import React from 'react';
 import { Button } from '@heroui/react';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@/theme/components';
 import { ModalTitle } from '@/components/ui/ModalTitle';
-import { TrashIcon, WarningIcon, InfoIcon, CheckIcon, LockIcon } from '@/components/ui/icons';
+import { alertTypeConfigs, type AlertModalType } from '@/config/alertTypeConfig';
 
-export type AlertModalType = 'danger' | 'warning' | 'info' | 'success' | 'forbidden';
+export type { AlertModalType } from '@/config/alertTypeConfig';
 
 interface AlertModalProps {
   isOpen: boolean;
@@ -19,38 +19,7 @@ interface AlertModalProps {
   isLoading?: boolean;
 }
 
-const typeConfigs = {
-  danger: {
-    icon: TrashIcon,
-    iconColor: 'text-[#FF0000]',
-    iconBg: 'bg-red-500/20',
-    confirmButtonClass: 'bg-[#FF0000]/70 hover:bg-[#FF0000]/90',
-  },
-  warning: {
-    icon: WarningIcon,
-    iconColor: 'text-orange-500',
-    iconBg: 'bg-orange-500/20',
-    confirmButtonClass: 'bg-orange-500/70 hover:bg-orange-500/90',
-  },
-  info: {
-    icon: InfoIcon,
-    iconColor: 'text-blue-500',
-    iconBg: 'bg-blue-500/20',
-    confirmButtonClass: 'bg-blue-500/70 hover:bg-blue-500/90',
-  },
-  success: {
-    icon: CheckIcon,
-    iconColor: 'text-green-500',
-    iconBg: 'bg-green-500/20',
-    confirmButtonClass: 'bg-green-500/70 hover:bg-green-500/90',
-  },
-  forbidden: {
-    icon: LockIcon,
-    iconColor: 'text-red-500',
-    iconBg: 'bg-red-500/20',
-    confirmButtonClass: 'bg-red-500/70 hover:bg-red-500/90',
-  },
-};
+const typeConfigs = alertTypeConfigs;
 
 export const AlertModal: React.FC<AlertModalProps> = ({
   isOpen,

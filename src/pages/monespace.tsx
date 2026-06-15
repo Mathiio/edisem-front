@@ -4,7 +4,7 @@ import { motion, Variants } from 'framer-motion';
 import { MySpaceResourceCard, MySpaceResourceCardSkeleton } from '@/components/features/espaceEtudiant/MySpaceResourceCard';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { getUserResources, getStudentCourses, getCourses, deleteUserResource, type Course } from '@/services/UserSpace';
-import { addToast } from '@heroui/react';
+import { addToast } from '@/theme/components';
 import { CreateResourceAction } from '@/components/features/espaceEtudiant/CreateResourceAction';
 import { ExperimentationIcon, UniversityIcon, WarningIcon, BookIcon } from '@/components/ui/icons';
 import { useNavigate } from 'react-router-dom';
@@ -206,12 +206,14 @@ export const MonEspace: React.FC = () => {
     try {
       await deleteUserResource(itemToDelete.id);
       setExperimentationsStudents((prev) => prev.filter((item) => String(item.id) !== String(itemToDelete.id)));
+      setDeleteModalOpen(false);
+      setItemToDelete(null);
       addToast({
         title: 'Succès',
         description: 'La ressource a été supprimée avec succès.',
         color: 'success',
       });
-      await fetchExperimentations();
+      void fetchExperimentations();
     } catch (error) {
       console.error('Error deleting resource:', error);
       addToast({
@@ -221,8 +223,6 @@ export const MonEspace: React.FC = () => {
       });
     } finally {
       setIsDeleting(false);
-      setDeleteModalOpen(false);
-      setItemToDelete(null);
     }
   }, [itemToDelete, fetchExperimentations]);
 
