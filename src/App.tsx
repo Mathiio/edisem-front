@@ -40,6 +40,7 @@ import { universiteConfig } from '@/pages/generic/config/universiteConfig';
 import { ecoleDoctoraleConfig } from '@/pages/generic/config/ecoleDoctoraleConfig';
 import { laboratoireConfig } from '@/pages/generic/config/laboratoireConfig';
 import { NavigationTrailProvider } from './hooks/useNavigationTrail';
+import { WatchlistProvider } from './hooks/useWatchlist';
 import { EspaceEtudiant } from './pages/espaceEtudiant';
 import { LoadingScreen } from './components/layout/LoadingScreen';
 import { useState, useCallback, useEffect, createContext, useContext } from 'react';
@@ -50,6 +51,7 @@ import { mediagraphyConfig } from './pages/generic/config/mediagraphyConfig';
 import { MonEspace } from './pages/monespace';
 
 import { MonEspace4 } from './pages/monespace4';
+import { ListeLecture } from './pages/listeLecture';
 import { MotsClesPage } from '@/pages/mots-cles';
 import TestOmekaEdit from './pages/test-omeka-edit';
 import { StudentManagement } from './pages/admin/StudentManagement';
@@ -76,6 +78,7 @@ const ProtectedActantManagement = withAuth(ActantManagement, { requiredRole: 'ac
 const ProtectedResourceManagement = withAuth(ResourceManagement, { requiredRole: 'actant' });
 const ProtectedAdminDashboard = withAuth(AdminDashboard, { requiredRole: 'actant' });
 const ProtectedMotsCles = withAuth(MotsClesPage, { requiredRole: 'actant' });
+const ProtectedListeLecture = withAuth(ListeLecture, { requiredRole: 'actant' });
 
 // Wrapper pour protéger ConfigurableDetailPage en mode création (actants et étudiants)
 const ProtectedConfigurableDetailPage = withAuth(ConfigurableDetailPage, { requiredRole: 'any' });
@@ -114,6 +117,7 @@ function App() {
       <LoadingScreen isLoading={isLoading} />
       <NavbarReadyContext.Provider value={{ onNavbarReady: handleNavbarReady }}>
         <NavigationTrailProvider>
+          <WatchlistProvider>
           <Routes>
             {/* Base routes */}
             <Route index path='/' Component={Home} />
@@ -125,6 +129,7 @@ function App() {
             <Route path='/mon-espace' Component={MonEspace} />
 
             <Route path='/mon-espace-4' Component={MonEspace4} />
+            <Route path='/liste-de-lecture' Component={ProtectedListeLecture} />
             <Route path='/test-omeka-edit' Component={TestOmekaEdit} />
 
             {/* Admin routes */}
@@ -230,6 +235,7 @@ function App() {
             <Route path='/add-resource/ecole-doctorale' element={<ProtectedConfigurableDetailPage config={ecoleDoctoraleConfig} initialMode='create' />} />
             <Route path='/add-resource/laboratoire' element={<ProtectedConfigurableDetailPage config={laboratoireConfig} initialMode='create' />} />
           </Routes>
+          </WatchlistProvider>
         </NavigationTrailProvider>
       </NavbarReadyContext.Provider>
     </>

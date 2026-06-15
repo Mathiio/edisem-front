@@ -43,7 +43,7 @@ interface OmekaUser {
   created: string;
 }
 
-const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=StudentSpace';
+const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=UserSpace';
 
 // Récupérer les utilisateurs Omeka S
 async function fetchOmekaUsers(): Promise<OmekaUser[]> {

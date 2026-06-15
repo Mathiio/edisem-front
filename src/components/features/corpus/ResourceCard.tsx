@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { addToast } from '@heroui/react';
 import { IconSvgProps } from '@/types/ui';
-import { ThumbnailIcon, UserIcon, SeminaireIcon } from '@/components/ui/icons';
+import { ThumbnailIcon, UserIcon, SeminaireIcon, BookMarkIcon } from '@/components/ui/icons';
 import { getResourceAuthors, getResourceSubtitle, getSafeResourceUrl, getResourceThumbnail } from '@/lib/resourceUtils';
 import { getRessourceLabel, getResourceIcon } from '@/config/resourceConfig';
+import { useWatchlist } from '@/hooks/useWatchlist';
 
 export interface ResourceCardProps {
   title?: string;
@@ -24,6 +26,9 @@ export interface ResourceCardProps {
 
   // Optional: Raw item to derive data from
   item?: any;
+
+  /** Callback après ajout/retrait de la liste de lecture (saved = nouvel état) */
+  onWatchlistToggle?: (saved: boolean) => void;
 }
 
 export const ResourceCard: React.FC<ResourceCardProps> = ({
@@ -37,9 +42,12 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
   TypeIcon,
   typeColor,
   className = '',
-  item
+  item,
+  onWatchlistToggle,
 }) => {
   const navigate = useNavigate();
+  const { canUseWatchlist, isSaved, toggle } = useWatchlist();
+  const [isToggling, setIsToggling] = useState(false);
 
   // Derive data if item is provided and props are missing
   const finalTitle = title || item?.title || '';
@@ -47,6 +55,8 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
   const finalAuthors = authors || (item ? getResourceAuthors(item) : []);
   const finalSubtitle = subtitle || (item ? getResourceSubtitle(item) : undefined);
   const finalType = type || item?.type;
+  const resourceId = item?.id ? Number(item.id) : null;
+  const saved = resourceId ? isSaved(resourceId) : false;
 
 
   const finalTypeLabel = typeLabel || (finalType ? getRessourceLabel(finalType) : 'Ressource');
@@ -77,6 +87,35 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
       
       console.warn('Navigation impossible: ID manquant pour ce type', { type, item });
   };
+
+  const handleWatchlistClick = useCallback(
+    async (event: React.MouseEvent) => {
+      event.stopPropagation();
+      if (!canUseWatchlist || !resourceId || isToggling) return;
+
+      setIsToggling(true);
+      try {
+        const nowSaved = await toggle(resourceId);
+        onWatchlistToggle?.(nowSaved);
+        addToast({
+          title: nowSaved ? 'Ajouté à votre liste' : 'Retiré de votre liste',
+          description: nowSaved
+            ? 'Cette ressource apparaît dans votre liste de lecture.'
+            : 'Cette ressource a été retirée de votre liste de lecture.',
+          color: 'success',
+        });
+      } catch {
+        addToast({
+          title: 'Erreur',
+          description: 'Impossible de mettre à jour votre liste de lecture.',
+          color: 'danger',
+        });
+      } finally {
+        setIsToggling(false);
+      }
+    },
+    [canUseWatchlist, resourceId, isToggling, toggle, onWatchlistToggle],
+  );
 
   // Helper to format multiple authors
   const renderAuthorNames = () => {
@@ -172,6 +211,23 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
         <FinalTypeIcon size={14} className={typeColor ? "" : "text-c4/60"} style={typeColor ? { color: typeColor } : {}} />
         <p className='text-sm text-c4/60 font-medium'>{finalTypeLabel}</p>
       </div>
+
+      {canUseWatchlist && resourceId ? (
+        <button
+          type='button'
+          aria-label={saved ? 'Retirer de la liste de lecture' : 'Ajouter à la liste de lecture'}
+          aria-pressed={saved}
+          disabled={isToggling}
+          onClick={handleWatchlistClick}
+          className={`absolute bottom-5 right-5 z-10 flex h-8 w-8 items-center cursor-pointer justify-center rounded-lg border-1 transition-all duration-200 ${
+            saved
+              ? 'border-action bg-action/15 text-action'
+              : 'border-c3 bg-c2/90 text-c4 opacity-0 group-hover:opacity-100 hover:border-action hover:text-action'
+          } ${saved ? 'opacity-100' : ''}`}
+        >
+          <BookMarkIcon size={14} />
+        </button>
+      ) : null}
 
     </div>
   );

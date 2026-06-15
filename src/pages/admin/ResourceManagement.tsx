@@ -29,7 +29,7 @@ import { useAdminListControls } from '@/hooks/useAdminListControls';
 import { getCourses, type Course, type StudentResourceCard, deleteUserResource } from '@/services/StudentSpace';
 import { getRessourceLabel } from '@/config/resourceConfig';
 
-const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=StudentSpace';
+const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=UserSpace';
 
 // Types
 interface ResourceWithCourse extends StudentResourceCard {

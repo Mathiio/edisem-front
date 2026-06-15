@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useCallback, useMemo } from 'react';
-import { UserIcon, Logout, SunIcon, MoonIcon, SettingsIcon, KeywordIcon } from '@/components/ui/icons';
+import { UserIcon, Logout, SunIcon, MoonIcon, SettingsIcon, KeywordIcon, BookMarkIcon } from '@/components/ui/icons';
 import { User } from '@heroui/react';
 import {
   Dropdown,
@@ -98,6 +98,13 @@ export const ProfilDropdown = () => {
                 <Link to={userData?.type === 'actant' ? '/mon-espace-4' : '/mon-espace'} className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
                   <UserIcon size={16} />
                   <p className='text-base font-normal'>Mon espace</p>
+                </Link>
+              </DropdownItem>
+
+              <DropdownItem key='liste-de-lecture' className={`${dropdownMenuItemClass} ${userData?.type === 'actant' ? '' : 'hidden'}`}>
+                <Link to='/liste-de-lecture' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
+                  <BookMarkIcon size={15} />
+                  <p className='text-base font-normal'>Liste de lecture</p>
                 </Link>
               </DropdownItem>
 

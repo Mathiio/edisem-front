@@ -86,7 +86,7 @@ interface ImportStudentRow {
   isEditing: boolean;
 }
 
-const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=StudentSpace';
+const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=UserSpace';
 
 // Récupérer les étudiants
 async function fetchStudents(): Promise<StudentItem[]> {

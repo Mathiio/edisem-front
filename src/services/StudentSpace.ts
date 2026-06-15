@@ -1,6 +1,6 @@
 /**
- * Service pour l'API de l'espace étudiant
- * Endpoints dédiés pour les ressources étudiantes (expérimentations, outils, feedbacks)
+ * Service pour l'API espace utilisateur Edisem (étudiants, actants, admin)
+ * Endpoints via UserSpaceViewHelper
  */
 
 import { TEMPLATE_ID_TO_TYPE, filterMonEspaceResources, isParentLinkedOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
@@ -8,7 +8,7 @@ import { getYouTubeThumbnail, isOmekaPlaceholderThumbnail, resolveOmekaThumbnail
 import { ApiProxy } from '@/services/ApiProxy';
 import { omekaApiUrl, OMEKA_API_BASE } from '@/utils/omekaApi';
 
-const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=StudentSpace';
+const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=UserSpace';
 
 /** Propriétés Omeka susceptibles de contenir une URL vidéo ou image */
 const MEDIA_URL_PROPERTIES = [
@@ -1141,4 +1141,55 @@ export async function getTeacherResources(): Promise<AllStudentResources> {
     console.error('Error fetching teacher resources:', error);
     throw error;
   }
+}
+
+// ========== WATCHLIST (LISTE DE LECTURE / À REGARDER) ==========
+
+export interface WatchlistCard {
+  id: string | number;
+  title: string;
+  thumbnail?: string | null;
+  type?: string;
+  actants?: Array<{ name?: string; title?: string; firstname?: string; lastname?: string; picture?: string }>;
+  date?: string | null;
+  subtitle?: string;
+}
+
+async function watchlistFetch<T>(action: string, params: Record<string, string | number> = {}): Promise<T> {
+  const url = new URL(API_BASE);
+  url.searchParams.set('action', action);
+  url.searchParams.set('json', '1');
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+
+  const response = await fetch(url.toString(), { credentials: 'include' });
+  const data = await response.json();
+
+  if (data?.code === 401) {
+    throw new Error('Non authentifié');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  return data as T;
+}
+
+/** IDs des ressources sauvegardées par l'actant connecté */
+export async function getWatchlistIds(): Promise<{ ids: number[] }> {
+  try {
+    return await watchlistFetch<{ ids: number[] }>('getWatchlistIds');
+  } catch (error) {
+    console.error('Error fetching watchlist ids:', error);
+    return { ids: [] };
+  }
+}
+
+/** Cards des ressources sauvegardées */
+export async function getWatchlistCards(): Promise<{ items: WatchlistCard[] }> {
+  return watchlistFetch<{ items: WatchlistCard[] }>('getWatchlistCards');
+}
+
+/** Ajoute ou retire une ressource de la liste de lecture */
+export async function toggleWatchlistItem(resourceId: number): Promise<{ saved: boolean; ids: number[] }> {
+  return watchlistFetch<{ saved: boolean; ids: number[] }>('toggleWatchlistItem', { resourceId });
 }
