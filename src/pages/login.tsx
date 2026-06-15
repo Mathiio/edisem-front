@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Tabs, Tab, Button, Spinner } from '@heroui/react';
-import { Input } from '@/theme/components';
+import { Input, passwordToggleButtonClass } from '@/theme/components';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthService } from '@/services/Auth';
 import { EyeIcon, EyeSlashIcon } from '@/components/ui/icons';
@@ -220,12 +220,12 @@ export const LoginPage: React.FC = () => {
               <div className='flex flex-col gap-4'>
                 {renderInput('Email', 'votre@email.com', email, (e) => { setEmail(e.target.value); if (actantStatus !== 'idle') setActantStatus('idle'); setErrors({}); }, 'email', errors.email, handleActantEmailBlur, actantStatus === 'checking' ? <Spinner size="sm" color="current" className='text-c6'/> : null)}
                 <div className="flex flex-col gap-4">
-                  {renderInput(actantStatus === 'needs_registration' ? 'Définir un mot de passe' : 'Mot de passe', 'Entrez votre mot de passe', password, (e) => setPassword(e.target.value), showPassword ? "text" : "password", errors.password, undefined, <button className="focus:outline-none" type="button" onClick={toggleVisibility} aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}>
+                  {renderInput(actantStatus === 'needs_registration' ? 'Définir un mot de passe' : 'Mot de passe', 'Entrez votre mot de passe', password, (e) => setPassword(e.target.value), showPassword ? "text" : "password", errors.password, undefined, <button className={passwordToggleButtonClass} type="button" onClick={toggleVisibility} aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}>
                   {showPassword ? <EyeIcon className="text-c4 text-2xl pointer-events-none" /> : <EyeSlashIcon className="text-c4 text-2xl pointer-events-none" />}
                 </button>, actantStatus !== 'recognized' && actantStatus !== 'needs_registration')}
                   {actantStatus === 'needs_registration' && (
                     <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                      {renderInput('Confirmer le mot de passe', 'Répétez le mot de passe', confirmPassword, (e) => setConfirmPassword(e.target.value), showConfirmPassword ? "text" : "password", errors.confirmPassword, undefined, <button className="focus:outline-none" type="button" onClick={toggleConfirmVisibility} aria-label={showConfirmPassword ? 'Masquer la confirmation' : 'Afficher la confirmation'}>
+                      {renderInput('Confirmer le mot de passe', 'Répétez le mot de passe', confirmPassword, (e) => setConfirmPassword(e.target.value), showConfirmPassword ? "text" : "password", errors.confirmPassword, undefined, <button className={passwordToggleButtonClass} type="button" onClick={toggleConfirmVisibility} aria-label={showConfirmPassword ? 'Masquer la confirmation' : 'Afficher la confirmation'}>
                         {showConfirmPassword ? <EyeIcon className="text-c4 text-2xl pointer-events-none" /> : <EyeSlashIcon className="text-c4 text-2xl pointer-events-none" />}
                       </button>)}
                     </div>

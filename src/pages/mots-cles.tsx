@@ -1,6 +1,6 @@
 /**
  * PAGE TEMPORAIRE — Gestion des mots-clés
- * Accessible à /mots-cles (réservé actants admin)
+ * Accessible à /mots-cles (réservé administrateurs)
  * Fonctionnalités : exploration des liens, usages CSV, suppression
  */
 import { useState, useCallback, useRef, useEffect } from 'react';

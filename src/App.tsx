@@ -72,16 +72,17 @@ export const useNavbarReadyContext = () => {
   return context;
 };
 
-const ProtectedStudentManagement = withAuth(StudentManagement, { requiredRole: 'actant' });
-const ProtectedCourseManagement = withAuth(CourseManagement, { requiredRole: 'actant' });
-const ProtectedActantManagement = withAuth(ActantManagement, { requiredRole: 'actant' });
-const ProtectedResourceManagement = withAuth(ResourceManagement, { requiredRole: 'actant' });
-const ProtectedAdminDashboard = withAuth(AdminDashboard, { requiredRole: 'actant' });
-const ProtectedMotsCles = withAuth(MotsClesPage, { requiredRole: 'actant' });
+const ProtectedStudentManagement = withAuth(StudentManagement, { requiredPermission: 'admin' });
+const ProtectedCourseManagement = withAuth(CourseManagement, { requiredPermission: 'admin' });
+const ProtectedActantManagement = withAuth(ActantManagement, { requiredPermission: 'admin' });
+const ProtectedResourceManagement = withAuth(ResourceManagement, { requiredPermission: 'admin' });
+const ProtectedAdminDashboard = withAuth(AdminDashboard, { requiredPermission: 'admin' });
+const ProtectedMotsCles = withAuth(MotsClesPage, { requiredPermission: 'admin' });
 const ProtectedListeLecture = withAuth(ListeLecture, { requiredRole: 'actant' });
 
 // Wrapper pour protéger ConfigurableDetailPage en mode création (actants et étudiants)
 const ProtectedConfigurableDetailPage = withAuth(ConfigurableDetailPage, { requiredRole: 'any' });
+const ProtectedAdminConfigurableDetailPage = withAuth(ConfigurableDetailPage, { requiredPermission: 'admin' });
 //const ProtectedCahierRecherche = withAuth(CahierRecherche, { requiredRole: 'actant' });
 
 function App() {
@@ -221,8 +222,8 @@ function App() {
             <Route path='/add-resource/intervenant' element={<ProtectedConfigurableDetailPage config={intervenantConfig} initialMode='create' />} />
             <Route path='/add-resource/personne' element={<ProtectedConfigurableDetailPage config={personneConfig} initialMode='create' />} />
             <Route path='/add-resource/organisation' element={<ProtectedConfigurableDetailPage config={organisationConfig} initialMode='create' />} />
-            <Route path='/add-resource/mot-cle' element={<ProtectedConfigurableDetailPage config={motCleConfig} initialMode='create' />} />
-            <Route path='/add-resource/mot-cle/:id' element={<ProtectedConfigurableDetailPage config={motCleConfig} />} />
+            <Route path='/add-resource/mot-cle' element={<ProtectedAdminConfigurableDetailPage config={motCleConfig} initialMode='create' />} />
+            <Route path='/add-resource/mot-cle/:id' element={<ProtectedAdminConfigurableDetailPage config={motCleConfig} />} />
             <Route path='/add-resource/universite' element={<ProtectedConfigurableDetailPage config={universiteConfig} initialMode='create' />} />
             <Route path='/add-resource/ecole-doctorale' element={<ProtectedConfigurableDetailPage config={ecoleDoctoraleConfig} initialMode='create' />} />
             <Route path='/add-resource/laboratoire' element={<ProtectedConfigurableDetailPage config={laboratoireConfig} initialMode='create' />} />

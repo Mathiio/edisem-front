@@ -8,6 +8,7 @@ export type Permission = 'admin' | 'create' | 'view';
 const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   global_admin: ['admin', 'create', 'view'],
   site_admin:   ['admin', 'create', 'view'],
+  admin:        ['admin', 'create', 'view'],
   editor:       ['create', 'view'],
   reviewer:     ['create', 'view'],
   author:       ['create', 'view'],
@@ -32,6 +33,7 @@ export function hasPermission(
 const ROLE_LABELS: Record<string, string> = {
   global_admin: 'Administrateur',
   site_admin:   'Administrateur',
+  admin:        'Administrateur',
   editor:       'Éditeur',
   reviewer:     'Réviseur',
   author:       'Auteur',
