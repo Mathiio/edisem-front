@@ -1,6 +1,6 @@
 import { Layouts } from '@/components/layout/Layouts';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { addToast } from '@heroui/react';
 import { Input, Select, SelectItem, Pagination } from '@/theme/components';
 import { CreateResourceAction } from '@/components/features/espaceEtudiant/CreateResourceAction';
@@ -22,7 +22,16 @@ import {
   SearchIcon,
 } from '@/components/ui/icons';
 import { useAuth } from '@/hooks/useAuth';
-import { deleteUserResource, getUserResources, type StudentResourceCard } from '@/services/StudentSpace';
+import {
+  applyFreshUserResourceList,
+  consumePendingMonEspaceResource,
+  deleteUserResource,
+  getRecentUserResources,
+  getUserResources,
+  mergeUserResourceCards,
+  patchRecentUserResourcesFromOmeka,
+  type StudentResourceCard,
+} from '@/services/UserSpace';
 import { filterMonEspaceResources, getResourceEditUrl, getRessourceLabel } from '@/config/resourceConfig';
 import { experimentationConfigSimplified } from '@/pages/generic/config/experimentationConfig';
 import { toolConfigSimplified } from '@/pages/generic/config/toolConfig';
@@ -121,11 +130,21 @@ function matchesSearch(item: StudentResourceCard, query: string): boolean {
   return haystack.includes(q);
 }
 
+function applyMonEspaceFilters(items: StudentResourceCard[]): StudentResourceCard[] {
+  return filterMonEspaceResources(items)
+    .filter((r) => !EXCLUDED_TYPES.has(r.type))
+    .filter((r) => getResourceCategory(r.type) != null)
+    .sort(sortByModifiedDesc);
+}
+
 export const MonEspace4: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { userData } = useAuth();
 
-  const [loading, setLoading] = useState(true);
+  const [loadingRecent, setLoadingRecent] = useState(true);
+  const [loadingAll, setLoadingAll] = useState(true);
+  const [recentResources, setRecentResources] = useState<StudentResourceCard[]>([]);
   const [allResources, setAllResources] = useState<StudentResourceCard[]>([]);
   const [typeFilter, setTypeFilter] = useState<ResourceCategory>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -164,16 +183,16 @@ export const MonEspace4: React.FC = () => {
     return omekaUserId ? `monespace4_resources_${omekaUserId}` : null;
   }, [userData?.omekaUserId]);
 
-  // Charger le cache session immédiatement (avant le premier fetch)
+  // Afficher le cache session immédiatement (placeholder), le fetch écrase ensuite
   useEffect(() => {
     if (!CACHE_KEY) return;
     try {
       const cached = sessionStorage.getItem(CACHE_KEY);
       if (cached) {
-        const parsed: StudentResourceCard[] = JSON.parse(cached);
+        const parsed = applyMonEspaceFilters(JSON.parse(cached));
         if (parsed.length > 0) {
           setAllResources(parsed);
-          setLoading(false); // Afficher le cache en attendant le rafraîchissement
+          setRecentResources(parsed.slice(0, RECENT_COUNT));
         }
       }
     } catch {
@@ -182,46 +201,82 @@ export const MonEspace4: React.FC = () => {
   }, [CACHE_KEY]);
 
   const fetchResources = useCallback(async () => {
-    try {
-      setLoading(() => {
-        // Ne pas afficher le spinner si on a déjà du contenu (re-fetch silencieux)
-        const hasCached = CACHE_KEY ? sessionStorage.getItem(CACHE_KEY) != null : false;
-        return hasCached ? false : true;
-      });
-      const userId = localStorage.getItem('userId');
-      const omekaUserId =
-        userData?.omekaUserId ??
-        (localStorage.getItem('omekaUserId') ? parseInt(localStorage.getItem('omekaUserId')!, 10) : null);
-      if (!userId && !omekaUserId) return;
+    const userId = localStorage.getItem('userId');
+    const omekaUserId =
+      userData?.omekaUserId ??
+      (localStorage.getItem('omekaUserId') ? parseInt(localStorage.getItem('omekaUserId')!, 10) : null);
+    if (!userId && !omekaUserId) return;
 
-      const resources = await getUserResources(userId ? parseInt(userId, 10) : 0, omekaUserId);
-      const filtered = filterMonEspaceResources(resources)
-        .filter((r) => !EXCLUDED_TYPES.has(r.type))
-        .filter((r) => getResourceCategory(r.type) != null)
-        .sort(sortByModifiedDesc);
+    const navPending = (location.state as { pendingResource?: StudentResourceCard } | null)?.pendingResource;
+    const pending =
+      navPending ??
+      (omekaUserId ? consumePendingMonEspaceResource(omekaUserId) : null);
 
-      setAllResources(filtered);
-
-      // Mettre en cache pour la prochaine visite
-      if (CACHE_KEY && filtered.length > 0) {
-        try {
-          sessionStorage.setItem(CACHE_KEY, JSON.stringify(filtered));
-        } catch {
-          // sessionStorage plein — ignorer
-        }
-      }
-    } catch (error) {
-      console.error('Error loading resources:', error);
-    } finally {
-      setLoading(false);
+    if (navPending) {
+      navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [userData?.omekaUserId, CACHE_KEY]);
+
+    setLoadingRecent(true);
+    setLoadingAll(true);
+
+    const userIdNum = userId ? parseInt(userId, 10) : 0;
+
+    const applyRecentUpdate = (recent: StudentResourceCard[]) => {
+      const mergedRecent = applyMonEspaceFilters(
+        mergeUserResourceCards(pending ? [pending] : [], recent),
+      ).slice(0, RECENT_COUNT);
+      setRecentResources((prev) => applyFreshUserResourceList(mergedRecent, prev));
+      if (pending) {
+        setAllResources((prev) => applyMonEspaceFilters(mergeUserResourceCards(prev, [pending])));
+      }
+      return mergedRecent;
+    };
+
+    const loadRecent = async () => {
+      try {
+        const recent = applyMonEspaceFilters(await getRecentUserResources(userIdNum, omekaUserId, RECENT_COUNT));
+        const mergedRecent = applyRecentUpdate(recent);
+
+        if (omekaUserId) {
+          patchRecentUserResourcesFromOmeka(mergedRecent, omekaUserId, (enriched) => {
+            applyRecentUpdate(enriched);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading recent resources:', error);
+      } finally {
+        setLoadingRecent(false);
+      }
+    };
+
+    const loadFull = async () => {
+      try {
+        const full = applyMonEspaceFilters(await getUserResources(userIdNum, omekaUserId));
+        const merged = pending ? applyMonEspaceFilters(mergeUserResourceCards(full, [pending])) : full;
+        setAllResources(merged);
+
+        if (CACHE_KEY && merged.length > 0) {
+          try {
+            sessionStorage.setItem(CACHE_KEY, JSON.stringify(merged));
+          } catch {
+            // sessionStorage plein — ignorer
+          }
+        }
+      } catch (error) {
+        console.error('Error loading all resources:', error);
+      } finally {
+        setLoadingAll(false);
+      }
+    };
+
+    await Promise.all([loadRecent(), loadFull()]);
+  }, [userData?.omekaUserId, CACHE_KEY, location.pathname, location.key, navigate]);
 
   useEffect(() => {
+    if (location.pathname !== '/mon-espace-4') return;
     fetchResources();
-  }, [fetchResources]);
+  }, [fetchResources, location.pathname, location.key]);
 
-  const recentResources = useMemo(() => allResources.slice(0, RECENT_COUNT), [allResources]);
   const recentIds = useMemo(() => new Set(recentResources.map((r) => String(r.id))), [recentResources]);
 
   const tableResources = useMemo(() => {
@@ -339,7 +394,7 @@ export const MonEspace4: React.FC = () => {
       <section className='flex flex-col gap-4'>
         <h2 className='text-xl text-c6 font-semibold'>Dernières modifications</h2>
 
-        {loading ? (
+        {loadingRecent && recentResources.length === 0 ? (
           <div className='flex flex-col gap-2'>
             {Array.from({ length: 3 }).map((_, i) => (
               <MySpaceResourceRowSkeleton key={i} />
@@ -416,7 +471,7 @@ export const MonEspace4: React.FC = () => {
           </Select>
         </div>
 
-        {loading ? (
+        {loadingAll && allResources.length === 0 ? (
           <div className='flex flex-col gap-2'>
             {Array.from({ length: PAGE_SIZE }).map((_, i) => (
               <MySpaceResourceRowSkeleton key={i} />
@@ -439,7 +494,7 @@ export const MonEspace4: React.FC = () => {
           </div>
         )}
 
-        {!loading && tableResources.length > PAGE_SIZE && (
+        {!loadingAll && tableResources.length > PAGE_SIZE && (
           <div className='flex justify-end pt-1'>
             <Pagination
               total={totalPages}

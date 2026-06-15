@@ -83,6 +83,8 @@ interface SimpleOverviewProps {
   resourceType: string;
   itemDetails: any;
   resourceCache?: Record<number, ResourceInfo>;
+  /** Propriétés Omeka des contributeurs (ex. depuis contributorButtons) pour le mode lecture */
+  contributorProperties?: string[];
   isEditing?: boolean;
   onMediasChange?: (files: MediaFile[]) => void;
   youtubeUrls?: string[];
@@ -122,6 +124,8 @@ const getPersonRoute = (person: any): string => {
       return `/intervenant/${person.id}`;
     case 'personne':
       return `/personne/${person.id}`;
+    case 'organisation':
+      return `/organisation/${person.id}`;
     default:
       return `/conferencier/${person?.id}`;
   }
@@ -147,6 +151,54 @@ const getPersonPicture = (person: any): string | null => {
   return person?.picture || person?.thumbnailUrl || null;
 };
 
+const resolveContributorPersonnes = (
+  itemDetails: any,
+  resourceCache: Record<number, ResourceInfo>,
+  contributorProperties?: string[],
+  resourceField?: InternalFieldConfig,
+  directPersonnes?: any,
+): ResourceInfo[] => {
+  const isAlreadyResolved =
+    Array.isArray(directPersonnes) &&
+    directPersonnes.length > 0 &&
+    typeof directPersonnes[0] === 'object' &&
+    directPersonnes[0].id !== undefined &&
+    !directPersonnes[0].value_resource_id;
+
+  if (isAlreadyResolved) {
+    return directPersonnes as ResourceInfo[];
+  }
+
+  const seen = new Set<number>();
+  const result: ResourceInfo[] = [];
+
+  const addFromProperty = (property: string) => {
+    getResourceIds(itemDetails, property).forEach((id) => {
+      if (seen.has(id)) return;
+      seen.add(id);
+      const cached = resourceCache[id];
+      if (cached) result.push(cached);
+    });
+  };
+
+  if (contributorProperties?.length) {
+    contributorProperties.forEach(addFromProperty);
+    if (result.length > 0) return result;
+  }
+
+  if (resourceField) {
+    addFromProperty(resourceField.property);
+    if (result.length > 0) return result;
+  }
+
+  const actants = itemDetails?.actants;
+  if (Array.isArray(actants) && actants.length > 0) {
+    return actants as ResourceInfo[];
+  }
+
+  return result;
+};
+
 // ========================================
 // SimpleOverviewCard
 // ========================================
@@ -156,6 +208,7 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
   resourceType,
   itemDetails,
   resourceCache: propResourceCache,
+  contributorProperties,
   isEditing = false,
   onMediasChange,
   youtubeUrls = [],
@@ -200,25 +253,13 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
   const isPhotoMode = mediaUploadMode === 'photo';
   const isGalleryMode = mediaUploadMode === 'gallery';
 
-  // Vérifier si personnes est déjà au format ResourceInfo[] (depuis formData en mode édition)
-  const directPersonnes = itemDetails?.personnes;
-  const isAlreadyResolved =
-    Array.isArray(directPersonnes) &&
-    directPersonnes.length > 0 &&
-    typeof directPersonnes[0] === 'object' &&
-    directPersonnes[0].id !== undefined &&
-    !directPersonnes[0].value_resource_id;
-
-  const rawPersonnes = isAlreadyResolved
-    ? directPersonnes
-    : resourceField
-      ? getResourceIds(itemDetails, resourceField.property)
-          .map((id) => resourceCache[id])
-          .filter(Boolean)
-      : itemDetails?.actants || [];
-
-  // Normaliser personnes pour s'assurer que c'est toujours un tableau
-  const personnes: ResourceInfo[] = Array.isArray(rawPersonnes) ? rawPersonnes : [];
+  const personnes: ResourceInfo[] = resolveContributorPersonnes(
+    itemDetails,
+    resourceCache,
+    contributorProperties,
+    resourceField,
+    itemDetails?.personnes,
+  );
 
   const percentageField = overviewFields.find((f) => f.type === 'percentage' || f.type === 'slider');
   const percentage = percentageField ? Number(getOmekaValue(itemDetails, percentageField.property)) || 0 : itemDetails?.percentage || 0;

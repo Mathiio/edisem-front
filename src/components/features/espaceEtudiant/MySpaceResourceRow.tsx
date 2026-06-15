@@ -7,8 +7,8 @@ import {
   getResourceDisplayTheme,
   isFormOnlyResourceType,
 } from '@/config/resourceConfig';
-import { getResourceAuthors, getResourceSubtitle, resolveOmekaThumbnail } from '@/lib/resourceUtils';
-import type { StudentResourceCard } from '@/services/StudentSpace';
+import { getResourceAuthors, resolveOmekaThumbnail } from '@/lib/resourceUtils';
+import type { StudentResourceCard } from '@/services/UserSpace';
 
 export const mySpaceActionButtonClass =
   'inline-flex items-center justify-center size-9 rounded-lg border-2 border-c3 bg-c2 hover:bg-c3 text-c6 transition-colors cursor-pointer shrink-0';
@@ -52,9 +52,6 @@ export const getResourceRowSubtitle = (item: StudentResourceCard): string => {
       .filter(Boolean)
       .join(', ');
   }
-
-  const subtitle = getResourceSubtitle(item);
-  if (subtitle) return subtitle;
 
   return '—';
 };

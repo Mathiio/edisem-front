@@ -29,14 +29,6 @@ export const recitArtitstiqueConfigSimplified: SimplifiedDetailConfig = {
       label: 'Réception critique',
       zone: 'details',
     },
-    contributors: {
-      property: 'schema:agent',
-      type: 'resource',
-      label: 'Artistes principaux',
-      resourceTemplateId: 72,
-      multiSelect: true,
-      zone: 'overview',
-    },
     keywords: {
       property: 'jdc:hasConcept',
       type: 'resource',

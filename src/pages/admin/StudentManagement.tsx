@@ -33,7 +33,7 @@ import {
 import { matchesAdminSearch, sortByStringField } from '@/components/features/admin/adminListConfig';
 import { useAdminListControls } from '@/hooks/useAdminListControls';
 import { AdminSelectionBar } from '@/components/features/admin/AdminSelectionBar';
-import { getCourses, getStudentCourses, enrollStudent, unenrollStudent, type Course } from '@/services/StudentSpace';
+import { getCourses, getStudentCourses, enrollStudent, unenrollStudent, type Course } from '@/services/UserSpace';
 
 // Types
 interface OmekaUser {

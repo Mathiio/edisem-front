@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button, Popover, PopoverTrigger, PopoverContent, Input, Checkbox, addToast, cn } from '@heroui/react';
 import { ExportIcon, ShareIcon } from '@/components/ui/icons';
 import { GeneratedImage } from '@/pages/visualisation';
-import { saveResearch } from '@/services/StudentSpace';
+import { saveResearch } from '@/services/UserSpace';
 import { FilterGroup, NodePosition } from '@/components/features/datavisualisation/FilterPopup';
 
 interface HeaderExportButtonProps {

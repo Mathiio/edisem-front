@@ -5,7 +5,7 @@ import { Layouts } from '@/components/layout/Layouts';
 import { ResourceCard, ResourceCardSkeleton } from '@/components/features/corpus/ResourceCard';
 import { PageBanner } from '@/components/ui/PageBanner';
 import { BookMarkIcon } from '@/components/ui/icons';
-import { getWatchlistCards, type WatchlistCard } from '@/services/StudentSpace';
+import { getWatchlistCards, type WatchlistCard } from '@/services/UserSpace';
 import { useWatchlist } from '@/hooks/useWatchlist';
 
 const fadeIn: Variants = {

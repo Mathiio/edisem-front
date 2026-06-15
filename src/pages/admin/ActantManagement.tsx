@@ -32,7 +32,7 @@ import {
 } from '@/components/features/admin/AdminListToolbar';
 import { matchesAdminSearch, sortByStringField } from '@/components/features/admin/adminListConfig';
 import { useAdminListControls } from '@/hooks/useAdminListControls';
-import { getActantsForLogin, linkActantToUser, createOmekaUserForActant, createActantWithUser, deleteActant, type Actant } from '@/services/StudentSpace';
+import { getActantsForLogin, linkActantToUser, createOmekaUserForActant, createActantWithUser, deleteActant, type Actant } from '@/services/UserSpace';
 
 // Types
 interface OmekaUser {

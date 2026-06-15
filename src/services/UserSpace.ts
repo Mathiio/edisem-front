@@ -326,6 +326,261 @@ function mapOmekaItemToStudentCard(item: Record<string, any>): StudentResourceCa
   };
 }
 
+function hasUsableThumbnail(card: StudentResourceCard): boolean {
+  return Boolean(card.thumbnail && !isOmekaPlaceholderThumbnail(card.thumbnail));
+}
+
+function mergeUserResourceCard(existing: StudentResourceCard, incoming: StudentResourceCard): StudentResourceCard {
+  return normalizeStudentResourceCard({
+    ...existing,
+    ...incoming,
+    title: incoming.title || existing.title,
+    created: incoming.created || existing.created,
+    type: incoming.type || existing.type,
+    thumbnail: hasUsableThumbnail(incoming)
+      ? incoming.thumbnail
+      : hasUsableThumbnail(existing)
+        ? existing.thumbnail
+        : incoming.thumbnail ?? existing.thumbnail ?? null,
+    url: incoming.url || existing.url,
+    actants: incoming.actants?.length ? incoming.actants : existing.actants,
+  });
+}
+
+/** Applique une liste API fraîche en conservant miniatures/actants déjà en cache UI. */
+export function applyFreshUserResourceList(
+  freshList: StudentResourceCard[],
+  prevList: StudentResourceCard[] = [],
+): StudentResourceCard[] {
+  const prevById = new Map(prevList.map((r) => [String(r.id), r]));
+  return freshList.map((fresh) => {
+    const prev = prevById.get(String(fresh.id));
+    return prev ? mergeUserResourceCard(prev, fresh) : normalizeStudentResourceCard(fresh);
+  });
+}
+
+/**
+ * Fusionne des listes de ressources (déduplication par id, tri par date de modification desc).
+ * Conserve la miniature existante si la nouvelle entrée n'en a pas.
+ */
+export function mergeUserResourceCards(...lists: StudentResourceCard[][]): StudentResourceCard[] {
+  const map = new Map<string, StudentResourceCard>();
+  for (const list of lists) {
+    for (const item of list) {
+      const key = String(item.id);
+      const existing = map.get(key);
+      map.set(key, existing ? mergeUserResourceCard(existing, item) : normalizeStudentResourceCard(item));
+    }
+  }
+  return Array.from(map.values()).sort(
+    (a, b) => new Date(b.created || 0).getTime() - new Date(a.created || 0).getTime(),
+  );
+}
+
+function buildOwnerItemsUrl(omekaUserId: number, perPage: number, page = 1): string {
+  return omekaApiUrl(
+    `${OMEKA_API_BASE}items?owner_id=${omekaUserId}&per_page=${perPage}&sort_by=modified&sort_order=desc&page=${page}`,
+  );
+}
+
+/**
+ * Enrichissement léger pour la section « Dernières modifications » — 1 requête Omeka (5 items max).
+ */
+async function enrichRecentCardsFromOmeka(
+  cards: StudentResourceCard[],
+  omekaUserId: number,
+): Promise<StudentResourceCard[]> {
+  const missingIds = new Set(
+    cards
+      .filter((card) => !hasUsableThumbnail(card) || !card.actants?.length)
+      .map((card) => Number(card.id)),
+  );
+  if (missingIds.size === 0) return cards;
+
+  const response = await fetch(buildOwnerItemsUrl(omekaUserId, Math.max(cards.length, 5), 1));
+  if (!response.ok) return cards;
+
+  const data = await response.json();
+  if (!Array.isArray(data) || data.length === 0) return cards;
+
+  const items = data.filter((item) => missingIds.has(Number(item['o:id'])));
+  if (items.length === 0) return cards;
+
+  let omekaCards = mapOmekaItemsToCards(items);
+  omekaCards = await enrichCardThumbnails(omekaCards, items);
+  const byId = new Map(omekaCards.map((card) => [String(card.id), card]));
+
+  return cards.map((card) => {
+    const fromOmeka = byId.get(String(card.id));
+    if (!fromOmeka) return card;
+    return normalizeStudentResourceCard({
+      ...card,
+      thumbnail: hasUsableThumbnail(card) ? card.thumbnail : fromOmeka.thumbnail,
+      url: card.url || fromOmeka.url,
+      actants: card.actants?.length ? card.actants : fromOmeka.actants,
+      date: card.date || fromOmeka.date,
+    });
+  });
+}
+
+/** Enrichissement non bloquant (miniatures / actants manquants) pour les récents. */
+export function patchRecentUserResourcesFromOmeka(
+  cards: StudentResourceCard[],
+  omekaUserId: number,
+  onUpdate: (cards: StudentResourceCard[]) => void,
+): void {
+  void enrichRecentCardsFromOmeka(cards, omekaUserId)
+    .then(onUpdate)
+    .catch(() => {});
+}
+
+/**
+ * Complète les miniatures et actants manquants via l'API Omeka S (liste complète).
+ */
+async function enrichApiCardsFromOmeka(
+  cards: StudentResourceCard[],
+  omekaUserId: number,
+  maxPages = 10,
+): Promise<StudentResourceCard[]> {
+  const missingIds = new Set(
+    cards
+      .filter((card) => !hasUsableThumbnail(card) || !card.actants?.length)
+      .map((card) => Number(card.id)),
+  );
+  if (missingIds.size === 0) return cards;
+
+  const perPage = 100;
+  const itemById = new Map<number, Record<string, any>>();
+  let page = 1;
+
+  while (page <= maxPages && itemById.size < missingIds.size) {
+    const response = await fetch(buildOwnerItemsUrl(omekaUserId, perPage, page));
+    if (!response.ok) break;
+
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) break;
+
+    for (const item of data) {
+      const id = Number(item['o:id']);
+      if (missingIds.has(id)) {
+        itemById.set(id, item);
+      }
+    }
+
+    if (data.length < perPage) break;
+    page += 1;
+  }
+
+  if (itemById.size === 0) return cards;
+
+  const items = Array.from(itemById.values());
+  let omekaCards = mapOmekaItemsToCards(items);
+  omekaCards = await enrichCardThumbnails(omekaCards, items);
+  const thumbById = new Map(omekaCards.map((card) => [String(card.id), card]));
+
+  return cards.map((card) => {
+    const fromOmeka = thumbById.get(String(card.id));
+    if (!fromOmeka) return card;
+
+    return normalizeStudentResourceCard({
+      ...card,
+      thumbnail: hasUsableThumbnail(card) ? card.thumbnail : fromOmeka.thumbnail,
+      url: card.url || fromOmeka.url,
+      actants: card.actants?.length ? card.actants : fromOmeka.actants,
+      date: card.date || fromOmeka.date,
+    });
+  });
+}
+
+/** Appel UserSpaceViewHelper — ressources récentes (SQL direct, rapide) */
+async function fetchRecentUserResourcesFromApi(ownerId: number, limit = 5): Promise<StudentResourceCard[]> {
+  const params = new URLSearchParams({
+    action: 'getRecentUserResources',
+    ownerId: String(ownerId),
+    limit: String(limit),
+    json: '1',
+  });
+  const response = await fetch(`${API_BASE}&${params.toString()}`);
+  if (!response.ok) {
+    throw new Error('Erreur lors de la récupération des ressources récentes');
+  }
+  const data = await response.json();
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+  const cards = normalizeLegacyResourceCards(Array.isArray(data) ? data : []);
+  return cards;
+}
+
+/** Appel UserSpaceViewHelper — toutes les ressources Mon espace (SQL + thumbnails) */
+async function fetchAllUserResourcesFromApi(ownerId: number): Promise<StudentResourceCard[]> {
+  const params = new URLSearchParams({
+    action: 'getUserResources',
+    ownerId: String(ownerId),
+    json: '1',
+  });
+  const response = await fetch(`${API_BASE}&${params.toString()}`);
+  if (!response.ok) {
+    throw new Error('Erreur lors de la récupération des ressources utilisateur');
+  }
+  const data = await response.json();
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+  const cards = normalizeLegacyResourceCards(Array.isArray(data) ? data : []);
+  return enrichApiCardsFromOmeka(cards, ownerId);
+}
+
+async function enrichCardThumbnails(
+  cards: StudentResourceCard[],
+  allItems: Record<string, any>[],
+): Promise<StudentResourceCard[]> {
+  const needsEnrichment = cards
+    .map((card, index) => {
+      const rawItem = allItems.find((i) => i['o:id'] === card.id);
+      return (!card.thumbnail || isOmekaPlaceholderThumbnail(card.thumbnail)) && rawItem?.['o:media']?.length
+        ? { card, index, rawItem }
+        : null;
+    })
+    .filter(Boolean) as { card: StudentResourceCard; index: number; rawItem: any }[];
+
+  const result = [...cards];
+  const CONCURRENCY = 5;
+  for (let i = 0; i < needsEnrichment.length; i += CONCURRENCY) {
+    const batch = needsEnrichment.slice(i, i + CONCURRENCY);
+    await Promise.all(
+      batch.map(async ({ index, rawItem }) => {
+        const enriched = await enrichThumbnailFromMedia(rawItem);
+        if (enriched) result[index] = { ...result[index], thumbnail: enriched };
+      }),
+    );
+  }
+  return result;
+}
+
+function mapOmekaItemsToCards(items: Record<string, any>[]): StudentResourceCard[] {
+  return items
+    .map(mapOmekaItemToStudentCard)
+    .filter((card): card is StudentResourceCard => card !== null)
+    .map(normalizeStudentResourceCard);
+}
+
+/**
+ * Récupère les N ressources les plus récemment modifiées (rapide, sans enrichissement thumbnail).
+ */
+export async function fetchRecentUserResourcesByOwnerFromOmeka(
+  omekaUserId: number,
+  limit = 5,
+): Promise<StudentResourceCard[]> {
+  const response = await fetch(buildOwnerItemsUrl(omekaUserId, limit, 1));
+  if (!response.ok) {
+    throw new Error(`Erreur Omeka S (${response.status}) lors de la récupération des ressources récentes`);
+  }
+  const data = await response.json();
+  if (!Array.isArray(data) || data.length === 0) return [];
+  return mapOmekaItemsToCards(data);
+}
+
 /**
  * Récupère toutes les ressources dont l'utilisateur Omeka S est propriétaire (o:owner).
  * Optimisations :
@@ -335,11 +590,8 @@ function mapOmekaItemToStudentCard(item: Record<string, any>): StudentResourceCa
  */
 export async function fetchUserResourcesByOwnerFromOmeka(omekaUserId: number): Promise<StudentResourceCard[]> {
   const perPage = 100;
-  const baseUrl = `${OMEKA_API_BASE}items?owner_id=${omekaUserId}&per_page=${perPage}&sort_by=modified&sort_order=desc`;
 
-  // Première page pour déterminer le total
-  const firstUrl = omekaApiUrl(`${baseUrl}&page=1`);
-  const firstResponse = await fetch(firstUrl);
+  const firstResponse = await fetch(buildOwnerItemsUrl(omekaUserId, perPage, 1));
   if (!firstResponse.ok) {
     throw new Error(`Erreur Omeka S (${firstResponse.status}) lors de la récupération des ressources par owner`);
   }
@@ -348,7 +600,6 @@ export async function fetchUserResourcesByOwnerFromOmeka(omekaUserId: number): P
 
   let allItems: Record<string, any>[] = [...firstData];
 
-  // Si la première page est pleine, charger les suivantes en parallèle
   if (firstData.length === perPage) {
     const totalHeader = firstResponse.headers.get('Omeka-S-Total-Results');
     const total = totalHeader ? parseInt(totalHeader, 10) : null;
@@ -359,7 +610,7 @@ export async function fetchUserResourcesByOwnerFromOmeka(omekaUserId: number): P
       const pageResults = await Promise.all(
         pageNumbers.map(async (page) => {
           try {
-            const r = await fetch(omekaApiUrl(`${baseUrl}&page=${page}`));
+            const r = await fetch(buildOwnerItemsUrl(omekaUserId, perPage, page));
             if (!r.ok) return [];
             const d = await r.json();
             return Array.isArray(d) ? d : [];
@@ -370,37 +621,62 @@ export async function fetchUserResourcesByOwnerFromOmeka(omekaUserId: number): P
       );
       for (const pageData of pageResults) {
         allItems.push(...pageData);
-        if (pageData.length < perPage) break; // Dernière page réelle
+        if (pageData.length < perPage) break;
       }
     }
   }
 
-  const cards = allItems
-    .map(mapOmekaItemToStudentCard)
-    .filter((card): card is StudentResourceCard => card !== null);
+  const cards = mapOmekaItemsToCards(allItems);
+  return enrichCardThumbnails(cards, allItems);
+}
 
-  // Enrichissement des thumbnails manquants — max 5 requêtes simultanées
-  const needsEnrichment = cards
-    .map((card, index) => {
-      const rawItem = allItems.find((i) => i['o:id'] === card.id);
-      return (!card.thumbnail || isOmekaPlaceholderThumbnail(card.thumbnail)) && rawItem?.['o:media']?.length
-        ? { card, index, rawItem }
-        : null;
-    })
-    .filter(Boolean) as { card: StudentResourceCard; index: number; rawItem: any }[];
+/** Ressource créée récemment — affichage optimiste dans Mon espace */
+export function buildPendingMonEspaceResourceKey(omekaUserId: number | string): string {
+  return `monespace_pending_${omekaUserId}`;
+}
 
-  const CONCURRENCY = 5;
-  for (let i = 0; i < needsEnrichment.length; i += CONCURRENCY) {
-    const batch = needsEnrichment.slice(i, i + CONCURRENCY);
-    await Promise.all(
-      batch.map(async ({ index, rawItem }) => {
-        const enriched = await enrichThumbnailFromMedia(rawItem);
-        if (enriched) cards[index] = { ...cards[index], thumbnail: enriched };
-      }),
-    );
+export function stashPendingMonEspaceResource(omekaUserId: number, card: StudentResourceCard): void {
+  try {
+    sessionStorage.setItem(buildPendingMonEspaceResourceKey(omekaUserId), JSON.stringify(card));
+  } catch {
+    // sessionStorage indisponible
+  }
+}
+
+export function consumePendingMonEspaceResource(omekaUserId: number): StudentResourceCard | null {
+  try {
+    const raw = sessionStorage.getItem(buildPendingMonEspaceResourceKey(omekaUserId));
+    if (!raw) return null;
+    sessionStorage.removeItem(buildPendingMonEspaceResourceKey(omekaUserId));
+    return JSON.parse(raw) as StudentResourceCard;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Récupère les ressources récemment modifiées de l'utilisateur (section « Dernières modifications »).
+ */
+export async function getRecentUserResources(
+  userId: number,
+  omekaUserId?: number | null,
+  limit = 5,
+): Promise<StudentResourceCard[]> {
+  if (omekaUserId && omekaUserId > 0) {
+    try {
+      return await fetchRecentUserResourcesFromApi(omekaUserId, limit);
+    } catch (error) {
+      console.error('Error fetching recent user resources from UserSpace API:', error);
+      try {
+        return await fetchRecentUserResourcesByOwnerFromOmeka(omekaUserId, limit);
+      } catch (fallbackError) {
+        console.error('Error fetching recent user resources from Omeka:', fallbackError);
+      }
+    }
   }
 
-  return cards.map(normalizeStudentResourceCard);
+  const all = await getUserResources(userId, omekaUserId);
+  return all.slice(0, limit);
 }
 
 /**
@@ -411,9 +687,14 @@ export async function fetchUserResourcesByOwnerFromOmeka(omekaUserId: number): P
 export async function getUserResources(userId: number, omekaUserId?: number | null): Promise<StudentResourceCard[]> {
   if (omekaUserId && omekaUserId > 0) {
     try {
-      return await fetchUserResourcesByOwnerFromOmeka(omekaUserId);
+      return await fetchAllUserResourcesFromApi(omekaUserId);
     } catch (error) {
-      console.error('Error fetching user resources by o:owner from Omeka:', error);
+      console.error('Error fetching user resources from UserSpace API:', error);
+      try {
+        return await fetchUserResourcesByOwnerFromOmeka(omekaUserId);
+      } catch (fallbackError) {
+        console.error('Error fetching user resources by o:owner from Omeka:', fallbackError);
+      }
     }
   }
 

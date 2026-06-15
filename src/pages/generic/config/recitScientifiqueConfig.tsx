@@ -19,14 +19,6 @@ export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
       label: 'Figures narratives',
       zone: 'details',
     },
-    contributors: {
-      property: 'dcterms:creator',
-      type: 'resource',
-      label: 'Chercheur.e(s) / Institution(s) porteuse(s)',
-      resourceTemplateId: 72,
-      multiSelect: true,
-      zone: 'overview',
-    },
     keywords: {
       property: 'jdc:hasConcept',
       type: 'resource',

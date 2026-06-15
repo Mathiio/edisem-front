@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { getWatchlistIds, toggleWatchlistItem } from '@/services/StudentSpace';
+import { getWatchlistIds, toggleWatchlistItem } from '@/services/UserSpace';
 
 interface WatchlistContextValue {
   ids: Set<number>;

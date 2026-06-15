@@ -16,14 +16,6 @@ export const recitCitoyenConfigSimplified: SimplifiedDetailConfig = {
     application: { property: 'schema:application', type: 'textarea', label: 'Résumé', zone: 'details' },
     figureNarrative: { property: 'genstory:hasConditionInitial', type: 'textarea', label: 'Figure narrative', zone: 'details'},
     slogan: { property: 'storyline:hasQuote', type: 'textarea', label: 'Slogan', zone: 'details' },
-    contributors: {
-      property: 'dcterms:creator',
-      type: 'resource',
-      label: 'Auteurs',
-      resourceTemplateId: 72,
-      multiSelect: true,
-      zone: 'overview',
-    },
     keywords: {
       property: 'jdc:hasConcept',
       type: 'resource',

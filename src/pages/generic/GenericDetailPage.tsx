@@ -56,7 +56,7 @@ import {
   shouldHardDeleteLinkedResource,
   canDeleteLinkedResource,
 } from './resourceHelpers';
-import { deleteUserResource } from '@/services/StudentSpace';
+import { deleteUserResource, stashPendingMonEspaceResource, type StudentResourceCard } from '@/services/UserSpace';
 import { useFormState } from '@/hooks/useFormState';
 import { useAuth } from '@/hooks/useAuth';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '@/utils/omekaApi';
@@ -1399,7 +1399,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       ];
     }
 
-    // Contributeur/intervenant = personne connectée (analyse critique, expérimentation, feedback, outils)
+    // Contributeur/intervenant = personne connectée (analyse critique, éléments narratif/esthétique, expérimentation, feedback, outils)
     const autoContributor = getAutoContributorConfig(config.resourceTemplateId);
     if (autoContributor) {
       const formContributors = data[autoContributor.fieldKey] ?? data[autoContributor.property];
@@ -1910,7 +1910,20 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     }
 
     if (config.formOnly) {
-      navigate(monEspacePath);
+      if (currentOmekaUserId && (config.resourceType || config.type)) {
+        const pendingCard: StudentResourceCard = {
+          id: newItemId,
+          title: savedTitle || 'Sans titre',
+          thumbnail: null,
+          type: (config.resourceType || config.type) as StudentResourceCard['type'],
+          actants: [],
+          created: new Date().toISOString(),
+        };
+        stashPendingMonEspaceResource(currentOmekaUserId, pendingCard);
+        navigate(monEspacePath, { state: { pendingResource: pendingCard } });
+      } else {
+        navigate(monEspacePath);
+      }
       return result;
     }
 

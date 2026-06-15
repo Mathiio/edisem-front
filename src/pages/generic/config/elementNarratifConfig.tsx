@@ -21,6 +21,7 @@ export const elementNarratifConfigSimplified: SimplifiedDetailConfig = {
       resourceTemplateId: 72,
       multiSelect: true,
       zone: 'overview',
+      editable: false,
     },
   },
 
@@ -66,11 +67,6 @@ export const elementNarratifConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'element_narratif',
   defaultView: 'Analyse',
   formEnabled: true,
-
-  contributorButtons: [
-    { label: 'Ajouter Intervenant', templateId: 72, property: 'dcterms:creator' },
-    { label: 'Ajouter Étudiant', templateId: 96, property: 'dcterms:creator' },
-  ],
 
   smartRecommendations: {
     maxRecommendations: 5,

@@ -20,6 +20,7 @@ export const elementEsthetiqueConfigSimplified: SimplifiedDetailConfig = {
       resourceTemplateId: 72,
       multiSelect: true,
       zone: 'overview',
+      editable: false,
     },
   },
 
@@ -55,11 +56,6 @@ export const elementEsthetiqueConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'element_esthetique',
   defaultView: 'Analyse',
   formEnabled: true,
-
-  contributorButtons: [
-    { label: 'Ajouter Intervenant', templateId: 72, property: 'dcterms:creator' },
-    { label: 'Ajouter Étudiant', templateId: 96, property: 'dcterms:creator' },
-  ],
 
   smartRecommendations: {
     maxRecommendations: 5,

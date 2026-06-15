@@ -4,7 +4,7 @@ import { UniversityIcon, ExperimentationIcon, SettingsIcon, CitationIcon, School
 import { motion, Variants } from 'framer-motion';
 import { MySpaceResourceCard, MySpaceResourceCardSkeleton } from '@/components/features/espaceEtudiant/MySpaceResourceCard';
 import { useEffect, useState } from 'react';
-import { getCourses, getResourcesByCourse, getTeacherResources, type AllStudentResources, type StudentResourceCard, type Course } from '@/services/StudentSpace';
+import { getCourses, getResourcesByCourse, getTeacherResources, type AllStudentResources, type StudentResourceCard, type Course } from '@/services/UserSpace';
 import { CorpusSection } from '@/components/features/home/CorpusSection';
 
 const fadeIn: Variants = {

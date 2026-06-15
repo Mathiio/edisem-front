@@ -26,7 +26,7 @@ import {
 } from '@/components/features/admin/AdminListToolbar';
 import { matchesAdminSearch, sortByStringField } from '@/components/features/admin/adminListConfig';
 import { useAdminListControls } from '@/hooks/useAdminListControls';
-import { getCourses, type Course, type StudentResourceCard, deleteUserResource } from '@/services/StudentSpace';
+import { getCourses, type Course, type StudentResourceCard, deleteUserResource } from '@/services/UserSpace';
 import { getRessourceLabel } from '@/config/resourceConfig';
 
 const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=UserSpace';

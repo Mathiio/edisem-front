@@ -1,7 +1,7 @@
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
 import { SimplifiedDetailConfig } from '../simplifiedConfig';
 import { convertToGenericConfig } from '../simplifiedConfigAdapter';
-import { getSameCourseExperimentations } from '@/services/StudentSpace';
+import { getSameCourseExperimentations } from '@/services/UserSpace';
 
 /**
  * Configuration simplifiée pour les expérimentations étudiantes

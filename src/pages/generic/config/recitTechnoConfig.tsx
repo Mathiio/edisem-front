@@ -20,14 +20,6 @@ export const recitTechnoConfigSimplified: SimplifiedDetailConfig = {
       zone: 'details',
     },
     slogan: { property: 'storyline:hasQuote', type: 'textarea', label: 'Phrases clés marketing', zone: 'details' },
-    contributors: {
-      property: 'dcterms:creator',
-      type: 'resource',
-      label: 'Entreprise / Institution porteuse',
-      resourceTemplateId: 72,
-      multiSelect: true,
-      zone: 'overview',
-    },
     keywords: {
       property: 'jdc:hasConcept',
       type: 'resource',

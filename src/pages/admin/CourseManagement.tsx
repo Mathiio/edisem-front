@@ -27,7 +27,7 @@ import {
 } from '@/components/features/admin/AdminListToolbar';
 import { matchesAdminSearch, sortByStringField } from '@/components/features/admin/adminListConfig';
 import { useAdminListControls } from '@/hooks/useAdminListControls';
-import { getCourses, createCourse, updateCourse, deleteCourse, getCourseStudents, type Course, type CourseFormData, type Student } from '@/services/StudentSpace';
+import { getCourses, createCourse, updateCourse, deleteCourse, getCourseStudents, type Course, type CourseFormData, type Student } from '@/services/UserSpace';
 
 // Sessions disponibles
 const SESSIONS = ['Automne', 'Hiver', 'Été'];

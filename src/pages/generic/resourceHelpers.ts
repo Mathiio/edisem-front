@@ -9,6 +9,8 @@ export interface AutoContributorConfig {
 
 export const AUTO_CONTRIBUTOR_BY_TEMPLATE: Record<number, AutoContributorConfig> = {
   101: { property: 'schema:contributor', fieldKey: 'contributors' }, // analyse critique
+  115: { property: 'dcterms:creator', fieldKey: 'contributors' }, // élément narratif
+  118: { property: 'dcterms:creator', fieldKey: 'contributors' }, // élément esthétique
   108: { property: 'schema:agent', fieldKey: 'contributors' }, // expérimentation
   127: { property: 'schema:agent', fieldKey: 'contributors' }, // expérimentation étudiant
   110: { property: 'schema:contributor', fieldKey: 'contributors' }, // retour d'expérience
@@ -74,8 +76,32 @@ type ViewTemplateMeta = {
 export const isCreateOnlyTemplate = (templateId?: number): boolean =>
   templateId != null && PARENT_LINKED_ONLY_TEMPLATE_IDS.has(templateId);
 
+type ViewCreateOnlyMeta = {
+  createOnly?: boolean;
+  resourceTemplateId?: number;
+  resourceTemplateIds?: number[];
+};
+
+/** Déduit si une vue est « création directe » (sans picker), ex. analyse critique, éléments narratifs/esthétiques. */
+export const inferViewCreateOnly = (view: ViewCreateOnlyMeta): boolean => {
+  if (view.createOnly === true) return true;
+  if (view.createOnly === false) return false;
+  if (view.resourceTemplateId != null && isCreateOnlyTemplate(view.resourceTemplateId)) return true;
+  return view.resourceTemplateIds?.some((id) => isCreateOnlyTemplate(id)) ?? false;
+};
+
+export const resolveViewTemplateId = (view: ViewCreateOnlyMeta): number | undefined => {
+  if (view.resourceTemplateId != null) return view.resourceTemplateId;
+  if (view.resourceTemplateIds?.length === 1) return view.resourceTemplateIds[0];
+  return view.resourceTemplateIds?.find((id) => isCreateOnlyTemplate(id)) ?? view.resourceTemplateIds?.[0];
+};
+
 export const isCreateOnlyView = (viewOption: ViewTemplateMeta | undefined, resourceTemplateId?: number): boolean =>
-  viewOption?.createOnly ?? isCreateOnlyTemplate(resourceTemplateId) ?? false;
+  inferViewCreateOnly({
+    createOnly: viewOption?.createOnly,
+    resourceTemplateId: resourceTemplateId ?? viewOption?.resourceTemplateId,
+    resourceTemplateIds: viewOption?.resourceTemplateIds,
+  });
 
 /** Analyses critiques, retours d'expérience, etc. — suppression Omeka depuis le parent (popup) */
 export const shouldHardDeleteLinkedResource = (resourceTemplateId?: number): boolean => {
@@ -100,11 +126,14 @@ export const resolveViewResourceTemplateId = (
   if (viewOption?.resourceTemplateId != null) {
     return viewOption.resourceTemplateId;
   }
+  if (viewOption?.resourceTemplateIds?.length === 1) {
+    return viewOption.resourceTemplateIds[0];
+  }
   if (defaults.single?.[viewKey] != null) {
     return defaults.single[viewKey];
   }
   const fromList = viewOption?.resourceTemplateIds?.find((id) => isCreateOnlyTemplate(id));
-  return fromList;
+  return fromList ?? viewOption?.resourceTemplateIds?.[0];
 };
 
 export const getResourceFallbackTitle = (id: number | string, templateId?: number | string): string => {

@@ -3,7 +3,7 @@ import { PageBanner } from '@/components/ui/PageBanner';
 import { motion, Variants } from 'framer-motion';
 import { MySpaceResourceCard, MySpaceResourceCardSkeleton } from '@/components/features/espaceEtudiant/MySpaceResourceCard';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { getUserResources, getStudentCourses, getCourses, deleteUserResource, type Course } from '@/services/StudentSpace';
+import { getUserResources, getStudentCourses, getCourses, deleteUserResource, type Course } from '@/services/UserSpace';
 import { addToast } from '@heroui/react';
 import { CreateResourceAction } from '@/components/features/espaceEtudiant/CreateResourceAction';
 import { ExperimentationIcon, UniversityIcon, WarningIcon, BookIcon } from '@/components/ui/icons';

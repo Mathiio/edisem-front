@@ -20,14 +20,6 @@ export const recitMediatiqueConfigSimplified: SimplifiedDetailConfig = {
       zone: 'details',
     },
     slogan: { property: 'storyline:hasQuote', type: 'textarea', label: 'Citation', zone: 'details' },
-    contributors: {
-      property: 'dcterms:creator',
-      type: 'resource',
-      label: 'Journaliste(s)',
-      resourceTemplateId: 72,
-      multiSelect: true,
-      zone: 'overview',
-    },
     keywords: {
       property: 'jdc:hasConcept',
       type: 'resource',

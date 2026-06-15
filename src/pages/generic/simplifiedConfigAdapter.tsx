@@ -229,11 +229,12 @@ const InlineMicroresumeForm: React.FC<{
 import { getResourceUrl, getResourceConfigByTemplateId, isFormOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
 import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/features/database/AutoResizingTextarea';
 import {
-  CREATE_ONLY_TEMPLATE_IDS,
+  inferViewCreateOnly,
   getLinkedResourceId,
   getLinkedResourceTitle,
   getResourceFallbackTitle,
   getResourceOwnerId,
+  resolveViewTemplateId,
   shouldHardDeleteLinkedResource,
   canUnlinkLinkedResource,
 } from './resourceHelpers';
@@ -701,9 +702,17 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
       enrichedData.associatedMedia = associatedMedia;
 
       // ÉTAPE 2b : Charger les contributeurs EN PRIORITÉ (avant l'affichage)
-      const contributorProperties = ['schema:agent', 'jdc:hasActant', 'dcterms:contributor', 'schema:contributor', 'cito:credits'];
+      const contributorProperties = [
+        'schema:agent',
+        'jdc:hasActant',
+        'dcterms:contributor',
+        'schema:contributor',
+        'cito:credits',
+        'dcterms:creator',
+        ...(config.contributorButtons?.map((btn) => btn.property) ?? []),
+      ];
       const contributorIds = new Set<number>();
-      contributorProperties.forEach((prop) => {
+      [...new Set(contributorProperties)].forEach((prop) => {
         const ids = getResourceIds(data, prop);
         ids.forEach((id) => contributorIds.add(id));
       });
@@ -764,7 +773,16 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
               picture: thumbnailUrl,
               thumbnail: thumbnailUrl,
               thumbnailUrl,
-              type: templateId === 96 ? 'actant' : templateId === 72 ? 'student' : 'personne',
+              type:
+                templateId === 72
+                  ? 'actant'
+                  : templateId === 96
+                    ? 'student'
+                    : templateId === 104
+                      ? 'organisation'
+                      : templateId === 33
+                        ? 'personne'
+                        : 'personne',
               template: templateId,
               resource_template_id: templateId,
               ownerId: resourceData['o:owner']?.['o:id'],
@@ -1308,9 +1326,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
     title: view.title,
     editable: view.editable !== false,
     hiddenInForm: view.hiddenInForm,
-    createOnly:
-      view.createOnly ??
-      (view.resourceTemplateId != null && CREATE_ONLY_TEMPLATE_IDS.has(view.resourceTemplateId)),
+    createOnly: inferViewCreateOnly(view),
     resourceLabel: view.title,
     resourceTemplateId: view.resourceTemplateId,
     resourceTemplateIds: view.resourceTemplateIds,
@@ -1411,9 +1427,8 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
 
           const mapUrl = view.urlPattern ? (item: any) => view.urlPattern!.replace(':id', item.id) : undefined;
 
-          const viewCreateOnly =
-            view.createOnly ??
-            (view.resourceTemplateId != null && CREATE_ONLY_TEMPLATE_IDS.has(view.resourceTemplateId));
+          const viewCreateOnly = inferViewCreateOnly(view);
+          const viewTemplateId = resolveViewTemplateId(view);
 
           return (
             <ItemsList
@@ -1437,10 +1452,10 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                   : undefined
               }
               onRemoveItem={onRemoveItem ? (id: string | number) => onRemoveItem(view.key, id) : undefined}
-              resourceTemplateId={view.resourceTemplateId}
+              resourceTemplateId={viewTemplateId}
               onEdit={
                 onEditResource
-                  ? (id: string | number) => onEditResource(view.key, id, view.resourceTemplateId)
+                  ? (id: string | number) => onEditResource(view.key, id, viewTemplateId)
                   : undefined
               }
             />
@@ -1855,12 +1870,16 @@ export const convertToGenericConfig = (config: SimplifiedDetailConfig): GenericD
 
       const onAddResource = props.onAddPerson;
       const onResourcesSelected = props.onResourcesSelected;
+      const contributorProperties = config.contributorButtons?.length
+        ? [...new Set(config.contributorButtons.map((btn) => btn.property))]
+        : undefined;
 
       return (
         <SimpleOverviewCard
           {...props}
           fields={fields}
           resourceType={config.resourceType}
+          contributorProperties={contributorProperties}
           onFieldChange={onFieldChange}
           onAddResource={onAddResource}
           onResourcesSelected={onResourcesSelected}
