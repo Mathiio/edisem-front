@@ -147,8 +147,14 @@ export const getResourceThumbnail = (item: any): string => {
     if (pictureThumb) return pictureThumb;
 
     // 2. Check for YouTube URL (for recits)
-    if (item.url) {
-        const ytThumb = getYouTubeThumbnail(item.url);
+    const urlCandidates = [
+        item.url,
+        item.fullUrl,
+        item.externalLink,
+        item['schema:url']?.[0]?.['@id'],
+    ];
+    for (const candidate of urlCandidates) {
+        const ytThumb = getYouTubeThumbnail(candidate);
         if (ytThumb) return ytThumb;
     }
 
@@ -194,7 +200,7 @@ export const getYouTubeThumbnail = (url: string | string[]): string | undefined 
     const match = finalUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/);
     if (!match || !match[1]) return undefined;
 
-    return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
+    return `https://img.youtube.com/vi/${match[1]}/0.jpg`;
 };
 
 /**
