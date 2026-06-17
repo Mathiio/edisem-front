@@ -1999,6 +1999,13 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
   fields.forEach((f) => {
     if (f.customVocabId) customVocabByProperty[f.property] = f.customVocabId;
   });
+  config.views?.forEach((view) => {
+    view.vocabFields?.forEach((f) => {
+      if (f.type === 'customVocab' && f.vocabId) {
+        customVocabByProperty[f.property] = f.vocabId;
+      }
+    });
+  });
 
   return async (data: any, itemId?: string | number): Promise<void> => {
     if (!itemId) {
@@ -2054,6 +2061,9 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
               });
             });
           }
+          view.vocabFields?.forEach((f) => {
+            keyToProperty[f.property] = f.property;
+          });
         });
       }
 

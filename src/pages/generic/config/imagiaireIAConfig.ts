@@ -19,6 +19,13 @@ export const IMAGINAIRE_IA_VOCAB_FIELDS: VocabGroupField[] = [
     propertyId: 3233,
   },
   {
+    label: "Figure de l'IA",
+    property: 'storyline:hasRole',
+    type: 'customVocab',
+    vocabId: 55,
+    propertyId: 3235,
+  },
+  {
     label: 'Cadrages idéologiques',
     property: 'genstory:hasParam',
     type: 'customVocab',
