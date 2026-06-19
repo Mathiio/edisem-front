@@ -226,7 +226,8 @@ const InlineMicroresumeForm: React.FC<{
     </div>
   );
 };
-import { getResourceUrl, getResourceConfigByTemplateId, isFormOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
+import { getResourceConfigByTemplateId, isFormOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
+import { buildCachedResourceUrl } from '@/lib/resourceUtils';
 import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/features/database/AutoResizingTextarea';
 import {
   inferViewCreateOnly,
@@ -786,6 +787,17 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
               template: templateId,
               resource_template_id: templateId,
               ownerId: resourceData['o:owner']?.['o:id'],
+              url: buildCachedResourceUrl(
+                templateId === 72
+                  ? 'actant'
+                  : templateId === 96
+                    ? 'student'
+                    : templateId === 104
+                      ? 'organisation'
+                      : 'personne',
+                resourceId,
+                resourceData,
+              ),
             };
           } catch (err) {
             console.error(`Erreur chargement contributeur ${resourceId}:`, err);
@@ -884,8 +896,6 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
 
               const templateId = resourceData['o:resource_template']?.['o:id'];
               const resourceType = getResourceTypeFromTemplate(templateId, resourceData);
-              const externalUrl = resourceData['schema:url']?.[0]?.['@id'];
-              const internalUrl = getResourceUrl(resourceType, resourceId);
 
               resourceCache[resourceId] = {
                 id: resourceId,
@@ -907,7 +917,7 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
                 issue: resourceData['bibo:issue']?.[0]?.['@value'] || null,
                 number: resourceData['bibo:number']?.[0]?.['@value'] || null,
                 mediagraphyType: resourceData['edisem:typeMediagraphie']?.[0]?.['@value'] || null,
-                url: resourceData['bibo:uri']?.[0]?.['@id'] || externalUrl || internalUrl,
+                url: buildCachedResourceUrl(resourceType, resourceId, resourceData),
                 ownerId: resourceData['o:owner']?.['o:id'],
               };
             } catch (err) {
@@ -1162,8 +1172,6 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
 
               const templateId = resourceData['o:resource_template']?.['o:id'];
               const resourceType = getResourceTypeFromTemplate(templateId, resourceData);
-              const externalUrl = resourceData['schema:url']?.[0]?.['@id'];
-              const internalUrl = getResourceUrl(resourceType, resourceId);
 
               resourceCache[resourceId] = {
                 id: resourceId,
@@ -1185,7 +1193,7 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
                 issue: resourceData['bibo:issue']?.[0]?.['@value'] || null,
                 number: resourceData['bibo:number']?.[0]?.['@value'] || null,
                 mediagraphyType: resourceData['edisem:typeMediagraphie']?.[0]?.['@value'] || null,
-                url: externalUrl || internalUrl,
+                url: buildCachedResourceUrl(resourceType, resourceId, resourceData),
                 ownerId: resourceData['o:owner']?.['o:id'],
               };
             } catch (err) {

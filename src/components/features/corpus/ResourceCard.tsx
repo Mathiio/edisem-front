@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { addToast } from '@/theme/components';
 import { IconSvgProps } from '@/types/ui';
 import { ThumbnailIcon, UserIcon, SeminaireIcon, BookMarkIcon } from '@/components/ui/icons';
-import { getResourceAuthors, getResourceSubtitle, getSafeResourceUrl, getResourceThumbnail } from '@/lib/resourceUtils';
+import { getResourceAuthors, getResourceSubtitle, getResourceThumbnail, navigateToResource } from '@/lib/resourceUtils';
 import { getRessourceLabel, getResourceIcon } from '@/config/resourceConfig';
 import { useWatchlist } from '@/hooks/useWatchlist';
 
@@ -66,26 +66,11 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
 
   // Determine Click Handler
   const handleClick = () => {
-      // 1. Try to get URL from item (most robust)
-      if (item) {
-          const url = getSafeResourceUrl(item);
-          if (url && url !== '#') {
-            navigate(url);
-            return;
-          }
-      } 
-      
-      // 2. Fallback: construct from type and explicitly passed properties or item id
-      // Since 'id' is not a prop, we check item.id from the optional item
-      if (type && item?.id) {
-           const url = getSafeResourceUrl({ type, id: item.id });
-           if (url && url !== '#') {
-             navigate(url);
-             return;
-           }
-      }
-      
-      console.warn('Navigation impossible: ID manquant pour ce type', { type, item });
+    const payload = item ?? (type && resourceId != null ? { type, id: resourceId } : null);
+    if (!payload) return;
+    if (!navigateToResource(payload, navigate)) {
+      console.warn('Navigation impossible pour cette ressource', { type, item });
+    }
   };
 
   const handleWatchlistClick = useCallback(

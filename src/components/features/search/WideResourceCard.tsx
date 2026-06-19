@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThumbnailIcon, UserIcon } from '@/components/ui/icons';
-import { getResourceAuthors, getResourceSubtitle, getSafeResourceUrl, getResourceThumbnail } from '@/lib/resourceUtils';
+import { getResourceAuthors, getResourceSubtitle, getResourceThumbnail, navigateToResource } from '@/lib/resourceUtils';
 
 export interface WideResourceCardProps {
   title?: string;
@@ -62,21 +62,11 @@ export const WideResourceCard: React.FC<WideResourceCardProps> = ({
   const hasAuthors = finalAuthors.length > 0;
 
   const handleClick = () => {
-      if (item) {
-          const url = getSafeResourceUrl(item);
-          if (url && url !== '#') {
-            navigate(url);
-            return;
-          }
-      } 
-      if (type && item?.id) {
-           const url = getSafeResourceUrl({ type, id: item.id });
-           if (url && url !== '#') {
-             navigate(url);
-             return;
-           }
-      }
+    const payload = item ?? (type && item?.id ? { type, id: item.id } : null);
+    if (!payload) return;
+    if (!navigateToResource(payload, navigate)) {
       console.warn('Navigation impossible', { type, item });
+    }
   };
 
   return (

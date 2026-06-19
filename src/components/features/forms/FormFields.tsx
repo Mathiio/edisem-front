@@ -1,37 +1,23 @@
-import React from 'react';
-import { DateInput } from '@heroui/react';
-import { parseDate, type DateValue } from '@internationalized/date';
+import React, { useEffect, useState } from 'react';
+import { InputOtp } from '@heroui/input-otp';
 import { Input, Textarea, formFieldLabelClass } from '@/theme/components';
 import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/features/database/AutoResizingTextarea';
+import { buildFlexibleDate, parseFlexibleDate, type FlexibleDateParts } from '@/lib/flexibleDate';
 
 export { formFieldLabelClass };
 
-const dateInputWrapperClass = [
-  '!bg-c2',
-  '!border-2',
-  '!border-c3',
-  '!shadow-none',
-  'data-[hover=true]:!border-c3',
-  'data-[hover=true]:!bg-c3',
-  'group-data-[focus=true]:!bg-c3',
-  'group-data-[focus=true]:!border-c3',
-  'rounded-xl',
-  'min-h-[50px]',
-  'transition-all',
-  'duration-200',
+const otpSegmentClass = [
+  'h-10 w-10',
+  'bg-c2 border-2 border-c3 rounded-lg',
+  'text-c6 text-base font-medium',
+  'data-[active=true]:border-c4',
+  'data-[has-value=true]:bg-c3',
 ].join(' ');
 
-const parseDateFieldValue = (value: string): DateValue | null => {
-  if (!value?.trim()) return null;
-  try {
-    const d = new Date(value);
-    if (!Number.isNaN(d.getTime())) {
-      return parseDate(d.toISOString().split('T')[0]);
-    }
-    return parseDate(value);
-  } catch {
-    return null;
-  }
+const otpClassNames = {
+  base: 'w-auto',
+  segmentWrapper: 'gap-1',
+  segment: otpSegmentClass,
 };
 
 type CommonFieldProps = {
@@ -66,29 +52,76 @@ export const FormTextInput: React.FC<
   </div>
 );
 
-/** Champ date segmenté HeroUI (DateInput — équivalent DateField en v2, sans calendrier popup). */
-export const FormDateInput: React.FC<CommonFieldProps> = ({ label, value, onChange, isRequired }) => (
-  <div className='w-full'>
-    <DateInput
-      size='md'
+type DateSegmentProps = {
+  label: string;
+  length: number;
+  value: string;
+  onValueChange: (value: string) => void;
+  isRequired?: boolean;
+};
+
+const DateSegmentOtp: React.FC<DateSegmentProps> = ({ label, length, value, onValueChange, isRequired }) => (
+  <div className='flex flex-col'>
+    <span className='text-xs font-medium text-c4'>{label}</span>
+    <InputOtp
+      length={length}
+      value={value}
+      allowedKeys='^[0-9]*$'
       variant='bordered'
-      label={label}
-      labelPlacement='outside-top'
-      granularity='day'
-      classNames={{
-        label: formFieldLabelClass,
-        base: 'w-full',
-        inputWrapper: dateInputWrapperClass,
-        innerWrapper: 'px-1',
-        input: 'text-c6',
-        segment: 'text-c6 data-[placeholder=true]:text-c4/60',
-      }}
-      value={parseDateFieldValue(value)}
-      onChange={(date) => onChange(date ? date.toString() : '')}
+      size='sm'
       isRequired={isRequired}
+      classNames={otpClassNames}
+      onValueChange={onValueChange}
     />
   </div>
 );
+
+/**
+ * Date partielle : jour + mois + année (segments InputOtp HeroUI).
+ * Valeurs stockées : YYYY, YYYY-MM ou YYYY-MM-DD.
+ */
+export const FormDateInput: React.FC<CommonFieldProps> = ({ label, value, onChange, isRequired }) => {
+  const [parts, setParts] = useState<FlexibleDateParts>(() => parseFlexibleDate(value));
+
+  useEffect(() => {
+    setParts(parseFlexibleDate(value));
+  }, [value]);
+
+  const updatePart = (key: keyof FlexibleDateParts, segmentValue: string) => {
+    const next = { ...parts, [key]: segmentValue };
+    setParts(next);
+    onChange(buildFlexibleDate(next));
+  };
+
+  return (
+    <div className='w-full flex flex-col gap-2'>
+      <label className={formFieldLabelClass}>{label}</label>
+      <div className='flex flex-wrap items-end gap-3'>
+        <DateSegmentOtp
+          label='Jour'
+          length={2}
+          value={parts.day}
+          onValueChange={(v) => updatePart('day', v)}
+        />
+        <span className='text-c4 pb-4 select-none'>/</span>
+        <DateSegmentOtp
+          label='Mois'
+          length={2}
+          value={parts.month}
+          onValueChange={(v) => updatePart('month', v)}
+        />
+        <span className='text-c4 pb-4 select-none'>/</span>
+        <DateSegmentOtp
+          label='Année'
+          length={4}
+          value={parts.year}
+          isRequired={isRequired}
+          onValueChange={(v) => updatePart('year', v)}
+        />
+      </div>
+    </div>
+  );
+};
 
 export const FormAutoResizeTextareaInput: React.FC<CommonFieldProps> = ({
   label,

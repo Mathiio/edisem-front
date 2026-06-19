@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { FileIcon } from '@/components/ui/icons';
 import { Bibliography } from '@/types/ui';
+import { getFormOnlyExternalUrl, isHttpUrl } from '@/lib/resourceUtils';
 
 const hasContent = (value: string | string[] | { first_name: string; last_name: string }[] | undefined | null): boolean => {
   // Si value est un tableau d'objets créateurs (avec first_name et last_name)
@@ -178,6 +178,7 @@ export const BibliographyCard: React.FC<Bibliography & { uniqueKey?: number; onE
   const { thumbnail, url, onEdit } = props;
   const resolvedId = props.id || (props as any)['o:id'] || (props as any)['value_resource_id'];
   const [isHovered, setIsHovered] = useState(false);
+  const externalUrl = getFormOnlyExternalUrl(props) || (isHttpUrl(url) ? url : null);
 
   const formatBibliography = (item: Bibliography) => {
     const template = bibliographyTemplates[item.class];
@@ -206,10 +207,16 @@ export const BibliographyCard: React.FC<Bibliography & { uniqueKey?: number; onE
         <button className='w-full gap-6 p-6 flex flex-row justify-between text-left cursor-pointer' onClick={() => resolvedId && onEdit(resolvedId)}>
           {content}
         </button>
-      ) : (
-        <Link className='w-full gap-6 p-6 flex flex-row justify-between' to={url ?? '#'} target='_blank'>
+      ) : externalUrl ? (
+        <a
+          className='w-full gap-6 p-6 flex flex-row justify-between'
+          href={externalUrl}
+          target='_blank'
+          rel='noopener noreferrer'>
           {content}
-        </Link>
+        </a>
+      ) : (
+        <div className='w-full gap-6 p-6 flex flex-row justify-between'>{content}</div>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { GenericDetailPage } from './GenericDetailPage';
 import { GenericDetailPageConfig, PageMode } from './config';
 import { StudentFormWrapper } from '@/components/features/forms/StudentFormWrapper';
+import { FormOnlyResourceGate } from './FormOnlyResourceGate';
 
 interface ConfigurableDetailPageProps {
   config: GenericDetailPageConfig;
@@ -19,7 +20,7 @@ interface ConfigurableDetailPageProps {
  *
  * En mode view: affiche GenericDetailPage directement
  * En mode edit/create: utilise StudentFormWrapper pour permettre les onglets
- * formOnly (bibliographie, organisation, etc.) : pas de vue, formulaire direct si :id
+ * formOnly : pas de page vue — lien externe uniquement, édition via ?mode=edit ou route create
  */
 export const ConfigurableDetailPage: React.FC<ConfigurableDetailPageProps> = ({ config, initialMode = 'view' }) => {
   const { id } = useParams<{ id: string }>();
@@ -28,11 +29,14 @@ export const ConfigurableDetailPage: React.FC<ConfigurableDetailPageProps> = ({ 
 
   const effectiveMode: PageMode = (() => {
     if (initialMode === 'create') return 'create';
-    if (config.formOnly && id) return 'edit';
     if (urlMode === 'edit') return 'edit';
     if (initialMode !== 'view') return initialMode;
     return 'view';
   })();
+
+  if (config.formOnly && effectiveMode === 'view' && id) {
+    return <FormOnlyResourceGate itemId={id} />;
+  }
 
   if (effectiveMode === 'view') {
     return <GenericDetailPage config={config} initialMode='view' />;

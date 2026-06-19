@@ -9,18 +9,19 @@ import React, { useState, useEffect } from 'react';
 import { motion, Variants } from 'framer-motion';
 import { Spinner, Input, Textarea, Slider, Button, Link, cn } from '@heroui/react';
 import { addToast } from '@/theme/components';
-import { DatePicker } from '@heroui/react';
-import { parseDate, type DateValue } from '@internationalized/date';
+import { FormAutoResizeTextareaInput, FormDateInput } from '@/components/features/forms/FormFields';
+import { formatFlexibleDateDisplay } from '@/lib/flexibleDate';
 import { Splide, SplideTrack, SplideSlide } from '@splidejs/react-splide';
 import { carouselArrowButtonClass } from '@/components/ui/Carrousels';
 import { ImageIcon, UserIcon, ShareIcon, MovieIcon, ArrowIcon, AddIcon } from '@/components/ui/icons';
 import MediaViewer from '@/components/features/conference/MediaViewer';
 import { MediaDropzone, MediaFile } from '@/components/features/forms/MediaDropzone';
-import { FormAutoResizeTextareaInput } from '@/components/features/forms/FormFields';
 import { InternalFieldConfig, getOverviewFields, getDetailsFields, getHeaderFields, VocabGroupField } from './simplifiedConfig';
 import { fetchCustomVocabTerms } from '@/utils/customVocab';
 import { getOmekaValue, getResourceIds } from './simplifiedConfigAdapter';
 import { isValidYouTubeUrl, getYouTubeThumbnailUrl } from '@/lib/utils';
+import { getFormOnlyExternalUrl } from '@/lib/resourceUtils';
+import { isFormOnlyResourceType } from '@/config/resourceConfig';
 import { Select, SelectItem } from '@/theme/components/select';
 import {
   Dropdown as ThemeDropdown,
@@ -125,11 +126,36 @@ const getPersonRoute = (person: any): string => {
       return `/intervenant/${person.id}`;
     case 'personne':
       return `/personne/${person.id}`;
-    case 'organisation':
-      return `/organisation/${person.id}`;
     default:
       return `/conferencier/${person?.id}`;
   }
+};
+
+const getPersonLinkHref = (person: any): string | null => {
+  if (isFormOnlyResourceType(person?.type)) {
+    return getFormOnlyExternalUrl(person);
+  }
+  if (!person?.id) return null;
+  return getPersonRoute(person);
+};
+
+const PersonLink: React.FC<{ person: any; className?: string; children: React.ReactNode }> = ({ person, className, children }) => {
+  const href = getPersonLinkHref(person);
+  if (!href) {
+    return <div className={className}>{children}</div>;
+  }
+  if (href.startsWith('http')) {
+    return (
+      <Link href={href} isExternal underline='none' className={className}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  );
 };
 
 const getPersonDisplayName = (person: any): string => {
@@ -415,7 +441,7 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
             <div className='w-full flex justify-between gap-2.5 items-center'>
               <div className='w-fit flex flex-wrap justify-start gap-2.5 items-center'>
                 {Array.isArray(personnes) && personnes.length > 0 && personnes[0]?.id != null && (
-                  <Link href={getPersonRoute(personnes[0])} className='w-fit flex justify-start gap-2.5 items-center'>
+                  <PersonLink person={personnes[0]} className='w-fit flex justify-start gap-2.5 items-center'>
                     {getPersonPicture(personnes[0]) ? (
                       <img src={getPersonPicture(personnes[0]) ?? ''} alt='Avatar' className='w-9 h-9 rounded-lg object-cover' />
                     ) : (
@@ -424,7 +450,7 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
                     <div className='flex flex-col items-start gap-0.5'>
                       <h3 className='text-c6 font-medium text-base'>{getPersonDisplayName(personnes[0])}</h3>
                     </div>
-                  </Link>
+                  </PersonLink>
                 )}
 
                 {Array.isArray(personnes) && personnes.length > 1 && (
@@ -435,18 +461,24 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
                       </Button>
                     </ThemeDropdownTrigger>
                     <ThemeDropdownMenu aria-label='Autres contributeurs' className='p-2' classNames={dropdownMenuClassNames}>
-                      {personnes.slice(1).map((person, index) => (
-                        <ThemeDropdownItem key={person.id || `person-${index}`} className={dropdownMenuItemClass} href={getPersonRoute(person)}>
-                          <div className={`flex items-center gap-4 w-full ${dropdownItemInnerPadding} rounded-lg hover:bg-c3 text-c6`}>
-                            {getPersonPicture(person) ? (
-                              <img src={getPersonPicture(person) ?? ''} alt='Avatar' className='w-9 h-9 rounded-lg object-cover' />
-                            ) : (
-                              <UserIcon size={18} className='text-c4' />
-                            )}
-                            <span className='text-base'>{getPersonDisplayName(person)}</span>
-                          </div>
-                        </ThemeDropdownItem>
-                      ))}
+                      {personnes.slice(1).map((person, index) => {
+                        const personHref = getPersonLinkHref(person);
+                        return (
+                          <ThemeDropdownItem
+                            key={person.id || `person-${index}`}
+                            className={dropdownMenuItemClass}
+                            href={personHref?.startsWith('http') ? personHref : personHref || undefined}>
+                            <div className={`flex items-center gap-4 w-full ${dropdownItemInnerPadding} rounded-lg hover:bg-c3 text-c6`}>
+                              {getPersonPicture(person) ? (
+                                <img src={getPersonPicture(person) ?? ''} alt='Avatar' className='w-9 h-9 rounded-lg object-cover' />
+                              ) : (
+                                <UserIcon size={18} className='text-c4' />
+                              )}
+                              <span className='text-base'>{getPersonDisplayName(person)}</span>
+                            </div>
+                          </ThemeDropdownItem>
+                        );
+                      })}
                     </ThemeDropdownMenu>
                   </ThemeDropdown>
                 )}
@@ -620,21 +652,6 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
   const urlField = detailsFields.find((f) => f.type === 'url');
   const fullUrl = urlField ? (getOmekaValue(itemDetails, urlField.property) as string) : itemDetails?.url || '';
 
-  // Parse date for DatePicker
-  const parsedDate: DateValue | null = date
-    ? (() => {
-        try {
-          const d = new Date(date);
-          if (!isNaN(d.getTime())) {
-            return parseDate(d.toISOString().split('T')[0]) as DateValue;
-          }
-          return null;
-        } catch {
-          return null;
-        }
-      })()
-    : null;
-
   const toggleExpansion = () => {
     if (!isEditing) {
       setExpanded(!expanded);
@@ -673,21 +690,11 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
 
           {/* === Section Date === */}
           {dateField && (
-            <div className='flex flex-col gap-2'>
-              <label className={fieldLabelClass}>{dateField.label}</label>
-              <DatePicker
-                aria-label={dateField.label}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                value={parsedDate as any}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                onChange={(value: any) => onFieldChange?.(dateField.property, value ? value.toString() : null)}
-                classNames={{
-                  base: 'w-full',
-                  inputWrapper: inputWrapperClass,
-                  input: 'text-c6',
-                }}
-              />
-            </div>
+            <FormDateInput
+              label={dateField.label}
+              value={String(date || '')}
+              onChange={(value) => onFieldChange?.(dateField.property, value || null)}
+            />
           )}
 
           {/* === Section Description === */}
@@ -821,7 +828,7 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
         variants={itemVariants}
         className='cursor-pointer flex flex-col bg-c2 hover:bg-c3 p-6 rounded-lg gap-2.5 transition-all ease-in-out duration-200'
         onClick={toggleExpansion}>
-        {date && <h3 className='text-base text-c5 font-medium'>{date}</h3>}
+        {date && <h3 className='text-base text-c5 font-medium'>{formatFlexibleDateDisplay(date)}</h3>}
         {description && (
           <div
             className={`text-base text-c4 font-extralight transition-all ease-in-out duration-200 gap-2.5 ${expanded ? '' : 'line-clamp-4'}`}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { ImageIcon, FileIcon } from '@/components/ui/icons';
+import { getFormOnlyExternalUrl, isHttpUrl } from '@/lib/resourceUtils';
 
 const formatAuthors = (creators: { first_name: string; last_name: string }[] = []) => {
   if (!Array.isArray(creators)) {
@@ -221,22 +221,20 @@ export const MediagraphyCard: React.FC<Mediagraphy> = ({
   resource_template_id,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const externalUrl =
+    getFormOnlyExternalUrl({ type: 'mediagraphie', uri, url: uri }) || (isHttpUrl(uri) ? uri : null);
 
   const template = mediagraphyTemplates[mediaType] || mediagraphyTemplates['default'];
 
-  return (
-    <div
-      className={`w-full flex flex-row justify-between border-2 rounded-xl items-center gap-6  transition-transform-colors-opacity ${isHovered ? 'border-c6' : 'border-c3'}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
-      <Link className='w-full gap-6 p-6 flex flex-row justify-between' to={uri ?? '#'} target='_blank'>
-        <div className={`flex flex-col justify-center transition-transform-colors-opacity ${isHovered ? 'text-c6' : 'text-c4'}`}>
-          {thumbnail ? <img src={thumbnail} alt='thumbnail' className='w-12 object-cover rounded-md' /> : <ImageIcon size={22} />}
-        </div>
+  const cardBody = (
+    <>
+      <div className={`flex flex-col justify-center transition-transform-colors-opacity ${isHovered ? 'text-c6' : 'text-c4'}`}>
+        {thumbnail ? <img src={thumbnail} alt='thumbnail' className='w-12 object-cover rounded-md' /> : <ImageIcon size={22} />}
+      </div>
 
-        <div className='w-full text-base text-c6 font-normal'>
-          {ensureEndsWithPeriod(
-            template({
+      <div className='w-full text-base text-c6 font-normal'>
+        {ensureEndsWithPeriod(
+          template({
               id,
               title,
               creator,
@@ -254,7 +252,25 @@ export const MediagraphyCard: React.FC<Mediagraphy> = ({
             }),
           )}
         </div>
-      </Link>
+    </>
+  );
+
+  return (
+    <div
+      className={`w-full flex flex-row justify-between border-2 rounded-xl items-center gap-6  transition-transform-colors-opacity ${isHovered ? 'border-c6' : 'border-c3'}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}>
+      {externalUrl ? (
+        <a
+          className='w-full gap-6 p-6 flex flex-row justify-between'
+          href={externalUrl}
+          target='_blank'
+          rel='noopener noreferrer'>
+          {cardBody}
+        </a>
+      ) : (
+        <div className='w-full gap-6 p-6 flex flex-row justify-between'>{cardBody}</div>
+      )}
     </div>
   );
 };

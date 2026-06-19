@@ -4,7 +4,8 @@ import { Bibliographies } from '@/components/features/conference/BibliographyCar
 import { Mediagraphies } from '@/components/features/conference/MediagraphyCards';
 import { ReferenceAddButtons } from '@/components/features/forms/AddResourceCard';
 import { FormTextInput, FormAutoResizeTextareaInput, formFieldLabelClass } from '@/components/features/forms/FormFields';
-import { getResourceConfigByTemplateId, getRessourceLabel, getResourceUrl } from '@/config/resourceConfig';
+import { getResourceConfigByTemplateId, getRessourceLabel } from '@/config/resourceConfig';
+import { getResourceLinkHref } from '@/lib/resourceUtils';
 import { getLinkedResourceId } from '@/pages/generic/resourceHelpers';
 
 /**
@@ -785,7 +786,7 @@ const TARGET_COMPONENT_MAP: Record<string, (target: any) => JSX.Element> = {
  * Rendu par défaut pour un target utilisant ItemsList
  */
 const renderDefaultTarget = (target: any) => {
-  const url = getResourceUrl(target.type, target.id);
+  const url = getResourceLinkHref(target) ?? '#';
   return <ItemsList items={[target]} mapUrl={() => url} />;
 };
 
@@ -851,7 +852,7 @@ export const createTargetsListView = (options?: { key?: string; title?: string; 
             acc[label] = {
               typeInfo: {
                 type: label,
-                getUrl: (item: any) => getResourceUrl(item.type, item.id),
+                getUrl: (item: any) => getResourceLinkHref(item) ?? '#',
               },
               items: [],
             };
@@ -887,7 +888,7 @@ export const createTargetsListView = (options?: { key?: string; title?: string; 
           acc[label] = {
             typeInfo: {
               type: label,
-              getUrl: (item: any) => resourceConfig.getUrl(item.id),
+              getUrl: (item: any) => getResourceLinkHref(item) ?? item.url ?? item.uri ?? '#',
             },
             items: [],
           };

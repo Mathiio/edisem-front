@@ -28,6 +28,7 @@
     "@heroui/date-input": "2.3.32",
     "@heroui/date-picker": "2.3.33",
     "@heroui/form": "2.1.32",
+    "@heroui/input-otp": "^2.1.32",
     "@heroui/system": "2.4.28",
     "@heroui/theme": "2.4.26",
     "@heroui/toast": "2.0.22",

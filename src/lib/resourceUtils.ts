@@ -1,4 +1,69 @@
-import { getResourceUrl } from '@/config/resourceConfig';
+import { getResourceUrl, isFormOnlyResourceType } from '@/config/resourceConfig';
+import { formatFlexibleDateDisplay } from '@/lib/flexibleDate';
+
+export function isHttpUrl(value: unknown): value is string {
+  return typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://'));
+}
+
+/** Extrait l'URL externe depuis une réponse Omeka brute */
+export function extractExternalUrlFromOmekaItem(data: any): string | null {
+  const candidates = [
+    data?.['bibo:uri']?.[0]?.['@id'],
+    data?.['foaf:page']?.[0]?.['@id'],
+    data?.['schema:url']?.[0]?.['@id'],
+  ];
+  for (const candidate of candidates) {
+    if (isHttpUrl(candidate)) return candidate;
+  }
+  return null;
+}
+
+/** URL externe d'une ressource formOnly (pas de page vue interne) */
+export function getFormOnlyExternalUrl(resource: any): string | null {
+  if (!resource) return null;
+
+  const fromRaw = extractExternalUrlFromOmekaItem(resource);
+  if (fromRaw) return fromRaw;
+
+  const candidates = [resource.url, resource.uri, resource.website, resource.page, resource.externalLink];
+  for (const candidate of candidates) {
+    if (isHttpUrl(candidate)) return candidate;
+  }
+  return null;
+}
+
+/** URL à utiliser dans le cache ressource : externe si formOnly, sinon route interne */
+export function buildCachedResourceUrl(resourceType: string, resourceId: number, resourceData: any): string | undefined {
+  const external = extractExternalUrlFromOmekaItem(resourceData);
+  if (external) return external;
+  if (isFormOnlyResourceType(resourceType)) return undefined;
+  const internal = getResourceUrl(resourceType, resourceId);
+  return internal !== '#' ? internal : undefined;
+}
+
+/** Lien de navigation depuis une carte ou un chip : null si aucune action */
+export function getResourceLinkHref(item: any): string | null {
+  if (!item?.type || item.id == null) return null;
+
+  if (isFormOnlyResourceType(item.type)) {
+    return getFormOnlyExternalUrl(item);
+  }
+
+  const internal = getResourceUrl(item.type, item.id);
+  return internal && internal !== '#' ? internal : null;
+}
+
+/** Ouvre le lien externe ou navigue en interne. Retourne false si aucune action. */
+export function navigateToResource(item: any, navigate: (url: string) => void): boolean {
+  const href = getResourceLinkHref(item);
+  if (!href) return false;
+  if (isHttpUrl(href)) {
+    window.open(href, '_blank', 'noopener,noreferrer');
+    return true;
+  }
+  navigate(href);
+  return true;
+}
 
 /**
  * Extract authors from a resource item.
@@ -68,12 +133,11 @@ export const getResourceSubtitle = (item: any) => {
 };
 
 /**
- * Get standardized resource URL.
- * Wrapper around getResourceUrl to handle defaults.
+ * Get standardized resource URL for navigation.
+ * formOnly → URL externe uniquement ; sinon route interne.
  */
 export const getSafeResourceUrl = (item: any): string => {
-    const url = getResourceUrl(item.type || 'seminaire', item.id);
-    return url || '#';
+  return getResourceLinkHref(item) ?? '#';
 };
 
 /**
@@ -209,6 +273,8 @@ export const getYouTubeThumbnail = (url: string | string[]): string | undefined 
  * - Other recits: "Publié : [date]"
  */
 export const formatResourceDisplayDate = (raw: string): string => {
+  const formatted = formatFlexibleDateDisplay(raw);
+  if (formatted) return formatted;
   const parsed = new Date(raw);
   if (Number.isNaN(parsed.getTime())) return raw;
   return parsed.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' });

@@ -67,6 +67,11 @@ export const ToolItem: React.FC<ToolItemProps> = ({
       return;
     }
 
+    if (!itemUrl || itemUrl === '#') {
+      e.preventDefault();
+      return;
+    }
+
     // Si c'est un lien externe, laisser le comportement par défaut
     if (itemUrl.startsWith('http')) {
       return;
