@@ -230,7 +230,6 @@ const resolveContributorPersonnes = (
 
 export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
   fields,
-  resourceType,
   itemDetails,
   resourceCache: propResourceCache,
   contributorProperties,
@@ -239,7 +238,6 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
   youtubeUrls = [],
   onYouTubeUrlsChange,
   mediaFiles = [],
-  type,
   loadingMedia = false,
   removedMediaIndexes = [],
   onRemoveExistingMedia,
@@ -583,13 +581,11 @@ const ItemSetSelect: React.FC<{
 
 export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
   fields,
-  resourceType,
   itemDetails,
   resourceCache: propResourceCache,
   isEditing = false,
   onFieldChange,
   onAddResource,
-  type,
 }) => {
   const [expanded, setExpanded] = useState<boolean>(false);
   const [sliderValue, setSliderValue] = useState<number | null>(null);
