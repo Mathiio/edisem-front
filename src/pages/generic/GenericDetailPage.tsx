@@ -2977,13 +2977,16 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                     />
                   ))}
 
-                {config.formFields?.find((f) => f.key === 'date') && (
-                  <FormDateInput
-                    label='Date'
-                    value={formData.date || ''}
-                    onChange={(value) => setValue('date', value)}
-                  />
-                )}
+                {config.formFields
+                  ?.filter((f) => f.key === 'date')
+                  .map((field) => (
+                    <FormDateInput
+                      key={field.key}
+                      label={field.label}
+                      value={formData.date || ''}
+                      onChange={(value) => setValue('date', value)}
+                    />
+                  ))}
 
                 {config.formFields?.find((f) => f.key === 'percentage') && (
                   <div className='w-full'>

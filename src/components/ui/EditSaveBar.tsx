@@ -74,7 +74,7 @@ export const EditSaveBar: React.FC<EditSaveBarProps> = ({
                   type='button'
                   onClick={() => setTreeExpanded((v) => !v)}
                   aria-expanded={treeExpanded}
-                  className='flex items-center text-left hover:bg-c3 transition-colors cursor-pointer whitespace-nowrap gap-2.5 px-3 py-2'>
+                  className='flex items-center text-left hover:bg-c3 transition-colors cursor-pointer whitespace-nowrap w-full gap-2.5 px-3 py-2'>
                   <ArrowIcon
                     size={12}
                     className={`shrink-0 text-c5 transition-transform duration-200 ${treeExpanded ? 'rotate-90' : ''}`}
