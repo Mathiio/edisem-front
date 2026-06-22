@@ -192,16 +192,13 @@ const CommentSection = ({ LinkedResourceId }: { LinkedResourceId: number }) => {
               />
             }
           >
-            {isLoading ? 'Envoi...' : 'Envoyer'}
+            {isLoading ? 'Publication...' : 'Publier'}
           </Button>
         </div>
       </div>
       {/* Liste des commentaires */}
       <div className='w-full flex flex-col gap-4'>
-        {comments.length === 0 ? (
-          <p className='text-[#adadad] text-sm text-center py-8'>Soyez le premier à laisser un commentaire !</p>
-        ) : (
-          comments.map((comment: any) => (
+          {comments.map((comment: any) => (
             <motion.div
               key={comment.id}
               className='w-full p-1.5 md:p-6 rounded-xl border-2 border-[#262233] flex gap-3'
@@ -225,7 +222,7 @@ const CommentSection = ({ LinkedResourceId }: { LinkedResourceId: number }) => {
               </div>
             </motion.div>
           ))
-        )}
+        }
       </div>
 
       <AlertModal

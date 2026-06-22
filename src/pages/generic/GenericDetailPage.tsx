@@ -28,8 +28,10 @@ import { ArrowIcon, AddIcon, ThumbnailIcon } from '@/components/ui/icons';
 import { AlertModal } from '@/components/ui/AlertModal';
 import { EditSaveBar } from '@/components/ui/EditSaveBar';
 import { EditModeBanner } from '@/components/ui/EditModeBanner';
+import { ResourceOwnerAttribution } from '@/components/ui/ResourceOwnerAttribution';
 import CommentSection from '@/components/layout/CommentSection';
 import { DynamicBreadcrumbs } from '@/components/layout/DynamicBreadcrumbs';
+import { useResourceOwner } from '@/hooks/useResourceOwner';
 import { GenericDetailPageConfig, PageMode, FetchResult, ViewOption } from './config';
 import { generateSmartRecommendations } from './helpers';
 import { ResourcePicker } from '@/components/features/forms/ResourcePicker';
@@ -2716,6 +2718,10 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
   }, [keywords, isEditing, formData.keywords]);
 
+  const resourceOwner = useResourceOwner(itemDetails);
+  const resourceTypeLabel =
+    config.resourceLabel || getRessourceLabel(config.resourceType || config.type || '') || null;
+
   // Résumé automatique des ressources liées pour EditSaveBar (tab racine)
   const autoResourceTree = useMemo(() => {
     if (!isEditing || !config.type) return undefined;
@@ -3283,6 +3289,16 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
             variants={fadeIn}>
             <div className={`${centeredShellClass} flex flex-col gap-12 flex-grow`}>
               <CommentSection LinkedResourceId={Number(id)} />
+            </div>
+          </motion.div>
+        )}
+
+        {!isCreateMode && !loading && (resourceTypeLabel || resourceOwner) && (
+          <motion.div
+            className={`col-span-10 pt-4 border-t border-c3${useCenteredSingleColumn ? ' flex justify-center' : ''}`}
+            variants={fadeIn}>
+            <div className={centeredShellClass}>
+              <ResourceOwnerAttribution owner={resourceOwner} resourceTypeLabel={resourceTypeLabel} />
             </div>
           </motion.div>
         )}

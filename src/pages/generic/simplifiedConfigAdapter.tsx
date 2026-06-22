@@ -228,6 +228,7 @@ const InlineMicroresumeForm: React.FC<{
 };
 import { getResourceConfigByTemplateId, isFormOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
 import { buildCachedResourceUrl } from '@/lib/resourceUtils';
+import { enrichItemWithResourceOwner } from '@/lib/resourceOwner';
 import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/features/database/AutoResizingTextarea';
 import {
   inferViewCreateOnly,
@@ -608,6 +609,7 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
       const data = await response.json();
 
       const enrichedData: any = { ...data };
+      await enrichItemWithResourceOwner(enrichedData);
 
       // ÉTAPE 2 : Charger les médias
       let associatedMedia: string[] = [];
@@ -1007,6 +1009,7 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
       const data = await response.json();
 
       const enrichedData: any = { ...data };
+      await enrichItemWithResourceOwner(enrichedData);
 
       // Charger les médias
       let associatedMedia: string[] = [];

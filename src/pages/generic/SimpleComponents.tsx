@@ -34,11 +34,9 @@ import {
   dropdownItemInnerPadding,
   dropdownTriggerButtonClass,
 } from '@/theme/components/dropdown';
-import { getResourceConfigByType } from '@/config/resourceConfig';
 
 const fieldLabelClass = 'text-sm text-c5 font-medium';
 const inputWrapperClass = 'bg-c1 border-2 border-c3 rounded-lg';
-const metaBadgeClass = 'text-sm text-c5 px-2.5 py-1.5 bg-c2 rounded-lg border-2 border-c3 whitespace-nowrap';
 
 // ========================================
 // Animation variants
@@ -428,12 +426,6 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
           {/* Conteneur principal du titre avec flexbox pour alignement horizontal */}
           <div className='flex items-center gap-4'>
             <h1 className='font-medium text-c6 text-2xl'>{title}</h1>
-            {/* Badge affichant le type de ressource si disponible */}
-            {(type || resourceType) && (
-              <span className={metaBadgeClass}>
-                {getResourceConfigByType(type || resourceType)?.label || type || resourceType}
-              </span>
-            )}
           </div>
 
           {/* Personnes/Actants */}
@@ -681,8 +673,6 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
                   minRows={1}
                   size='lg'
                 />
-                {/* Badge de type */}
-                {(type || resourceType) && <span className={`${metaBadgeClass} bg-c3`}>{type || resourceType}</span>}
               </div>
             </div>
           )}
@@ -831,8 +821,7 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
         {date && <h3 className='text-base text-c5 font-medium'>{formatFlexibleDateDisplay(date)}</h3>}
         {description && (
           <div
-            className={`text-base text-c4 font-extralight transition-all ease-in-out duration-200 gap-2.5 ${expanded ? '' : 'line-clamp-4'}`}
-            style={{ lineHeight: '120%' }}
+            className={`text-sm text-c4 font-normal transition-all ease-in-out duration-200 break-words gap-2.5 ${expanded ? '' : 'line-clamp-4'}`}
             dangerouslySetInnerHTML={{ __html: description }}
           />
         )}

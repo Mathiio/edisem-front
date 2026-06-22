@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Skeleton } from '@heroui/react';
+import { Button } from '@heroui/react';
 import { FileIcon } from '@/components/ui/icons';
 import { motion, Variants } from 'framer-motion';
 
@@ -52,8 +52,8 @@ export const CitationCard: React.FC<CitationCardProps> = ({ id: _id, startTime, 
     <div className='w-full flex flex-row justify-start border-2 p-6 border-c3 rounded-xl items-start gap-2.5 transition-transform-colors-opacity overflow-hidden'>
       <div className='flex flex-col gap-6 min-w-0 w-full'>
         <div className='w-full flex justify-between items-center gap-2.5'>
-          <div className='flex flex-row gap-2.5'>
-            <Button onClick={handleClick} className='px-2.5 py-1.5 h-auto text-base rounded-md text-c6 hover:text-c6 bg-c2 hover:bg-c3 transition-all ease-in-out duration-200'>
+          <div className='flex items-center gap-2.5'>
+            <Button onClick={handleClick} className='px-2.5 py-1.5 h-auto text-sm rounded-md text-c6 hover:text-c6 bg-c2 hover:bg-c3 transition-all ease-in-out duration-200'>
               {formatTime(startTime) + ' - ' + formatTime(endTime)}
             </Button>
             <h3 className='text-c6 text-base font-medium'>{actant}</h3>
@@ -76,23 +76,6 @@ export const CitationCard: React.FC<CitationCardProps> = ({ id: _id, startTime, 
   );
 };
 
-export const CitationSkeleton: React.FC = () => {
-  return (
-    <div className='w-full flex flex-col justify-start rounded-xl bg-c3 items-start p-2.5 gap-1.5 transition-transform-colors-opacity'>
-      <div className='w-full flex justify-start items-center gap-2.5'>
-        <Skeleton className='w-[55%] h-4 rounded-md'/>
-      </div>
-      <Skeleton className='w-full h-4 rounded-md'/>
-      <Skeleton className='w-full h-4 rounded-md'/>
-      <Skeleton className='w-full h-4 rounded-md'/>
-      <Skeleton className='w-full h-4 rounded-md'/>
-      <Skeleton className='w-full h-4 rounded-md'/>
-      <Skeleton className='w-full h-4 rounded-md'/>
-      <Skeleton className='w-[30%] h-4 rounded-md'/>
-    </div>
-  );
-};
-
 interface CitationsProps {
   citations: { id: number; citation: string; actant: any; startTime: number; endTime: number }[];
   loading: boolean;
@@ -100,13 +83,12 @@ interface CitationsProps {
 }
 
 export const Citations: React.FC<CitationsProps> = ({ citations, loading, onTimeChange }) => {
+  if (loading) return null;
 
   return (
     <div className='w-full h-max flex flex-col gap-5'>
       <div className='flex flex-col gap-5 h-full overflow-y-auto scroll-container'>
-        {loading ? (
-          Array.from({ length: 8 }, (_, i) => <CitationSkeleton key={i} />)
-        ) : citations.length === 0 ? (
+        {citations.length === 0 ? (
           <UnloadedCard />
         ) : (
           citations.map((citation, index) => (
