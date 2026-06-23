@@ -1,8 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { InputOtp } from '@heroui/input-otp';
 import { Input, Textarea, formFieldLabelClass } from '@/theme/components';
 import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/features/database/AutoResizingTextarea';
-import { buildFlexibleDate, parseFlexibleDate, type FlexibleDateParts } from '@/lib/flexibleDate';
+import {
+  buildFlexibleDate,
+  getDatePartsErrorMessage,
+  parseFlexibleDate,
+  sanitizeDatePart,
+  validateDateParts,
+  type FlexibleDateParts,
+} from '@/lib/flexibleDate';
 
 export { formFieldLabelClass };
 
@@ -18,6 +25,7 @@ const otpClassNames = {
   base: 'w-auto',
   segmentWrapper: 'gap-1',
   segment: otpSegmentClass,
+  helperWrapper: 'hidden',
 };
 
 type CommonFieldProps = {
@@ -26,6 +34,8 @@ type CommonFieldProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   isRequired?: boolean;
+  errorMessage?: string;
+  isInvalid?: boolean;
 };
 
 export const FormTextInput: React.FC<
@@ -57,10 +67,18 @@ type DateSegmentProps = {
   length: number;
   value: string;
   onValueChange: (value: string) => void;
-  isRequired?: boolean;
+  isInvalid?: boolean;
+  ariaLabel: string;
 };
 
-const DateSegmentOtp: React.FC<DateSegmentProps> = ({ label, length, value, onValueChange, isRequired }) => (
+const DateSegmentOtp: React.FC<DateSegmentProps> = ({
+  label,
+  length,
+  value,
+  onValueChange,
+  isInvalid,
+  ariaLabel,
+}) => (
   <div className='flex flex-col'>
     <span className='text-xs font-medium text-c4'>{label}</span>
     <InputOtp
@@ -69,7 +87,9 @@ const DateSegmentOtp: React.FC<DateSegmentProps> = ({ label, length, value, onVa
       allowedKeys='^[0-9]*$'
       variant='bordered'
       size='sm'
-      isRequired={isRequired}
+      validationBehavior='aria'
+      isInvalid={isInvalid}
+      aria-label={ariaLabel}
       classNames={otpClassNames}
       onValueChange={onValueChange}
     />
@@ -77,30 +97,63 @@ const DateSegmentOtp: React.FC<DateSegmentProps> = ({ label, length, value, onVa
 );
 
 /**
- * Date partielle : jour + mois + année (segments InputOtp HeroUI).
+ * Date OTP : l'utilisateur choisit le niveau de précision (AAAA, MM/AAAA ou JJ/MM/AAAA).
  * Valeurs stockées : YYYY, YYYY-MM ou YYYY-MM-DD.
  */
-export const FormDateInput: React.FC<CommonFieldProps> = ({ label, value, onChange, isRequired }) => {
+export const FormDateInput: React.FC<CommonFieldProps> = ({
+  label,
+  value,
+  onChange,
+  isRequired,
+  errorMessage,
+  isInvalid,
+}) => {
   const [parts, setParts] = useState<FlexibleDateParts>(() => parseFlexibleDate(value));
+  const [touched, setTouched] = useState(false);
+  const skipExternalSyncRef = useRef(false);
 
   useEffect(() => {
+    if (skipExternalSyncRef.current) {
+      skipExternalSyncRef.current = false;
+      return;
+    }
     setParts(parseFlexibleDate(value));
   }, [value]);
 
+  useEffect(() => {
+    if (errorMessage) setTouched(true);
+  }, [errorMessage]);
+
   const updatePart = (key: keyof FlexibleDateParts, segmentValue: string) => {
-    const next = { ...parts, [key]: segmentValue };
-    setParts(next);
-    onChange(buildFlexibleDate(next));
+    setTouched(true);
+    const sanitized = sanitizeDatePart(key, segmentValue);
+    setParts((prev) => {
+      const next = { ...prev, [key]: sanitized };
+      skipExternalSyncRef.current = true;
+      onChange(buildFlexibleDate(next));
+      return next;
+    });
   };
+
+  const fieldRequired = isRequired === true;
+  const partErrors = touched ? validateDateParts(parts, { required: fieldRequired, label }) : {};
+  const localError = getDatePartsErrorMessage(partErrors, parts);
+  const displayError = errorMessage || localError;
+  const showInvalid = isInvalid || !!displayError;
 
   return (
     <div className='w-full flex flex-col gap-2'>
-      <label className={formFieldLabelClass}>{label}</label>
+      <label className={formFieldLabelClass}>
+        {label}
+        {fieldRequired ? <span className='text-danger ml-0.5'>*</span> : null}
+      </label>
       <div className='flex flex-wrap items-end gap-3'>
         <DateSegmentOtp
           label='Jour'
           length={2}
           value={parts.day}
+          isInvalid={showInvalid || !!partErrors.day}
+          ariaLabel={`${label} — jour`}
           onValueChange={(v) => updatePart('day', v)}
         />
         <span className='text-c4 pb-4 select-none'>/</span>
@@ -108,6 +161,8 @@ export const FormDateInput: React.FC<CommonFieldProps> = ({ label, value, onChan
           label='Mois'
           length={2}
           value={parts.month}
+          isInvalid={showInvalid || !!partErrors.month}
+          ariaLabel={`${label} — mois`}
           onValueChange={(v) => updatePart('month', v)}
         />
         <span className='text-c4 pb-4 select-none'>/</span>
@@ -115,10 +170,16 @@ export const FormDateInput: React.FC<CommonFieldProps> = ({ label, value, onChan
           label='Année'
           length={4}
           value={parts.year}
-          isRequired={isRequired}
+          isInvalid={showInvalid || !!partErrors.year}
+          ariaLabel={`${label} — année`}
           onValueChange={(v) => updatePart('year', v)}
         />
       </div>
+      {displayError ? (
+        <p className='text-xs font-medium text-[#ef4444]' role='alert'>
+          {displayError}
+        </p>
+      ) : null}
     </div>
   );
 };

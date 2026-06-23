@@ -299,7 +299,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
   });
 
   // Destructure for easier access
-  const { data: formData, isDirty, isSubmitting } = formState;
+  const { data: formData, errors: formErrors, isDirty, isSubmitting } = formState;
   const { setFieldValue: setValue, setMultipleValues: setFormData, resetForm: reset, validateForm: validate } = formActions;
 
   // Notify parent when dirty state changes (for tab management)
@@ -3060,6 +3060,9 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                       label={field.label}
                       value={formData.date || ''}
                       onChange={(value) => setValue('date', value)}
+                      isRequired={field.required}
+                      errorMessage={formErrors.date}
+                      isInvalid={!!formErrors.date}
                     />
                   ))}
 
@@ -3136,6 +3139,9 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
                           label={field.label}
                           value={formData[field.key] || ''}
                           onChange={(value) => setValue(field.key, value)}
+                          isRequired={field.required}
+                          errorMessage={formErrors[field.key]}
+                          isInvalid={!!formErrors[field.key]}
                         />
                       );
                     }

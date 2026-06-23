@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { FormFieldConfig } from '@/pages/generic/config';
+import { validateFlexibleDateValue } from '@/lib/flexibleDate';
 
 /**
  * État du formulaire
@@ -140,6 +141,15 @@ export function useFormState(options: UseFormStateOptions = {}) {
         } catch {
           return `${fieldConfig.label} doit être une URL valide`;
         }
+      }
+
+      // Validation date (format inféré : AAAA, MM/AAAA ou JJ/MM/AAAA)
+      if (fieldConfig.type === 'date') {
+        const dateError = validateFlexibleDateValue(value, {
+          required: fieldConfig.required === true,
+          label: fieldConfig.label,
+        });
+        if (dateError) return dateError;
       }
 
       return null;

@@ -36,7 +36,7 @@ const StyledSelect = extendVariants(OSelect, {
           'data-[hover=true]:!bg-c3',
           'data-[focus=true]:!bg-c3',
           'data-[focus=true]:!border-c3',
-          'min-h-[50px]',
+          'min-h-[44px]',
           'rounded-xl',
           'transition-all',
           'duration-200',

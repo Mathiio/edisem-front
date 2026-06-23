@@ -202,8 +202,7 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
           if (initialConfig.formOnly) {
             navigationUrl = monEspacePath;
           } else {
-            const resourceUrl = getResourceUrl(initialConfig.type || '', savedItemId);
-            navigationUrl = `${resourceUrl}?mode=edit`;
+            navigationUrl = getResourceUrl(initialConfig.type || '', savedItemId);
           }
         }
 
