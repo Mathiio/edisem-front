@@ -63,6 +63,7 @@ import { deleteUserResource, stashPendingMonEspaceResource, type StudentResource
 import { useFormState } from '@/hooks/useFormState';
 import { useAuth } from '@/hooks/useAuth';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '@/utils/omekaApi';
+import { resolveOmekaPropertyId } from './simplifiedConfigAdapter';
 import { MediaFile, DEFAULT_AUTHOR_TEMPLATE_IDS } from '@/components/features/forms/MediaDropzone';
 
 // ========================================
@@ -705,16 +706,23 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         'bibliographicCitations', 'references', 'sources', 'reviews', 'documentations',
         'resourceCache', 'associatedMedia', 'associatedMediaRefs', 'citations', 'microresumes',
       ]);
+      // Propriétés Omeka déjà gérées via une clé formField (keywords, genre, domaine…)
+      const managedFormProperties = new Set<string>();
+      config.formFields?.forEach((field) => {
+        const prop = field.dataPath?.split('.')[0];
+        if (prop) managedFormProperties.add(prop);
+      });
       const extractedData: Record<string, any> = {};
       for (const [key, value] of Object.entries(itemDetails)) {
-        if (!displayOnlyKeys.has(key)) {
+        if (!displayOnlyKeys.has(key) && !managedFormProperties.has(key)) {
           extractedData[key] = value;
         }
       }
 
       // Pour chaque formField, extraire la valeur depuis itemDetails
       config.formFields?.forEach((field) => {
-        if (field.dataPath) {
+        const isItemSetField = field.type === 'selection' && field.selectionConfig?.itemSetId;
+        if (field.dataPath && !isItemSetField) {
           // Parse le dataPath (ex: "dcterms:title.0.@value")
           const pathParts = field.dataPath.split('.');
           let value: any = itemDetails;
@@ -1027,66 +1035,115 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     // avec les clés enrichies (ex: 'references' écraserait 'dcterms:references')
     const writtenOmekaProperties = new Set<string>();
 
-    Object.entries(data).forEach(([key, value]) => {
+    const formPropertyToKey: Record<string, string> = {};
+    const formFieldKeyToProperty: Record<string, string> = {};
+    config.formFields?.forEach((field) => {
+      const prop = field.dataPath?.split('.')[0];
+      if (prop) {
+        formPropertyToKey[prop] = field.key;
+        formFieldKeyToProperty[field.key] = prop;
+      }
+    });
+
+    // Itemset / multiselection (genre, domaine, mots-clés…) — clés formulaire → propriété Omeka
+    for (const field of config.formFields ?? []) {
+      if (field.type !== 'selection' && field.type !== 'multiselection') continue;
+      const raw = data[field.key];
+      if (raw === undefined || raw === null) continue;
+
+      const omekaPropertyKey = formFieldKeyToProperty[field.key] ?? field.dataPath?.split('.')[0];
+      if (!omekaPropertyKey || writtenOmekaProperties.has(omekaPropertyKey)) continue;
+
+      const items = Array.isArray(raw) ? raw : typeof raw === 'number' ? [{ id: raw }] : [];
+      const propertyId = await resolveOmekaPropertyId(omekaPropertyKey, templatePropMap, updatedItem);
+      if (!propertyId) continue;
+
+      updatedItem[omekaPropertyKey] =
+        items.length === 0
+          ? []
+          : items
+              .map((item: any) => item.id || item['o:id'] || item.value_resource_id)
+              .filter((id: unknown) => id != null && id !== '')
+              .map((resourceId: number) => ({
+                type: 'resource',
+                property_id: propertyId,
+                value_resource_id: Number(resourceId),
+                is_public: true,
+              }));
+      writtenOmekaProperties.add(omekaPropertyKey);
+    }
+
+    for (const [key, value] of Object.entries(data)) {
+      // Ignorer la copie brute Omeka si une clé formulaire porte déjà la valeur éditée
+      if (key.includes(':')) {
+        const preferredKey = formPropertyToKey[key];
+        if (preferredKey && data[preferredKey] !== undefined) {
+          continue;
+        }
+      }
+
       const viewMappedProperty = config.viewKeyToProperty?.[key];
       const isViewOmekaProperty =
         viewMappedProperty == null &&
         config.viewKeyToProperty != null &&
         Object.values(config.viewKeyToProperty).includes(key);
+      const isFormResourceKey =
+        key === 'keywords' ||
+        config.formFields?.some(
+          (f) => f.key === key && (f.type === 'multiselection' || f.type === 'selection'),
+        );
       const isResourceArray =
         Array.isArray(value) &&
         (viewMappedProperty != null ||
           isViewOmekaProperty ||
+          isFormResourceKey ||
           (value.length > 0 &&
             (value[0]?.id !== undefined ||
               value[0]?.['o:id'] !== undefined ||
               value[0]?.value_resource_id !== undefined)));
 
       if (isResourceArray) {
-        let omekaPropertyKey = viewMappedProperty || key;
-        let propertyId: number | null = null;
+        if (writtenOmekaProperties.has(formFieldKeyToProperty[key] ?? key)) {
+          continue;
+        }
+
+        let omekaPropertyKey = viewMappedProperty || formFieldKeyToProperty[key] || key;
+
+        const keyToOmekaProp: Record<string, string> = {
+          keywords: 'jdc:hasConcept',
+          personnes: 'schema:agent',
+          actants: 'jdc:hasActant',
+          'theatre:credit': 'theatre:credit',
+          'schema:description': 'schema:description',
+          references: 'dcterms:references',
+          'dcterms:references': 'dcterms:references',
+          'dcterms:bibliographicCitation': 'dcterms:bibliographicCitation',
+        };
+        if (!viewMappedProperty && !formFieldKeyToProperty[key]) {
+          omekaPropertyKey = keyToOmekaProp[key] || key;
+        }
 
         if (writtenOmekaProperties.has(omekaPropertyKey)) {
-          return;
+          continue;
         }
 
-        if (updatedItem[omekaPropertyKey] && Array.isArray(updatedItem[omekaPropertyKey]) && updatedItem[omekaPropertyKey].length > 0) {
-          propertyId = updatedItem[omekaPropertyKey][0]?.property_id ?? null;
-        } else {
-          const keyToOmekaProp: Record<string, string> = {
-            keywords: 'jdc:hasConcept',
-            personnes: 'schema:agent',
-            actants: 'jdc:hasActant',
-            'theatre:credit': 'theatre:credit',
-            'schema:description': 'schema:description',
-            references: 'dcterms:references',
-            'dcterms:references': 'dcterms:references',
-            'dcterms:bibliographicCitation': 'dcterms:bibliographicCitation',
-          };
-          const fallbackProp = config.viewKeyToProperty?.[key] || keyToOmekaProp[key] || key;
-
-          if (writtenOmekaProperties.has(fallbackProp)) {
-            return;
-          }
-
-          if (fallbackProp && (templatePropMap[fallbackProp] || OMEKA_PROPERTY_IDS[fallbackProp])) {
-            omekaPropertyKey = fallbackProp;
-            propertyId = templatePropMap[fallbackProp] || OMEKA_PROPERTY_IDS[fallbackProp];
-          }
-        }
+        const propertyId = await resolveOmekaPropertyId(omekaPropertyKey, templatePropMap, updatedItem);
 
         if (omekaPropertyKey && propertyId) {
-          updatedItem[omekaPropertyKey] = (value as any[])
-            .map((item: any) => ({
-              type: 'resource',
-              property_id: propertyId,
-              value_resource_id: item.id || item['o:id'] || item.value_resource_id,
-              is_public: true,
-            }))
-            .filter((item: any) => item.value_resource_id);
+          updatedItem[omekaPropertyKey] =
+            (value as any[]).length === 0
+              ? []
+              : (value as any[])
+                  .map((item: any) => ({
+                    type: 'resource',
+                    property_id: propertyId,
+                    value_resource_id: item.id || item['o:id'] || item.value_resource_id,
+                    is_public: true,
+                  }))
+                  .filter((item: any) => item.value_resource_id);
           writtenOmekaProperties.add(omekaPropertyKey);
         }
-        return;
+        continue;
       }
 
       // Si c'est un tableau de valeurs littérales (strings, ou objets Omeka literal/customvocab:N sans value_resource_id)
@@ -1135,7 +1192,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
             writtenOmekaProperties.add(omekaKey);
           }
         }
-        return;
+        continue;
       }
 
       // Si c'est une valeur texte simple
@@ -1207,7 +1264,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
           }
         }
       }
-    });
+    }
 
     // 4. Envoyer la mise à jour
     console.log('[saveToOmekaS] Sending PUT request...');
@@ -1450,19 +1507,18 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
     });
 
     // Mapper les champs du formulaire vers le format Omeka S
-    config.formFields?.forEach((field) => {
+    for (const field of config.formFields ?? []) {
       const value = data[field.key];
-      if (value !== undefined && value !== '' && value !== null) {
-        const propertyName = field.dataPath.split('.')[0];
-        const propertyId = getPropertyId(propertyName, propMap);
+      if (value === undefined || value === '' || value === null) continue;
+      const propertyName = field.dataPath.split('.')[0];
 
-        if (field.type === 'multiselection') {
-          return;
-        }
+      if (field.type === 'multiselection') continue;
 
-        if (field.type === 'selection') {
-          const items = Array.isArray(value) ? value : [];
-          if (items.length > 0 && propertyId) {
+      if (field.type === 'selection') {
+        const items = Array.isArray(value) ? value : [];
+        if (items.length > 0) {
+          const propertyId = await resolveOmekaPropertyId(propertyName, propMap, itemData);
+          if (propertyId) {
             itemData[propertyName] = items
               .map((item: any) => ({
                 type: 'resource',
@@ -1472,32 +1528,33 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
               }))
               .filter((item: any) => item.value_resource_id);
           }
-          return;
         }
-
-        if (field.type === 'url') {
-          // Les URLs sont des ressources URI
-          itemData[propertyName] = [
-            {
-              type: 'uri',
-              property_id: propertyId,
-              '@id': value,
-              is_public: true,
-            },
-          ];
-        } else {
-          // Les autres sont des littéraux
-          itemData[propertyName] = [
-            {
-              type: 'literal',
-              property_id: propertyId,
-              '@value': String(value),
-              is_public: true,
-            },
-          ];
-        }
+        continue;
       }
-    });
+
+      const propertyId = getPropertyId(propertyName, propMap);
+      if (!propertyId) continue;
+
+      if (field.type === 'url') {
+        itemData[propertyName] = [
+          {
+            type: 'uri',
+            property_id: propertyId,
+            '@id': value,
+            is_public: true,
+          },
+        ];
+      } else {
+        itemData[propertyName] = [
+          {
+            type: 'literal',
+            property_id: propertyId,
+            '@value': String(value),
+            is_public: true,
+          },
+        ];
+      }
+    }
 
     // Mapper les données stockées avec le format dataPath (ex: dcterms:abstract.0.@value)
     Object.entries(data).forEach(([key, value]) => {

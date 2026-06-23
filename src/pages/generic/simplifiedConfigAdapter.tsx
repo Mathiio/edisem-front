@@ -18,6 +18,7 @@ import React from 'react';
 import { AddIcon } from '@/components/ui/icons';
 import { modalCloseButtonClasses, ModalCloseIcon } from '@/theme/components/modal';
 import { getTemplatePropertiesMap } from '@/services/Items';
+import { OMEKA_PROPERTY_IDS } from '@/config/resourceConfig';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl } from '@/utils/omekaApi';
 import { GenericDetailPageConfig, FetchResult, ViewOption, ProgressiveDataFetcher, ProgressCallback, FormFieldConfig, FormFieldType } from './config';
 import { SimplifiedDetailConfig, SimplifiedViewConfig, InternalFieldConfig, FieldType, extractFieldsFromConfig } from './simplifiedConfig';
@@ -1996,6 +1997,63 @@ interface SimpleDetailPageProps {
 }
 
 // ========================================
+// Résolution property_id Omeka (template + fallback API)
+// ========================================
+
+const omekaPropertyIdCache: Record<string, number> = {};
+
+async function fetchOmekaPropertyId(term: string): Promise<number | null> {
+  if (omekaPropertyIdCache[term]) return omekaPropertyIdCache[term];
+  try {
+    const res = await fetch(omekaApiUrl(`${API_BASE}properties?term=${encodeURIComponent(term)}`));
+    if (!res.ok) return null;
+    const props = await res.json();
+    if (!Array.isArray(props)) return null;
+    const match = props.find((p: { 'o:term'?: string }) => p['o:term'] === term) ?? props[0];
+    const id = match?.['o:id'];
+    if (typeof id === 'number') {
+      omekaPropertyIdCache[term] = id;
+      return id;
+    }
+  } catch (err) {
+    console.warn('[resolveOmekaPropertyId] fetch failed for', term, err);
+  }
+  return null;
+}
+
+export async function resolveOmekaPropertyId(
+  term: string,
+  propMap: Record<string, number>,
+  item: Record<string, unknown>,
+): Promise<number | null> {
+  if (propMap[term]) return propMap[term];
+  const localName = term.split(':')[1];
+  if (localName && propMap[localName]) return propMap[localName];
+  const existing = item[term];
+  if (Array.isArray(existing) && existing[0]?.property_id) return existing[0].property_id as number;
+  if (OMEKA_PROPERTY_IDS[term]) return OMEKA_PROPERTY_IDS[term];
+  return fetchOmekaPropertyId(term);
+}
+
+function normalizeResourceItems(value: unknown): { id?: number; 'o:id'?: number; value_resource_id?: number }[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'number') return [{ id: value }];
+  return [];
+}
+
+function buildOmekaResourceLinks(items: { id?: number; 'o:id'?: number; value_resource_id?: number }[], propertyId: number) {
+  return items
+    .map((item) => item?.id ?? item?.['o:id'] ?? item?.value_resource_id)
+    .filter((id): id is number => id != null)
+    .map((resourceId) => ({
+      type: 'resource' as const,
+      property_id: propertyId,
+      value_resource_id: Number(resourceId),
+      is_public: true,
+    }));
+}
+
+// ========================================
 // Fonction helper pour créer le handler de sauvegarde
 // ========================================
 
@@ -2128,54 +2186,85 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
       const linkedOmekaProperties = new Set(Object.values(viewKeyToPropertyMap));
       const writtenOmekaProperties = new Set<string>();
 
-      // 5. Appliquer les modifications
-      Object.entries(data).forEach(([key, value]) => {
+      // Propriété Omeka → clé formulaire préférée (keywords, genre, domaine…)
+      const propertyToFormKey: Record<string, string> = {};
+      Object.entries(keyToProperty).forEach(([formKey, property]) => {
+        if (formKey.includes(':')) return;
+        if (!propertyToFormKey[property]) {
+          propertyToFormKey[property] = formKey;
+        }
+      });
+
+      // 5a. Itemset + ressources liées (genre, domaine, mots-clés…) via clés formulaire
+      for (const field of fields) {
+        if (field.type !== 'itemset' && field.type !== 'resource') continue;
+        const raw = data[field.key];
+        if (raw === undefined || raw === null) continue;
+
+        const omekaProperty = field.property;
+        if (writtenOmekaProperties.has(omekaProperty)) continue;
+
+        const items = normalizeResourceItems(raw);
+        const propertyId = await resolveOmekaPropertyId(omekaProperty, propMap, updatedItem);
+        if (!propertyId) {
+          console.warn(`[handleSave] Property ID non trouvé pour: ${omekaProperty} (clé: ${field.key})`);
+          continue;
+        }
+
+        updatedItem[omekaProperty] = items.length === 0 ? [] : buildOmekaResourceLinks(items, propertyId);
+        writtenOmekaProperties.add(omekaProperty);
+      }
+
+      // 5b. Autres champs
+      for (const [key, value] of Object.entries(data)) {
         if (ignoredKeys.has(key) || value === undefined || value === null) {
-          return;
+          continue;
+        }
+
+        // Ne pas réappliquer une propriété Omeka brute si la clé formulaire porte la valeur à jour
+        if (key.includes(':')) {
+          const preferredKey = propertyToFormKey[key];
+          if (preferredKey && preferredKey !== key && data[preferredKey] !== undefined) {
+            continue;
+          }
         }
 
         // Trouver la propriété Omeka S correspondante
         const omekaProperty = keyToProperty[key] || key;
 
+        const isFormResourceKey = !key.includes(':') && Boolean(keyToProperty[key]) && keyToProperty[key] !== key;
         const isLinkedResourceArray =
           Array.isArray(value) &&
           (linkedViewKeys.has(key) ||
             linkedOmekaProperties.has(key) ||
+            isFormResourceKey ||
             (value.length > 0 &&
               (value[0].id || value[0]['o:id'] || value[0].value_resource_id)));
 
         if (isLinkedResourceArray) {
           if (writtenOmekaProperties.has(omekaProperty)) {
-            return;
+            continue;
           }
 
-          const propertyId = propMap[omekaProperty] ?? updatedItem[omekaProperty]?.[0]?.property_id;
+          const propertyId = await resolveOmekaPropertyId(omekaProperty, propMap, updatedItem);
           if (!propertyId) {
             console.warn(`[handleSave] Property ID non trouvé pour: ${omekaProperty} (clé: ${key})`);
-            return;
+            continue;
           }
 
           updatedItem[omekaProperty] =
             value.length === 0
               ? []
-              : value
-                  .map((item: any) => item.id || item['o:id'] || item.value_resource_id)
-                  .filter(Boolean)
-                  .map((resourceId: number) => ({
-                    type: 'resource',
-                    property_id: propertyId,
-                    value_resource_id: resourceId,
-                    is_public: true,
-                  }));
+              : buildOmekaResourceLinks(value, propertyId);
           writtenOmekaProperties.add(omekaProperty);
-          return;
+          continue;
         }
 
-        const propertyId = propMap[omekaProperty];
+        const propertyId = await resolveOmekaPropertyId(omekaProperty, propMap, updatedItem);
 
         if (!propertyId) {
           console.warn(`[handleSave] Property ID non trouvé pour: ${omekaProperty} (clé: ${key})`);
-          return;
+          continue;
         }
 
         // Traiter selon le type de valeur
@@ -2189,8 +2278,11 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
               is_public: true,
             },
           ];
-        } else if (Array.isArray(value) && value.length > 0) {
-          if (typeof value[0] === 'string') {
+        } else if (Array.isArray(value)) {
+          if (value.length === 0) {
+            updatedItem[omekaProperty] = [];
+            writtenOmekaProperties.add(omekaProperty);
+          } else if (typeof value[0] === 'string') {
             // Tableau de strings (categories)
             const nonEmptyValues = value.filter((v: string) => v && v.trim() !== '');
             if (nonEmptyValues.length > 0) {
@@ -2201,8 +2293,9 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
                 is_public: true,
               }));
             } else {
-              delete updatedItem[omekaProperty];
+              updatedItem[omekaProperty] = [];
             }
+            writtenOmekaProperties.add(omekaProperty);
           } else if (value[0].id || value[0]['o:id'] || value[0].value_resource_id) {
             // Tableau de ressources liées (personnes, projets, etc.)
             // Supporte les formats: {id}, {o:id}, {value_resource_id} (format Omeka brut)
@@ -2213,9 +2306,10 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
               value_resource_id: resourceId,
               is_public: true,
             }));
+            writtenOmekaProperties.add(omekaProperty);
           }
         }
-      });
+      }
 
       // 6. Restaurer les champs système
       Object.entries(originalSystemFields).forEach(([key, value]) => {
