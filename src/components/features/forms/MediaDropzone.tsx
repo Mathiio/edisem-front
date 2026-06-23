@@ -8,6 +8,7 @@ import {
   ModalBody,
   ModalFooter,
   modalCloseButtonClasses,
+  ModalCloseIcon,
 } from '@/theme/components/modal';
 import { Button } from '@/theme/components/button';
 import { AlertModal } from '@/components/ui/AlertModal';
@@ -345,14 +346,20 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
               )}
 
               {!disabled && (
-                <Button
-                  isIconOnly
-                  size='sm'
-                  className='absolute top-3 right-3 bg-c1/80 hover:bg-danger text-c6 hover:text-white z-10 px-4 py-2 w-fit h-fit flex items-center justify-center !gap-2.5 rounded-lg'
-                  onPress={() => handleRemoveClick(currentMedia)}>
-                  <span>Supprimer</span>
-                  <CrossIcon size={14} className='w-3.5 h-3.5' />
-                </Button>
+                <button
+                  type='button'
+                  aria-label='Supprimer le média'
+                  onClick={() => handleRemoveClick(currentMedia)}
+                  className={[
+                    'absolute top-3 right-3 z-10',
+                    'flex items-center justify-center',
+                    'w-9 h-9 rounded-lg',
+                    'bg-c3/70 hover:bg-danger',
+                    'text-c6 shadow-sm',
+                    'cursor-pointer transition-colors duration-200',
+                  ].join(' ')}>
+                  <ModalCloseIcon className='w-4 h-4' />
+                </button>
               )}
             </div>
           </div>

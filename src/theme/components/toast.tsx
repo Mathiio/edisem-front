@@ -66,7 +66,7 @@ export const defaultToastProviderProps: Partial<ToastProps> = {
   classNames: {
     base: [toastPaddingClasses, 'relative', toastShellClasses, toastWidthClasses, 'rounded-xl', 'gap-3', 'items-center'].join(' '),
     content: 'flex gap-3 items-center min-w-0 flex-1 self-stretch',
-    wrapper: 'gap-1 min-w-0 flex flex-col justify-center',
+    wrapper: 'gap-0.5 min-w-0 flex flex-col justify-center',
     title: 'text-base font-medium text-c6 me-0 leading-snug whitespace-normal overflow-visible',
     description: 'text-sm font-normal text-c5 me-0 leading-snug whitespace-normal',
     icon: toastIconSlotClasses,

@@ -63,7 +63,7 @@ import { deleteUserResource, stashPendingMonEspaceResource, type StudentResource
 import { useFormState } from '@/hooks/useFormState';
 import { useAuth } from '@/hooks/useAuth';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '@/utils/omekaApi';
-import { resolveOmekaPropertyId } from './simplifiedConfigAdapter';
+import { resolveOmekaPropertyId, deleteMedia } from './simplifiedConfigAdapter';
 import { MediaFile, DEFAULT_AUTHOR_TEMPLATE_IDS } from '@/components/features/forms/MediaDropzone';
 
 // ========================================
@@ -934,15 +934,22 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       changedData.youtubeUrls = youtubeUrls;
 
       // Add media IDs to delete based on removedMediaIndexes
-      if (removedMediaIndexes.length > 0 && itemDetails?.['o:media']) {
+      if (removedMediaIndexes.length > 0) {
         const mediaToDelete: number[] = [];
         removedMediaIndexes.forEach((index) => {
-          const mediaRef = itemDetails['o:media'][index];
+          const idFromMeta = itemDetails?.associatedMediaIds?.[index];
+          if (typeof idFromMeta === 'number') {
+            mediaToDelete.push(idFromMeta);
+            return;
+          }
+          const mediaRef = itemDetails?.['o:media']?.[index];
           if (mediaRef?.['o:id']) {
             mediaToDelete.push(mediaRef['o:id']);
           }
         });
-        changedData.mediaToDelete = mediaToDelete;
+        if (mediaToDelete.length > 0) {
+          changedData.mediaToDelete = mediaToDelete;
+        }
       }
 
       if (mode === 'create') {
@@ -1283,7 +1290,18 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 
     const result = await saveResponse.json();
 
-    // 5. Créer les médias YouTube (si présents)
+    // 5. Supprimer les médias marqués pour suppression
+    const mediaIdsToDelete = data.mediaToDelete || [];
+    if (Array.isArray(mediaIdsToDelete) && mediaIdsToDelete.length > 0) {
+      for (const mediaId of mediaIdsToDelete) {
+        const deleted = await deleteMedia(Number(mediaId));
+        if (!deleted) {
+          console.warn(`[saveToOmekaS] Erreur suppression média #${mediaId}`);
+        }
+      }
+    }
+
+    // 6. Créer les médias YouTube (si présents)
     const youtubeUrlsToCreate = data.youtubeUrls || [];
     if (Array.isArray(youtubeUrlsToCreate) && youtubeUrlsToCreate.length > 0) {
       for (const ytUrl of youtubeUrlsToCreate) {
@@ -1322,7 +1340,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
       }
     }
 
-    // 6. Upload des nouveaux fichiers médias (images/vidéos)
+    // 7. Upload des nouveaux fichiers médias (images/vidéos)
     const mediaFilesToUpload = data.mediaFiles || [];
     if (Array.isArray(mediaFilesToUpload) && mediaFilesToUpload.length > 0) {
       for (const mediaFile of mediaFilesToUpload) {

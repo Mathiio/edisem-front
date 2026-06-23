@@ -401,6 +401,49 @@ async function fetchWithRetry(url: string, retries = 2, delay = 500): Promise<Re
   return null;
 }
 
+type AssociatedMediaEntry = { url: string; mediaId?: number };
+
+async function fetchOmekaMediaUrl(mediaId: number): Promise<string | null> {
+  try {
+    const res = await fetchWithRetry(`${API_BASE}media/${mediaId}`, 1, 300);
+    if (!res || !res.ok) return null;
+    const mediaData = await res.json();
+    if (mediaData['o:ingester'] === 'youtube' && mediaData['o:source']) {
+      return mediaData['o:source'];
+    }
+    return mediaData['o:original_url'] ?? null;
+  } catch (err) {
+    console.error(`Erreur chargement média ${mediaId}:`, err);
+    return null;
+  }
+}
+
+async function loadDirectOmekaMediaEntries(mediaRefs: any[]): Promise<AssociatedMediaEntry[]> {
+  const results = await Promise.all(
+    mediaRefs.slice(0, 10).map(async (mediaRef: any) => {
+      const mediaId = mediaRef?.['o:id'];
+      if (!mediaId) return null;
+      const url = await fetchOmekaMediaUrl(mediaId);
+      return url ? { url, mediaId } : null;
+    }),
+  );
+  return results.filter(Boolean) as AssociatedMediaEntry[];
+}
+
+function sortAssociatedMediaEntries(entries: AssociatedMediaEntry[]): AssociatedMediaEntry[] {
+  return [...entries].sort((a, b) => {
+    const aIsYT = a.url.includes('youtube.com') || a.url.includes('youtu.be') ? 0 : 1;
+    const bIsYT = b.url.includes('youtube.com') || b.url.includes('youtu.be') ? 0 : 1;
+    return aIsYT - bIsYT;
+  });
+}
+
+function applyAssociatedMediaToItem(enrichedData: Record<string, unknown>, entries: AssociatedMediaEntry[]) {
+  const sorted = sortAssociatedMediaEntries(entries);
+  enrichedData.associatedMedia = sorted.map((entry) => entry.url);
+  enrichedData.associatedMediaIds = sorted.map((entry) => entry.mediaId ?? null);
+}
+
 // ========================================
 // Media Management Functions
 // ========================================
@@ -613,33 +656,10 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
       await enrichItemWithResourceOwner(enrichedData);
 
       // ÉTAPE 2 : Charger les médias
-      let associatedMedia: string[] = [];
+      const mediaEntries: AssociatedMediaEntry[] = [];
       // 2a: Médias directs via o:media
       if (data['o:media'] && Array.isArray(data['o:media'])) {
-        const mediaRefs = data['o:media'].slice(0, 10);
-        const mediaPromises = mediaRefs.map(async (mediaRef: any) => {
-          const mediaId = mediaRef['o:id'];
-          if (mediaId) {
-            try {
-              const res = await fetchWithRetry(`${API_BASE}media/${mediaId}`, 1, 300);
-              if (res && res.ok) {
-                const mediaData = await res.json();
-                // Pour les médias YouTube, utiliser o:source (URL YouTube)
-                if (mediaData['o:ingester'] === 'youtube' && mediaData['o:source']) {
-                  return mediaData['o:source'];
-                }
-                // Pour les autres médias, utiliser o:original_url
-                return mediaData['o:original_url'];
-              }
-            } catch (err) {
-              console.error(`Erreur chargement média ${mediaId}:`, err);
-            }
-          }
-          return null;
-        });
-
-        const mediaUrls = await Promise.all(mediaPromises);
-        associatedMedia = mediaUrls.filter(Boolean) as string[];
+        mediaEntries.push(...(await loadDirectOmekaMediaEntries(data['o:media'])));
       }
 
       // 2b: Médias liés via schema:associatedMedia (prop 438) — utilisé par les récits
@@ -661,18 +681,8 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
               for (const mediaRef of itemData['o:media']) {
                 const mediaId = mediaRef['o:id'];
                 if (mediaId) {
-                  try {
-                    const mediaRes = await fetchWithRetry(`${API_BASE}media/${mediaId}`, 1, 300);
-                    if (mediaRes && mediaRes.ok) {
-                      const mediaData = await mediaRes.json();
-                      if (mediaData['o:ingester'] === 'youtube' && mediaData['o:source']) {
-                        return mediaData['o:source'];
-                      }
-                      return mediaData['o:original_url'];
-                    }
-                  } catch (err) {
-                    console.error(`Erreur chargement média lié ${mediaId}:`, err);
-                  }
+                  const linkedUrl = await fetchOmekaMediaUrl(mediaId);
+                  if (linkedUrl) return linkedUrl;
                 }
               }
             }
@@ -686,24 +696,20 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
         });
 
         const linkedMediaUrls = await Promise.all(linkedMediaPromises);
-        associatedMedia = [...associatedMedia, ...linkedMediaUrls.filter(Boolean) as string[]];
+        linkedMediaUrls.filter(Boolean).forEach((url) => {
+          if (url) mediaEntries.push({ url });
+        });
       }
 
       // 2c: Fallback final — URL vidéo directe (schema:url sur l'item principal)
-      if (associatedMedia.length === 0) {
+      if (mediaEntries.length === 0) {
         const videoUrl = data['schema:url']?.[0]?.['@id'];
         if (videoUrl) {
-          associatedMedia = [videoUrl];
+          mediaEntries.push({ url: videoUrl });
         }
       }
 
-      // Trier les médias : vidéos YouTube en premier
-      associatedMedia.sort((a, b) => {
-        const aIsYT = a.includes('youtube.com') || a.includes('youtu.be') ? 0 : 1;
-        const bIsYT = b.includes('youtube.com') || b.includes('youtu.be') ? 0 : 1;
-        return aIsYT - bIsYT;
-      });
-      enrichedData.associatedMedia = associatedMedia;
+      applyAssociatedMediaToItem(enrichedData, mediaEntries);
 
       // ÉTAPE 2b : Charger les contributeurs EN PRIORITÉ (avant l'affichage)
       const contributorProperties = [
@@ -1013,31 +1019,10 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
       await enrichItemWithResourceOwner(enrichedData);
 
       // Charger les médias
-      let associatedMedia: string[] = [];
+      const mediaEntries: AssociatedMediaEntry[] = [];
       // Médias directs via o:media
       if (data['o:media'] && Array.isArray(data['o:media'])) {
-        const mediaRefs = data['o:media'].slice(0, 10);
-        const mediaPromises = mediaRefs.map(async (mediaRef: any) => {
-          const mediaId = mediaRef['o:id'];
-          if (mediaId) {
-            try {
-              const res = await fetchWithRetry(`${API_BASE}media/${mediaId}`, 1, 300);
-              if (res && res.ok) {
-                const mediaData = await res.json();
-                if (mediaData['o:ingester'] === 'youtube' && mediaData['o:source']) {
-                  return mediaData['o:source'];
-                }
-                return mediaData['o:original_url'];
-              }
-            } catch (err) {
-              console.error(`Erreur chargement média ${mediaId}:`, err);
-            }
-          }
-          return null;
-        });
-
-        const mediaUrls = await Promise.all(mediaPromises);
-        associatedMedia = mediaUrls.filter(Boolean) as string[];
+        mediaEntries.push(...(await loadDirectOmekaMediaEntries(data['o:media'])));
       }
 
       // Médias liés via schema:associatedMedia (utilisé par les récits)
@@ -1057,18 +1042,8 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
               for (const mediaRef of itemData['o:media']) {
                 const mediaId = mediaRef['o:id'];
                 if (mediaId) {
-                  try {
-                    const mediaRes = await fetchWithRetry(`${API_BASE}media/${mediaId}`, 1, 300);
-                    if (mediaRes && mediaRes.ok) {
-                      const mediaData = await mediaRes.json();
-                      if (mediaData['o:ingester'] === 'youtube' && mediaData['o:source']) {
-                        return mediaData['o:source'];
-                      }
-                      return mediaData['o:original_url'];
-                    }
-                  } catch (err) {
-                    console.error(`Erreur chargement média lié ${mediaId}:`, err);
-                  }
+                  const linkedUrl = await fetchOmekaMediaUrl(mediaId);
+                  if (linkedUrl) return linkedUrl;
                 }
               }
             }
@@ -1081,24 +1056,20 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
         });
 
         const linkedMediaUrls = await Promise.all(linkedMediaPromises);
-        associatedMedia = [...associatedMedia, ...linkedMediaUrls.filter(Boolean) as string[]];
+        linkedMediaUrls.filter(Boolean).forEach((url) => {
+          if (url) mediaEntries.push({ url });
+        });
       }
 
       // Fallback: URL vidéo directe (schema:url)
-      if (associatedMedia.length === 0) {
+      if (mediaEntries.length === 0) {
         const videoUrl = data['schema:url']?.[0]?.['@id'];
         if (videoUrl) {
-          associatedMedia = [videoUrl];
+          mediaEntries.push({ url: videoUrl });
         }
       }
 
-      // Trier les médias : vidéos YouTube en premier
-      associatedMedia.sort((a, b) => {
-        const aIsYT = a.includes('youtube.com') || a.includes('youtu.be') ? 0 : 1;
-        const bIsYT = b.includes('youtube.com') || b.includes('youtu.be') ? 0 : 1;
-        return aIsYT - bIsYT;
-      });
-      enrichedData.associatedMedia = associatedMedia;
+      applyAssociatedMediaToItem(enrichedData, mediaEntries);
 
       // Charger les keywords
       let keywords: any[] = [];
