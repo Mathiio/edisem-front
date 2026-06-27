@@ -23,6 +23,7 @@ export interface FormActions {
   setFieldTouched: (field: string) => void;
   setMultipleValues: (values: Record<string, any>) => void;
   resetForm: (initialData?: Record<string, any>) => void;
+  patchBaseline: (patches: Record<string, any>) => void;
   validateField: (field: string) => string | null;
   validateForm: () => boolean;
   getFieldValue: (field: string) => any;
@@ -45,7 +46,10 @@ export function useFormState(options: UseFormStateOptions = {}) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [originalData] = useState<Record<string, any>>(initialData);
+  // originalData est la baseline pour le calcul isDirty.
+  // Elle est mise à jour lors d'un resetForm(newData) pour éviter de marquer
+  // le formulaire comme dirty après le chargement initial des données.
+  const [originalData, setOriginalData] = useState<Record<string, any>>(initialData);
 
   // Calcul de isDirty
   const isDirty = useMemo(() => {
@@ -96,13 +100,27 @@ export function useFormState(options: UseFormStateOptions = {}) {
     setData((prev) => ({ ...prev, ...values }));
   }, []);
 
-  // Réinitialiser le formulaire
+  // Met à jour la baseline (originalData) pour les clés données, sans toucher aux
+  // données utilisateur. Utilisé lors des chargements progressifs pour éviter isDirty=true.
+  const patchBaseline = useCallback((patches: Record<string, any>) => {
+    setOriginalData((prev) => ({ ...prev, ...patches }));
+  }, []);
+
+  // Réinitialiser le formulaire.
+  // Si newInitialData est fourni, met aussi à jour la baseline originalData
+  // (utile après un chargement serveur : le formulaire repart propre, isDirty=false).
+  // Sans argument, revient à la dernière baseline connue.
   const resetForm = useCallback((newInitialData?: Record<string, any>) => {
-    setData(newInitialData || initialData);
+    if (newInitialData !== undefined) {
+      setData(newInitialData);
+      setOriginalData(newInitialData);
+    } else {
+      setData(originalData);
+    }
     setErrors({});
     setTouched({});
     setIsSubmitting(false);
-  }, [initialData]);
+  }, [originalData]);
 
   // Valider un champ spécifique
   const validateField = useCallback(
@@ -207,6 +225,7 @@ export function useFormState(options: UseFormStateOptions = {}) {
     setFieldTouched,
     setMultipleValues,
     resetForm,
+    patchBaseline,
     validateField,
     validateForm,
     getFieldValue,

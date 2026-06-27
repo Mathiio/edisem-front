@@ -85,8 +85,8 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
         addToast({
           title: nowSaved ? 'Ajouté à votre liste' : 'Retiré de votre liste',
           description: nowSaved
-            ? 'Cette ressource apparaît dans votre liste de lecture.'
-            : 'Cette ressource a été retirée de votre liste de lecture.',
+            ? 'Ressource apparaît dans votre liste de lecture.'
+            : 'Ressource a été retirée de votre liste de lecture.',
           color: 'success',
         });
       } catch {

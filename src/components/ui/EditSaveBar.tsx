@@ -26,6 +26,9 @@ interface EditSaveBarProps {
   isSubmitting?: boolean;
   isDirty?: boolean;
   mode?: 'edit' | 'create' | 'view';
+  /** Ressource créée via CreateResourcePage, jamais intentionnellement sauvegardée.
+   *  Le bouton "Annuler" devient "Supprimer le brouillon". */
+  isDraft?: boolean;
   lastSaved?: Date | null;
   saveLabel?: string;
   resourceTree?: ResourceTree;
@@ -42,6 +45,7 @@ export const EditSaveBar: React.FC<EditSaveBarProps> = ({
   isSubmitting = false,
   isDirty = false,
   mode = 'edit',
+  isDraft = false,
   lastSaved,
   saveLabel,
   resourceTree,
@@ -142,7 +146,7 @@ export const EditSaveBar: React.FC<EditSaveBarProps> = ({
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     className='flex items-center gap-2 text-c4'>
-                    <WarningIcon size={20} className='text-c5 shrink-0' />
+                    <WarningIcon size={20} className='text-orange-500 shrink-0 animate-pulse' />
                     <span className='text-sm'>Modifications non sauvegardées</span>
                   </motion.div>
                 )}
@@ -169,19 +173,29 @@ export const EditSaveBar: React.FC<EditSaveBarProps> = ({
               </div>
 
               <div className='flex flex-row gap-2 shrink-0'>
-                <Button
-                  variant='light'
-                  className={modalFooterCancelButtonClass}
-                  onPress={onCancel}
-                  isDisabled={isSubmitting}>
-                  Annuler
-                </Button>
+                {isDraft ? (
+                  <Button
+                    variant='light'
+                    className={modalFooterCancelButtonClass}
+                    onPress={onCancel}
+                    isDisabled={isSubmitting}>
+                    Supprimer le brouillon
+                  </Button>
+                ) : (
+                  <Button
+                    variant='light'
+                    className={modalFooterCancelButtonClass}
+                    onPress={onCancel}
+                    isDisabled={isSubmitting}>
+                    Annuler
+                  </Button>
+                )}
 
                 <Button
                   className={modalFooterConfirmButtonClass}
                   onPress={onSave}
                   isLoading={isSubmitting}
-                  isDisabled={isSubmitting || (!isDirty && !isCreateMode)}>
+                  isDisabled={isSubmitting || (!isDirty && !isCreateMode && !isDraft)}>
                   {saveLabel ?? 'Sauvegarder'}
                 </Button>
               </div>

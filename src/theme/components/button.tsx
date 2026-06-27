@@ -8,10 +8,10 @@ export const outlineButtonCompactClass =
   'hover:bg-c3 cursor-pointer bg-c2 flex flex-row rounded-xl border-2 border-c3 items-center justify-center text-sm px-3 py-2 gap-2 text-c6 transition-all ease-in-out duration-200';
 
 /** Bouton principal (confirmation modale, sauvegarde) */
-export const primaryButtonClass = 'bg-action text-selected rounded-lg';
+export const primaryButtonClass = 'bg-action text-selected rounded-xl';
 
 /** Bouton annuler / secondaire texte */
-export const cancelButtonClass = 'text-c5 rounded-lg';
+export const cancelButtonClass = 'text-c5 rounded-xl';
 
 /** Bouton destructif contour — même gabarit que outlineButtonClass */
 export const dangerOutlineButtonClass =

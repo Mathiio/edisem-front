@@ -8,7 +8,7 @@ import { mediagraphyConfigSimplified } from '@/pages/generic/config/mediagraphyC
 import { SimplifiedDetailConfig } from '@/pages/generic/simplifiedConfig';
 import { createHandleSave } from '@/pages/generic/simplifiedConfigAdapter';
 import { resolveCreateTabConfig } from '@/pages/generic/createTabRegistry';
-import { getRessourceLabel, getResourceUrl, getMonEspacePath, getResourceLinkSaveLabel } from '@/config/resourceConfig';
+import { getRessourceLabel, getResourceEditUrl, getMonEspacePath, getResourceLinkSaveLabel } from '@/config/resourceConfig';
 import { useAuth } from '@/hooks/useAuth';
 import { AlertModal } from '@/components/ui/AlertModal';
 
@@ -187,23 +187,26 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
           return newTabs;
         }
 
-        // Onglet principal qui vient de terminer une création
-        if (tab && !tab.parentTabId && tab.mode === 'create') {
-          // Si ouvert depuis un picker (nouvel onglet), notifier le parent et fermer
-          const pickerParams = new URLSearchParams(window.location.search);
-          if (pickerParams.get('fromPicker') === '1' && window.opener) {
-            window.opener.postMessage(
-              { type: 'RESOURCE_CREATED', id: savedItemId, title: savedItemTitle || `Item ${savedItemId}` },
-              window.location.origin,
+        // Onglet principal — création terminée ou sauvegarde en édition
+        if (tab && !tab.parentTabId) {
+          if (tab.mode === 'create') {
+            // Si ouvert depuis un picker (nouvel onglet), notifier le parent et fermer
+            const pickerParams = new URLSearchParams(window.location.search);
+            if (pickerParams.get('fromPicker') === '1' && window.opener) {
+              window.opener.postMessage(
+                { type: 'RESOURCE_CREATED', id: savedItemId, title: savedItemTitle || `Item ${savedItemId}` },
+                window.location.origin,
+              );
+              window.close();
+              return prevTabs;
+            }
+            navigationUrl = getResourceEditUrl(initialConfig.type || '', savedItemId);
+            return prevTabs.map((t) =>
+              t.id === tabId ? { ...t, mode: 'edit', itemId: String(savedItemId), isDirty: false } : t,
             );
-            window.close();
-            return prevTabs;
           }
-          if (initialConfig.formOnly) {
-            navigationUrl = monEspacePath;
-          } else {
-            navigationUrl = getResourceUrl(initialConfig.type || '', savedItemId);
-          }
+
+          return prevTabs.map((t) => (t.id === tabId ? { ...t, isDirty: false } : t));
         }
 
         return prevTabs;
@@ -331,8 +334,10 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
       let onCancelHandler: (() => void) | undefined = undefined;
       
       if (tab.parentTabId) {
-        // Cas 1: Onglet enfant -> Fermer l'onglet
-        onCancelHandler = () => handleCloseTab(tab.id);
+        // Cas 1: Onglet enfant -> Fermer l'onglet directement.
+        // On utilise performCloseTab (pas handleCloseTab) car l'utilisateur a déjà
+        // explicitement confirmé en cliquant "Annuler" — pas besoin de re-confirmation.
+        onCancelHandler = () => performCloseTab(tab.id);
       } else if (tab.mode === 'create') {
         // Cas 2: Onglet principal en création
         // Si ouvert depuis un picker (nouvel onglet), fermer l'onglet; sinon retour arrière

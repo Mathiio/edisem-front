@@ -81,8 +81,10 @@ const ProtectedMotsCles = withAuth(MotsClesPage, { requiredPermission: 'admin' }
 const ProtectedListeLecture = withAuth(ListeLecture, { requiredRole: 'actant' });
 
 // Wrapper pour protéger ConfigurableDetailPage en mode création (actants et étudiants)
-const ProtectedConfigurableDetailPage = withAuth(ConfigurableDetailPage, { requiredRole: 'any' });
 const ProtectedAdminConfigurableDetailPage = withAuth(ConfigurableDetailPage, { requiredPermission: 'admin' });
+import { CreateResourcePage } from '@/pages/generic/CreateResourcePage';
+const ProtectedCreateResourcePage = withAuth(CreateResourcePage, { requiredRole: 'any' });
+const ProtectedAdminCreateResourcePage = withAuth(CreateResourcePage, { requiredPermission: 'admin' });
 //const ProtectedCahierRecherche = withAuth(CahierRecherche, { requiredRole: 'actant' });
 
 function App() {
@@ -204,29 +206,30 @@ function App() {
             <Route path='/ecole-doctorale/:id' element={<ConfigurableDetailPage config={ecoleDoctoraleConfig} />} />
             <Route path='/laboratoire/:id' element={<ConfigurableDetailPage config={laboratoireConfig} />} />
 
-            {/* Resource Creation Routes - Utilise ConfigurableDetailPage en mode create */}
-            <Route path='/add-resource/experimentation' element={<ProtectedConfigurableDetailPage config={experimentationStudentConfig} initialMode='create' />} />
-            <Route path='/add-resource/outil' element={<ProtectedConfigurableDetailPage config={toolStudentConfig} initialMode='create' />} />
-            <Route path='/add-resource/retour-experience' element={<ProtectedConfigurableDetailPage config={feedbackStudentConfig} initialMode='create' />} />
-            <Route path='/add-resource/experimentation-chercheur' element={<ProtectedConfigurableDetailPage config={experimentationConfig} initialMode='create' />} />
-            <Route path='/add-resource/retour-experience-chercheur' element={<ProtectedConfigurableDetailPage config={feedbackConfig} initialMode='create' />} />
-            <Route path='/add-resource/outil-chercheur' element={<ProtectedConfigurableDetailPage config={toolConfig} initialMode='create' />} />
-            <Route path='/add-resource/conference' element={<ProtectedConfigurableDetailPage config={conferenceConfig} initialMode='create' />} />
-            <Route path='/add-resource/bibliographie' element={<ProtectedConfigurableDetailPage config={bibliographyConfig} initialMode='create' />} />
-            <Route path='/add-resource/mediagraphie' element={<ProtectedConfigurableDetailPage config={mediagraphyConfig} initialMode='create' />} />
-            <Route path='/add-resource/recit-artistique' element={<ProtectedConfigurableDetailPage config={recitArtitstiqueConfig} initialMode='create' />} />
-            <Route path='/add-resource/recit-scientifique' element={<ProtectedConfigurableDetailPage config={recitScientifiqueConfig} initialMode='create' />} />
-            <Route path='/add-resource/recit-techno' element={<ProtectedConfigurableDetailPage config={recitTechnoConfig} initialMode='create' />} />
-            <Route path='/add-resource/recit-citoyen' element={<ProtectedConfigurableDetailPage config={recitCitoyenConfig} initialMode='create' />} />
-            <Route path='/add-resource/recit-mediatique' element={<ProtectedConfigurableDetailPage config={recitMediatiqueConfig} initialMode='create' />} />
-            <Route path='/add-resource/intervenant' element={<ProtectedConfigurableDetailPage config={intervenantConfig} initialMode='create' />} />
-            <Route path='/add-resource/personne' element={<ProtectedConfigurableDetailPage config={personneConfig} initialMode='create' />} />
-            <Route path='/add-resource/organisation' element={<ProtectedConfigurableDetailPage config={organisationConfig} initialMode='create' />} />
-            <Route path='/add-resource/mot-cle' element={<ProtectedAdminConfigurableDetailPage config={motCleConfig} initialMode='create' />} />
+            {/* Resource Creation Routes — draft-first : la ressource est créée immédiatement dans Omeka S,
+                puis redirigée vers le mode édition avec ?draft=1. "Annuler" = supprimer le brouillon. */}
+            <Route path='/add-resource/experimentation' element={<ProtectedCreateResourcePage config={experimentationStudentConfig} />} />
+            <Route path='/add-resource/outil' element={<ProtectedCreateResourcePage config={toolStudentConfig} />} />
+            <Route path='/add-resource/retour-experience' element={<ProtectedCreateResourcePage config={feedbackStudentConfig} />} />
+            <Route path='/add-resource/experimentation-chercheur' element={<ProtectedCreateResourcePage config={experimentationConfig} />} />
+            <Route path='/add-resource/retour-experience-chercheur' element={<ProtectedCreateResourcePage config={feedbackConfig} />} />
+            <Route path='/add-resource/outil-chercheur' element={<ProtectedCreateResourcePage config={toolConfig} />} />
+            <Route path='/add-resource/conference' element={<ProtectedCreateResourcePage config={conferenceConfig} />} />
+            <Route path='/add-resource/bibliographie' element={<ProtectedCreateResourcePage config={bibliographyConfig} />} />
+            <Route path='/add-resource/mediagraphie' element={<ProtectedCreateResourcePage config={mediagraphyConfig} />} />
+            <Route path='/add-resource/recit-artistique' element={<ProtectedCreateResourcePage config={recitArtitstiqueConfig} />} />
+            <Route path='/add-resource/recit-scientifique' element={<ProtectedCreateResourcePage config={recitScientifiqueConfig} />} />
+            <Route path='/add-resource/recit-techno' element={<ProtectedCreateResourcePage config={recitTechnoConfig} />} />
+            <Route path='/add-resource/recit-citoyen' element={<ProtectedCreateResourcePage config={recitCitoyenConfig} />} />
+            <Route path='/add-resource/recit-mediatique' element={<ProtectedCreateResourcePage config={recitMediatiqueConfig} />} />
+            <Route path='/add-resource/intervenant' element={<ProtectedCreateResourcePage config={intervenantConfig} />} />
+            <Route path='/add-resource/personne' element={<ProtectedCreateResourcePage config={personneConfig} />} />
+            <Route path='/add-resource/organisation' element={<ProtectedCreateResourcePage config={organisationConfig} />} />
+            <Route path='/add-resource/mot-cle' element={<ProtectedAdminCreateResourcePage config={motCleConfig} />} />
             <Route path='/add-resource/mot-cle/:id' element={<ProtectedAdminConfigurableDetailPage config={motCleConfig} />} />
-            <Route path='/add-resource/universite' element={<ProtectedConfigurableDetailPage config={universiteConfig} initialMode='create' />} />
-            <Route path='/add-resource/ecole-doctorale' element={<ProtectedConfigurableDetailPage config={ecoleDoctoraleConfig} initialMode='create' />} />
-            <Route path='/add-resource/laboratoire' element={<ProtectedConfigurableDetailPage config={laboratoireConfig} initialMode='create' />} />
+            <Route path='/add-resource/universite' element={<ProtectedCreateResourcePage config={universiteConfig} />} />
+            <Route path='/add-resource/ecole-doctorale' element={<ProtectedCreateResourcePage config={ecoleDoctoraleConfig} />} />
+            <Route path='/add-resource/laboratoire' element={<ProtectedCreateResourcePage config={laboratoireConfig} />} />
           </Routes>
           </WatchlistProvider>
         </NavigationTrailProvider>

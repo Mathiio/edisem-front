@@ -15,6 +15,8 @@ interface AlertModalProps {
   icon?: React.FC<any>;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Si fourni, le bouton "Annuler" appelle ceci au lieu de onClose */
+  onCancelAction?: () => void;
   onConfirm: () => void;
   isLoading?: boolean;
 }
@@ -30,6 +32,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
   icon,
   confirmLabel = 'Confirmer',
   cancelLabel = 'Annuler',
+  onCancelAction,
   onConfirm,
   isLoading = false,
 }) => {
@@ -54,7 +57,7 @@ export const AlertModal: React.FC<AlertModalProps> = ({
           </div>
         </ModalBody>
         <ModalFooter>
-          <Button variant='light' onPress={onClose} className='text-c5 hover:text-c6'>
+          <Button variant='light' onPress={onCancelAction ?? onClose} className='text-c5 hover:text-c6'>
             {cancelLabel}
           </Button>
           <Button onPress={onConfirm} isLoading={isLoading} className={`${config.confirmButtonClass} text-white font-medium`}>

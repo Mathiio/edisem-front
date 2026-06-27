@@ -49,14 +49,29 @@ export interface ResourcePickerProps {
  */
 // Helper function to load resources by template ID (from Omeka S API)
 const API_BASE = '/omk/api/';
+const ITEMS_PER_PAGE = 100;
+/** Garde-fou : 200 pages × 100 = 20 000 items max par template */
+const MAX_ITEM_PAGES = 200;
+
+const buildItemsQuery = (params: Record<string, string | number | undefined>): string => {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') searchParams.set(key, String(value));
+  });
+  return `${API_BASE}items?${searchParams.toString()}`;
+};
+
+const normalizeResource = (item: any) => ({
+  ...item,
+  id: item['o:id'] ?? item.id,
+  title: item['o:title'] || item['dcterms:title']?.[0]?.['@value'] || `Item ${item['o:id']}`,
+});
 
 // Charger les infos d'un template pour avoir son label
 const loadTemplateInfo = async (templateId: number): Promise<string> => {
-  // 1. Chercher dans le registre local (instantané, pas de fetch)
   const localConfig = getResourceConfigByTemplateId(templateId);
   if (localConfig) return localConfig.label;
 
-  // 2. Fallback : charger depuis l'API Omeka S
   try {
     const response = await fetch(`${API_BASE}resource_templates/${templateId}`);
     if (!response.ok) return `Template ${templateId}`;
@@ -67,20 +82,27 @@ const loadTemplateInfo = async (templateId: number): Promise<string> => {
   }
 };
 
-const loadResourcesByTemplateId = async (templateId: number): Promise<{ resources: any[]; templateLabel: string }> => {
+const loadResourcesByTemplateId = async (
+  templateId: number,
+  options?: { search?: string },
+): Promise<{ resources: any[]; templateLabel: string; truncated?: boolean }> => {
   try {
-    // Charger jusqu'à 500 items par template (pagination)
     const allResources: any[] = [];
     let page = 1;
-    const perPage = 100;
     let hasMore = true;
+    let truncated = false;
 
-    // Charger le label du template en parallèle
     const templateLabelPromise = loadTemplateInfo(templateId);
 
-    while (hasMore && page <= 5) {
-      // Max 5 pages = 500 items par template
-      const url = `${API_BASE}items?resource_template_id=${templateId}&per_page=${perPage}&page=${page}`;
+    while (hasMore && page <= MAX_ITEM_PAGES) {
+      const url = buildItemsQuery({
+        resource_template_id: templateId,
+        per_page: ITEMS_PER_PAGE,
+        page,
+        sort_by: 'id',
+        sort_order: 'desc',
+        search: options?.search?.trim() || undefined,
+      });
       console.log('[ResourcePicker] Fetching:', url);
       const response = await fetch(url);
 
@@ -92,15 +114,22 @@ const loadResourcesByTemplateId = async (templateId: number): Promise<{ resource
       const data = await response.json();
       console.log(`[ResourcePicker] Template ${templateId} - Page ${page}: ${data.length} items`);
 
-      allResources.push(...data);
-      hasMore = data.length === perPage;
+      allResources.push(...data.map(normalizeResource));
+      hasMore = data.length === ITEMS_PER_PAGE;
       page++;
+    }
+
+    if (hasMore) {
+      truncated = true;
+      console.warn(
+        `[ResourcePicker] Template ${templateId}: limite de ${MAX_ITEM_PAGES * ITEMS_PER_PAGE} items atteinte — utilisez la recherche pour affiner.`,
+      );
     }
 
     const templateLabel = await templateLabelPromise;
     console.log(`[ResourcePicker] Template ${templateId} (${templateLabel}) - Total: ${allResources.length} items`);
 
-    return { resources: allResources, templateLabel };
+    return { resources: allResources, templateLabel, truncated };
   } catch (err) {
     console.error('[ResourcePicker] Erreur chargement ressources:', err);
     return { resources: [], templateLabel: `Template ${templateId}` };
@@ -153,7 +182,14 @@ const loadResourcesByMultipleTemplateIds = async (templateIds: number[]): Promis
     for (const r of rawResults) {
       const existing = grouped.get(r.templateLabel);
       if (existing) {
-        existing.resources = [...existing.resources, ...r.resources];
+        const seen = new Set(existing.resources.map((item) => item['o:id'] ?? item.id));
+        for (const item of r.resources) {
+          const id = item['o:id'] ?? item.id;
+          if (!seen.has(id)) {
+            existing.resources.push(item);
+            seen.add(id);
+          }
+        }
       } else {
         grouped.set(r.templateLabel, { templateId: r.templateId, templateLabel: r.templateLabel, resources: r.resources });
       }
@@ -206,6 +242,8 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
   // État pour les ressources chargées par template ID (nouvelle structure avec onglets)
   const [templateDataList, setTemplateDataList] = useState<TemplateData[]>([]);
   const [templateLoading, setTemplateLoading] = useState(false);
+  const [apiSearchResults, setApiSearchResults] = useState<any[] | null>(null);
+  const [apiSearchLoading, setApiSearchLoading] = useState(false);
 
   // Fetch resources (ancien système avec resourceClassId)
   const { data: classResources, loading: classLoading } = useGetDataByClass(resourceClassId || 0);
@@ -238,6 +276,40 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
       }
     }
   }, [isOpen, resourceTemplateId, resourceTemplateIds, itemSetIds]);
+
+  // Recherche côté API Omeka (trouve des items au-delà de la liste préchargée)
+  useEffect(() => {
+    const trimmed = searchTerm.trim();
+    const templateIds =
+      resourceTemplateIds && resourceTemplateIds.length > 0
+        ? resourceTemplateIds
+        : resourceTemplateId
+          ? [resourceTemplateId]
+          : [];
+
+    if (!isOpen || trimmed.length < 2 || templateIds.length === 0) {
+      setApiSearchResults(null);
+      setApiSearchLoading(false);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setApiSearchLoading(true);
+      try {
+        const batches = await Promise.all(templateIds.map((id) => loadResourcesByTemplateId(id, { search: trimmed })));
+        const merged = batches.flatMap((batch) => batch.resources);
+        const unique = new Map<string | number, any>();
+        merged.forEach((item) => unique.set(item['o:id'] ?? item.id, item));
+        setApiSearchResults([...unique.values()]);
+      } catch {
+        setApiSearchResults([]);
+      } finally {
+        setApiSearchLoading(false);
+      }
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [isOpen, searchTerm, resourceTemplateId, resourceTemplateIds]);
 
   const reloadResources = useCallback(async () => {
     if (itemSetIds && itemSetIds.length > 0) {
@@ -337,7 +409,8 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
 
   // Choisir la source de données appropriée
   const resources = resourceTemplateId || resourceTemplateIds || itemSetIds ? allTemplateResources : classResources;
-  const loading = resourceTemplateId || resourceTemplateIds || itemSetIds ? templateLoading : classLoading;
+  const loading =
+    (resourceTemplateId || resourceTemplateIds || itemSetIds ? templateLoading : classLoading) || apiSearchLoading;
 
   // Ressources filtrées par onglet actif
   const resourcesForActiveTab = useMemo(() => {
@@ -413,26 +486,25 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
 
   // Filter and sort resources
   const filteredResources = useMemo(() => {
-    if (!resourcesForActiveTab || !Array.isArray(resourcesForActiveTab)) return [];
+    const trimmedSearch = searchTerm.trim();
+    const useApiSearch = trimmedSearch.length >= 2 && apiSearchResults !== null;
+    const baseList = useApiSearch ? apiSearchResults : resourcesForActiveTab;
 
-    let result = [...resourcesForActiveTab];
+    if (!baseList || !Array.isArray(baseList)) return [];
 
-    // Apply custom filter
+    let result = [...baseList];
+
     if (filterFn) {
       result = result.filter(filterFn);
     }
 
-    // Apply search filter
-    if (searchTerm) {
-      const lowerSearch = searchTerm.toLowerCase();
-      result = result.filter((r) => {
-        const displayValue = getDisplayValue(r).toLowerCase();
-        return displayValue.includes(lowerSearch);
-      });
+    if (!useApiSearch && trimmedSearch) {
+      const lowerSearch = trimmedSearch.toLowerCase();
+      result = result.filter((r) => getDisplayValue(r).toLowerCase().includes(lowerSearch));
     }
 
     return result;
-  }, [resourcesForActiveTab, searchTerm, filterFn, getDisplayValue]);
+  }, [resourcesForActiveTab, searchTerm, filterFn, getDisplayValue, apiSearchResults]);
 
   // Toggle selection
   const toggleSelection = (resource: any) => {

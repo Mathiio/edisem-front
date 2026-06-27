@@ -283,6 +283,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
   outil_etudiant: {
     type: 'outil_etudiant',
     label: 'Outil (Étudiant)',
+    gender: 'm',
     icon: undefined,
     templateIds: [129],
     getUrl: (id) => `/corpus/outil/${id}`,
@@ -303,6 +304,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
   intervenant: {
     type: 'intervenant',
     label: 'Intervenant',
+    gender: 'm',
     collectionLabel: 'Intervenants',
     icon: undefined,
     templateIds: [72],
@@ -313,6 +315,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
   personne: {
     type: 'personne',
     label: 'Personne',
+    gender: 'f',
     collectionLabel: 'Personnes',
     icon: undefined,
     templateIds: [33],
@@ -323,6 +326,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
   organisation: {
     type: 'organisation',
     label: 'Organisation',
+    gender: 'f',
     collectionLabel: 'Organisations',
     icon: BuildingIcon,
     color: '#FFD6A5',
@@ -335,6 +339,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
   universite: {
     type: 'universite',
     label: 'Université',
+    gender: 'f',
     collectionLabel: 'Universités',
     icon: undefined,
     templateIds: [73],
@@ -346,6 +351,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
   ecole_doctorale: {
     type: 'ecole_doctorale',
     label: 'École doctorale',
+    gender: 'f',
     collectionLabel: 'Écoles doctorales',
     icon: undefined,
     templateIds: [74],
@@ -357,6 +363,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
   laboratoire: {
     type: 'laboratoire',
     label: 'Laboratoire',
+    gender: 'm',
     collectionLabel: 'Laboratoires',
     icon: undefined,
     templateIds: [91],
@@ -368,6 +375,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
   mot_cle: {
     type: 'mot_cle',
     label: 'Mot-clé',
+    gender: 'm',
     collectionLabel: 'Mots-clés',
     icon: undefined,
     templateIds: [34],

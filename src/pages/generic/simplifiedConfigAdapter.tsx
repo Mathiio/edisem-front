@@ -645,8 +645,8 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
 
   return async (id: string, onProgress: ProgressCallback): Promise<FetchResult> => {
     try {
-      // ÉTAPE 1 : Fetch de l'item principal
-      const response = await fetchWithRetry(`${API_BASE}items/${id}`);
+      // ÉTAPE 1 : Fetch de l'item principal (avec auth pour accéder aux items privés)
+      const response = await fetchWithRetry(omekaApiUrl(`${API_BASE}items/${id}`));
       if (!response || !response.ok) {
         throw new Error(`Erreur: Item ${id} non trouvé ou API indisponible`);
       }
@@ -893,7 +893,8 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
         await Promise.all(
           batch.map(async (resourceId) => {
             try {
-              const res = await fetchWithRetry(`${API_BASE}items/${resourceId}`, 1, 300);
+              // Use omekaApiUrl so private (draft) resources are also accessible
+              const res = await fetchWithRetry(omekaApiUrl(`${API_BASE}items/${resourceId}`), 1, 300);
               if (!res || !res.ok) return;
 
               const resourceData = await res.json();
@@ -1135,7 +1136,8 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
         await Promise.all(
           batch.map(async (resourceId) => {
             try {
-              const res = await fetchWithRetry(`${API_BASE}items/${resourceId}`, 1, 300);
+              // Use omekaApiUrl so private (draft) resources are also accessible
+              const res = await fetchWithRetry(omekaApiUrl(`${API_BASE}items/${resourceId}`), 1, 300);
               if (!res || !res.ok) return;
 
               const resourceData = await res.json();
@@ -1335,7 +1337,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
       switch (view.renderType) {
         case 'items': {
           let resourceIds = getResourceIds(itemDetails, view.property || '');
-          const resourceCache = { ...(itemDetails.resourceCache || {}) };
+          const resourceCache = { ...(itemDetails?.resourceCache || {}) };
           const formDataItems: any[] = isEditing && Array.isArray(itemDetails[view.key]) ? itemDetails[view.key] : [];
 
           if (isEditing && formData?.[view.key] !== undefined && Array.isArray(formData[view.key])) {
@@ -2024,6 +2026,22 @@ function buildOmekaResourceLinks(items: { id?: number; 'o:id'?: number; value_re
     }));
 }
 
+const URL_OMEKA_PROPERTIES = new Set(['bibo:uri', 'schema:url']);
+
+function isUrlOmekaField(
+  formKey: string,
+  omekaProperty: string,
+  fieldTypeByKey: Record<string, FieldType>,
+): boolean {
+  return (
+    fieldTypeByKey[formKey] === 'url' ||
+    URL_OMEKA_PROPERTIES.has(omekaProperty) ||
+    formKey === 'fullUrl' ||
+    formKey === 'externalLink' ||
+    formKey === 'url'
+  );
+}
+
 // ========================================
 // Fonction helper pour créer le handler de sauvegarde
 // ========================================
@@ -2038,6 +2056,10 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
   const customVocabByProperty: Record<string, number> = {};
   fields.forEach((f) => {
     if (f.customVocabId) customVocabByProperty[f.property] = f.customVocabId;
+  });
+  const fieldTypeByKey: Record<string, FieldType> = {};
+  fields.forEach((f) => {
+    fieldTypeByKey[f.key] = f.type;
   });
   config.views?.forEach((view) => {
     view.vocabFields?.forEach((f) => {
@@ -2109,6 +2131,9 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
 
       // 4. Préparer l'item mis à jour
       const updatedItem = { ...itemData };
+
+      // Toute sauvegarde explicite publie l'item (brouillon ou item masqué).
+      updatedItem['o:is_public'] = true;
 
       // Sauvegarder les champs système
       const systemFields = ['o:media', 'o:site', 'o:item_set', 'o:owner', 'o:primary_media'];
@@ -2240,12 +2265,30 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
 
         // Traiter selon le type de valeur
         if (typeof value === 'string' || typeof value === 'number') {
+          const strValue = String(value).trim();
+
+          if (isUrlOmekaField(key, omekaProperty, fieldTypeByKey)) {
+            updatedItem[omekaProperty] =
+              strValue === ''
+                ? []
+                : [
+                    {
+                      type: 'uri',
+                      property_id: propertyId,
+                      '@id': strValue,
+                      is_public: true,
+                    },
+                  ];
+            writtenOmekaProperties.add(omekaProperty);
+            continue;
+          }
+
           const vocabId = customVocabByProperty[omekaProperty];
           updatedItem[omekaProperty] = [
             {
               type: vocabId ? `customvocab:${vocabId}` : 'literal',
               property_id: propertyId,
-              '@value': String(value),
+              '@value': strValue,
               is_public: true,
             },
           ];

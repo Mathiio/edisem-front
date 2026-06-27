@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Link, Skeleton } from '@heroui/react';
+import { Button, Link } from '@heroui/react';
 import { FileIcon } from '@/components/ui/icons';
 
 import { motion, Variants } from 'framer-motion';
@@ -96,23 +96,6 @@ export const MicroresumeCard: React.FC<MicroresumeCardProps> = ({ title, descrip
   );
 };
 
-export const MicroresumeSkeleton: React.FC = () => {
-  return (
-    <div className='w-full flex flex-col justify-start rounded-xl bg-c3 items-start p-2.5 gap-1.5 transition-transform-colors-opacity'>
-      <div className='w-full flex justify-start items-center gap-2.5'>
-        <Skeleton className='w-[55%] h-4 rounded-md' />
-      </div>
-      <Skeleton className='w-full h-4 rounded-md' />
-      <Skeleton className='w-full h-4 rounded-md' />
-      <Skeleton className='w-full h-4 rounded-md' />
-      <Skeleton className='w-full h-4 rounded-md' />
-      <Skeleton className='w-full h-4 rounded-md' />
-      <Skeleton className='w-full h-4 rounded-md' />
-      <Skeleton className='w-[30%] h-4 rounded-md' />
-    </div>
-  );
-};
-
 interface MicroresumesProps {
   microresumes: {
     id: number;
@@ -127,30 +110,29 @@ interface MicroresumesProps {
 }
 
 export const Microresumes: React.FC<MicroresumesProps> = ({ microresumes, loading, onTimeChange }) => {
-  // Si pas de microresumes et pas en chargement, ne rien afficher (cacher la vue)
-  if (!loading && (!microresumes || microresumes.length === 0)) {
+  if (loading) return null;
+
+  if (!microresumes || microresumes.length === 0) {
     return null;
   }
 
   return (
     <div className='w-full h-max flex flex-col gap-5'>
       <div className='flex flex-col gap-5 h-full overflow-y-auto scroll-container'>
-        {loading
-          ? Array.from({ length: 8 }, (_, i) => <MicroresumeSkeleton key={i} />)
-          : microresumes.map((microresume, index) => (
-              <motion.div key={microresume.id} initial='hidden' animate='visible' variants={fadeIn} custom={index}>
-                <MicroresumeCard
-                  key={index}
-                  id={microresume.id}
-                  startTime={microresume.startTime}
-                  endTime={microresume.endTime}
-                  title={microresume.title}
-                  description={microresume.description}
-                  outils={microresume.outils}
-                  onTimeChange={onTimeChange}
-                />
-              </motion.div>
-            ))}
+        {microresumes.map((microresume, index) => (
+          <motion.div key={microresume.id} initial='hidden' animate='visible' variants={fadeIn} custom={index}>
+            <MicroresumeCard
+              key={index}
+              id={microresume.id}
+              startTime={microresume.startTime}
+              endTime={microresume.endTime}
+              title={microresume.title}
+              description={microresume.description}
+              outils={microresume.outils}
+              onTimeChange={onTimeChange}
+            />
+          </motion.div>
+        ))}
       </div>
     </div>
   );

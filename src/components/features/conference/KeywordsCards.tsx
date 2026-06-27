@@ -21,7 +21,7 @@ export const KeywordsCard: React.FC<KeywordsCardProps> = ({ word, onSearchClick 
   return (
     <motion.div
       variants={itemVariants}
-      className='border-2 border-c3 h-full rounded-lg flex items-center justify-start p-2.5 cursor-pointer hover:border-c4 hover:bg-c2 transition-all ease-in-out duration-200'
+      className='border-2 border-c3 h-full rounded-xl flex items-center justify-start p-2.5 cursor-pointer hover:border-c4 transition-all ease-in-out duration-200'
       onClick={handleClick}>
       <p className='text-sm text-c4 font-normal'>{word}</p>
     </motion.div>
