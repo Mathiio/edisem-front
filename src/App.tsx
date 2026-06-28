@@ -1,5 +1,5 @@
 import { useThemeMode } from '@/hooks/useThemeMode';
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, Navigate } from 'react-router-dom';
 import { Intervenant } from '@/pages/intervenant';
 import { Home } from '@/pages/home';
 import { Edition } from '@/pages/corpus/confsByEdition';
@@ -54,11 +54,8 @@ import { MonEspace4 } from './pages/monespace4';
 import { ListeLecture } from './pages/listeLecture';
 import { MotsClesPage } from '@/pages/mots-cles';
 import TestOmekaEdit from './pages/test-omeka-edit';
-import { StudentManagement } from './pages/admin/StudentManagement';
-import { CourseManagement } from './pages/admin/CourseManagement';
-import { ActantManagement } from './pages/admin/ActantManagement';
-import ResourceManagement from './pages/admin/ResourceManagement';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import AdministrationPage from './pages/administration';
 
 // Create context for navbar ready callback
 interface NavbarReadyContextType {
@@ -72,11 +69,8 @@ export const useNavbarReadyContext = () => {
   return context;
 };
 
-const ProtectedStudentManagement = withAuth(StudentManagement, { requiredPermission: 'admin' });
-const ProtectedCourseManagement = withAuth(CourseManagement, { requiredPermission: 'admin' });
-const ProtectedActantManagement = withAuth(ActantManagement, { requiredPermission: 'admin' });
-const ProtectedResourceManagement = withAuth(ResourceManagement, { requiredPermission: 'admin' });
-const ProtectedAdminDashboard = withAuth(AdminDashboard, { requiredPermission: 'admin' });
+const ProtectedUsersPage = withAuth(AdminDashboard, { requiredPermission: 'admin' });
+const ProtectedAdministration = withAuth(AdministrationPage, { requiredOmekaRole: 'global_admin' });
 const ProtectedMotsCles = withAuth(MotsClesPage, { requiredPermission: 'admin' });
 const ProtectedListeLecture = withAuth(ListeLecture, { requiredRole: 'actant' });
 
@@ -127,12 +121,11 @@ function App() {
             <Route path='/liste-de-lecture' Component={ProtectedListeLecture} />
             <Route path='/test-omeka-edit' Component={TestOmekaEdit} />
 
-            {/* Admin routes */}
-            <Route path='/admin' Component={ProtectedAdminDashboard} />
-            <Route path='/admin/etudiants' Component={ProtectedStudentManagement} />
-            <Route path='/admin/cours' Component={ProtectedCourseManagement} />
-            <Route path='/admin/actants' Component={ProtectedActantManagement} />
-            <Route path='/admin/ressources' Component={ProtectedResourceManagement} />
+            {/* Utilisateurs (actants, étudiants, cours) */}
+            <Route path='/users' Component={ProtectedUsersPage} />
+            <Route path='/admin' element={<Navigate to='/users' replace />} />
+            <Route path='/admin/*' element={<Navigate to='/users' replace />} />
+            <Route path='/administration' Component={ProtectedAdministration} />
 
             {/* Temporaire — gestion mots-clés */}
             <Route path='/mots-cles' Component={ProtectedMotsCles} />

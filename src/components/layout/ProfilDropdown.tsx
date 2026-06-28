@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useCallback, useMemo } from 'react';
-import { UserIcon, Logout, SunIcon, MoonIcon, SettingsIcon, KeywordIcon, BookMarkIcon } from '@/components/ui/icons';
+import { UsersIcon, UserIcon, Logout, SunIcon, MoonIcon, SettingsIcon, KeywordIcon, BookMarkIcon } from '@/components/ui/icons';
 import { User } from '@heroui/react';
 import {
   Dropdown,
@@ -49,6 +49,7 @@ export const ProfilDropdown = () => {
   );
 
   const canAdmin = can('admin');
+  const isGlobalAdmin = userData?.role === 'global_admin';
 
   return (
     <Dropdown classNames={dropdownContentClassNames}>
@@ -109,7 +110,14 @@ export const ProfilDropdown = () => {
               </DropdownItem>
 
               <DropdownItem key='adminStudent' className={`${dropdownMenuItemClass} ${canAdmin ? '' : 'hidden'}`}>
-                <Link to='/admin' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
+                <Link to='/users' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
+                  <UsersIcon size={16} />
+                  <p className='text-base font-normal'>Utilisateurs</p>
+                </Link>
+              </DropdownItem>
+
+              <DropdownItem key='adminGlobal' className={`${dropdownMenuItemClass} ${isGlobalAdmin ? '' : 'hidden'}`}>
+                <Link to='/administration' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
                   <SettingsIcon size={16} />
                   <p className='text-base font-normal'>Administration</p>
                 </Link>

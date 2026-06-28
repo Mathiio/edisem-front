@@ -1,99 +1,55 @@
-import React, { useState, useCallback } from 'react';
-import { Tabs, Tab } from '@heroui/react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Layouts } from '@/components/layout/Layouts';
-import { UserIcon, SchoolIcon, EditIcon, ExperimentationIcon } from '@/components/ui/icons';
+import { UserIcon } from '@/components/ui/icons';
 import { StudentManagement } from './StudentManagement';
 import { CourseManagement } from './CourseManagement';
 import { ActantManagement } from './ActantManagement';
-import ResourceManagement from './ResourceManagement';
-
-type TabKey = 'etudiants' | 'cours' | 'actants' | 'ressources';
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabKey>('etudiants');
   const [highlightCourseId, setHighlightCourseId] = useState<number | null>(null);
+  const coursesSectionRef = useRef<HTMLElement>(null);
 
-  // Fonction pour naviguer vers un cours avec highlight
-  const navigateToCourse = useCallback((courseId: number) => {
-    // Reset puis set pour déclencher le useEffect même si c'est le même cours
-    setHighlightCourseId(null);
-    setActiveTab('cours');
-    setTimeout(() => {
-      setHighlightCourseId(courseId);
-      // Reset après 3.5 secondes (après la fin de l'animation)
-      setTimeout(() => {
-        setHighlightCourseId(null);
-      }, 3500);
-    }, 50);
+  const scrollToCoursesSection = useCallback(() => {
+    coursesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
+  const navigateToCourse = useCallback(
+    (courseId: number) => {
+      scrollToCoursesSection();
+      setHighlightCourseId(null);
+      setTimeout(() => {
+        setHighlightCourseId(courseId);
+        setTimeout(() => setHighlightCourseId(null), 3500);
+      }, 400);
+    },
+    [scrollToCoursesSection],
+  );
+
   return (
-    <Layouts className='flex flex-col col-span-10 gap-6'>
-      {/* Header */}
-      <div className='flex items-center justify-between'>
-        <h1 className='text-3xl font-medium text-c6'>Administration</h1>
+    <Layouts className='flex flex-col col-span-10 gap-12 z-0 overflow-visible pt-16'>
+      <div className='flex items-center gap-3'>
+        <UserIcon size={28} className='text-c5 shrink-0' />
+        <div className='flex flex-col'>
+          <h1 className='text-3xl text-c6 font-semibold'>Utilisateurs</h1>
+          <p className='text-c4 text-sm'>Gestion des actants, étudiants et cours.</p>
+        </div>
       </div>
 
-      {/* Tabs de navigation */}
-      <Tabs
-        aria-label='Navigation admin'
-        selectedKey={activeTab}
-        onSelectionChange={(key) => setActiveTab(key as TabKey)}
-        classNames={{
-          tabList: 'bg-c2 rounded-xl border-2 border-c3 p-2',
-          cursor: 'w-full shadow-lg rounded-lg bg-c3',
-          tab: 'p-4 text-c4 data-[selected=true]:text-selected font-medium transition-all',
-          tabContent: 'group-data-[selected=true]:font-medium flex items-center justify-center gap-2',
-        }}>
-        <Tab
-          key='etudiants'
-          className='py-0'
-          title={
-            <div className='flex items-center gap-2'>
-              <UserIcon size={18} />
-              <span>Étudiants</span>
-            </div>
-          }
-        />
-        <Tab
-          key='cours'
-          className='py-0'
-          title={
-            <div className='flex items-center gap-2'>
-              <SchoolIcon size={18} />
-              <span>Cours</span>
-            </div>
-          }
-        />
-        <Tab
-          key='actants'
-          className='py-0'
-          title={
-            <div className='flex items-center gap-2'>
-              <EditIcon size={18} />
-              <span>Actants</span>
-            </div>
-          }
-        />
-        <Tab
-          key='ressources'
-          className='py-0'
-          title={
-            <div className='flex items-center gap-2'>
-              <ExperimentationIcon size={18} />
-              <span>Ressources</span>
-            </div>
-          }
-        />
-      </Tabs>
+      <section className='flex flex-col gap-4'>
+        <ActantManagement embedded />
+      </section>
 
-      {/* Contenu */}
-      <div>
-        {activeTab === 'etudiants' && <StudentManagement embedded onNavigateToCourse={navigateToCourse} />}
-        {activeTab === 'cours' && <CourseManagement embedded highlightCourseId={highlightCourseId} />}
-        {activeTab === 'actants' && <ActantManagement embedded />}
-        {activeTab === 'ressources' && <ResourceManagement embedded onNavigateToCourse={navigateToCourse} />}
-      </div>
+      <section className='flex flex-col gap-4'>
+        <StudentManagement
+          embedded
+          onNavigateToCourse={navigateToCourse}
+          onNavigateToCoursesSection={scrollToCoursesSection}
+        />
+      </section>
+
+      <section ref={coursesSectionRef} id='section-cours' className='flex flex-col gap-4 scroll-mt-24'>
+        <CourseManagement embedded highlightCourseId={highlightCourseId} />
+      </section>
     </Layouts>
   );
 };

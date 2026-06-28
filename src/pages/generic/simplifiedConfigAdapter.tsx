@@ -1350,6 +1350,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
         formData,
         userCreatedResourceIds,
         currentOmekaUserId,
+        isGlobalAdminEdit,
       } = context;
       switch (view.renderType) {
         case 'items': {
@@ -1441,6 +1442,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
               resourceLabel={view.title}
               userCreatedResourceIds={userCreatedResourceIds}
               currentOmekaUserId={currentOmekaUserId}
+              isGlobalAdminEdit={isGlobalAdminEdit}
               onAdd={
                 isEditing
                   ? viewCreateOnly
@@ -1558,6 +1560,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                       isEditing={canEdit}
                       userCreatedResourceIds={userCreatedResourceIds}
                       currentOmekaUserId={currentOmekaUserId}
+                      isGlobalAdminEdit={isGlobalAdminEdit}
                       resourceTemplateId={refTemplateId}
                       onEdit={(id) => onEditResource?.(view.key, id, refTemplateId)}
                       onRemoveItem={onRemoveItem ? (id) => onRemoveItem(view.key, id) : undefined}
@@ -1576,6 +1579,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                       isEditing={canEdit}
                       userCreatedResourceIds={userCreatedResourceIds}
                       currentOmekaUserId={currentOmekaUserId}
+                      isGlobalAdminEdit={isGlobalAdminEdit}
                       resourceTemplateId={refTemplateId}
                       onEdit={(id) => onEditResource?.(view.key, id, refTemplateId)}
                       onRemoveItem={onRemoveItem ? (id) => onRemoveItem(view.key, id) : undefined}

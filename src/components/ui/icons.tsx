@@ -145,6 +145,35 @@ export const UserIcon: React.FC<IconSvgProps> = ({ size = 24, width, height, ...
   </svg>
 );
 
+export const UsersIcon: React.FC<IconSvgProps> = ({ size = 24, width, height, ...props }) => (
+  <svg width={size || width} viewBox='0 0 19 19' height={size || height} {...props}>
+    <path
+      fill='currentColor'
+      fillRule='evenodd'
+      clipRule='evenodd'
+      d='M11 4C11 6.20914 9.20914 8 7 8C4.79086 8 3 6.20914 3 4C3 1.79086 4.79086 0 7 0C9.20914 0 11 1.79086 11 4Z'
+    />
+    <path
+      fill='currentColor'
+      fillRule='evenodd'
+      clipRule='evenodd'
+      d='M14 15.001C14 17.2101 10.866 19.001 7 19.001C3.13401 19.001 0 17.2101 0 15.001C0 12.7918 3.13401 11.001 7 11.001C10.866 11.001 14 12.7918 14 15.001Z'
+    />
+    <path
+      fill='currentColor'
+      fillRule='evenodd'
+      clipRule='evenodd'
+      d='M18.9991 15.0007C18.9991 16.6576 16.9636 18.0007 14.4783 18.0007C15.2105 17.2003 15.714 16.1958 15.714 15.0021C15.714 13.807 15.2093 12.8015 14.4758 12.0007C16.961 12.0007 18.9991 13.3438 18.9991 15.0007Z'
+    />
+    <path
+      fill='currentColor'
+      fillRule='evenodd'
+      clipRule='evenodd'
+      d='M15.9991 4.00098C15.9991 5.65783 14.656 7.00098 12.9991 7.00098C12.6379 7.00098 12.2915 6.93711 11.9707 6.82006C12.4438 5.98796 12.714 5.02547 12.714 3.99986C12.714 2.97501 12.4442 2.01318 11.9718 1.18151C12.2922 1.0647 12.6382 1.00098 12.9991 1.00098C14.656 1.00098 15.9991 2.34412 15.9991 4.00098Z'
+    />
+  </svg>
+);
+
 export const SettingsIcon: React.FC<IconSvgProps> = ({ size = 24, width, height, ...props }) => (
   <svg width={size || width} viewBox='0 0 22 22' height={size || height} {...props}>
     <path

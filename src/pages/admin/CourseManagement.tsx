@@ -72,7 +72,7 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({ embedded = f
 
     setLastHighlightedId(courseIdToHighlight);
 
-    // Délai pour laisser le DOM se rendre après changement d'onglet
+    // Délai pour laisser le DOM se rendre (scroll vers la section cours)
     setTimeout(() => {
       const marker = document.getElementById(`course-marker-${courseIdToHighlight}`);
       if (marker) {
@@ -319,6 +319,8 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({ embedded = f
 
   const Wrapper = embedded ? React.Fragment : Layouts;
   const wrapperProps = embedded ? {} : { className: 'flex flex-col col-span-10 gap-6' };
+  const SectionTitle = embedded ? 'h2' : 'h1';
+  const sectionTitleClass = embedded ? 'text-xl text-c6 font-semibold' : 'text-3xl font-medium text-c6';
 
   if (loading) {
     return (
@@ -337,9 +339,8 @@ export const CourseManagement: React.FC<CourseManagementProps> = ({ embedded = f
         {/* Header */}
         <div className='flex items-center justify-between'>
           <div>
-            <h1 className='text-3xl font-medium text-c6'>Gestion des Cours</h1>
+            <SectionTitle className={sectionTitleClass}>Gestion des Cours</SectionTitle>
             <p className='text-sm text-c5 mt-px'>{courses.length} cours</p>
-            {/* Bouton de test du highlight - À SUPPRIMER */}
           </div>
           <Button className={outlineButtonClass} startContent={<AddIcon size={14} />} onPress={handleOpenCreate}>
             Nouveau Cours

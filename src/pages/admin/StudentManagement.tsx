@@ -177,11 +177,16 @@ async function deleteStudent(id: number): Promise<any> {
 }
 
 interface StudentManagementProps {
-  embedded?: boolean; // Si true, n'affiche pas le Layout wrapper
-  onNavigateToCourse?: (courseId: number) => void; // Callback pour naviguer vers un cours
+  embedded?: boolean;
+  onNavigateToCourse?: (courseId: number) => void;
+  onNavigateToCoursesSection?: () => void;
 }
 
-export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded = false, onNavigateToCourse }) => {
+export const StudentManagement: React.FC<StudentManagementProps> = ({
+  embedded = false,
+  onNavigateToCourse,
+  onNavigateToCoursesSection,
+}) => {
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [omekaUsers, setOmekaUsers] = useState<OmekaUser[]>([]);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
@@ -602,6 +607,8 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
 
   const Wrapper = embedded ? React.Fragment : Layouts;
   const wrapperProps = embedded ? {} : { className: 'flex flex-col col-span-10 gap-6' };
+  const SectionTitle = embedded ? 'h2' : 'h1';
+  const sectionTitleClass = embedded ? 'text-xl text-c6 font-semibold' : 'text-3xl font-medium text-c6';
 
   if (loading) {
     return (
@@ -620,7 +627,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
         {/* Header */}
         <div className='flex items-center justify-between'>
           <div>
-            <h1 className='text-3xl font-medium text-c6'>Gestion des Étudiants</h1>
+            <SectionTitle className={sectionTitleClass}>Gestion des Étudiants</SectionTitle>
             <p className='text-sm text-c5 mt-px'>
               {students.length} étudiant{students.length > 1 ? 's' : ''} • {omekaUsers.length} utilisateur{omekaUsers.length > 1 ? 's' : ''} Omeka S
             </p>
@@ -1004,7 +1011,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({ embedded =
               ) : allCourses.length === 0 ? (
                 <div className='text-center py-8'>
                   <p className='text-c4 mb-4'>Aucun cours disponible</p>
-                  <Button className={outlineButtonClass} onPress={() => (window.location.href = '/admin/cours')}>
+                  <Button className={outlineButtonClass} onPress={() => onNavigateToCoursesSection?.()}>
                     Créer un cours
                   </Button>
                 </div>

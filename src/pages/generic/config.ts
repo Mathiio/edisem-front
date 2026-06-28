@@ -79,6 +79,7 @@ export interface RenderContentContext {
   updatedResources?: Record<string, { title?: string; thumbnail?: string }>; // Titres/thumbnails mis à jour
   userCreatedResourceIds?: Set<string>;
   currentOmekaUserId?: number | null;
+  isGlobalAdminEdit?: boolean;
 }
 
 /**

@@ -7,12 +7,18 @@ import type { UserData } from '@/hooks/useAuth';
 type AuthOptions = {
   /** Permission required to access this page ('admin', 'create', 'view', or 'any' for authenticated-only). */
   requiredPermission?: Permission | 'any';
+  /** Omeka role required (e.g. global_admin for /administration). */
+  requiredOmekaRole?: 'global_admin';
   /** @deprecated Use requiredPermission instead. Kept for backward compat. */
   requiredRole?: 'actant' | 'student' | 'any';
 };
 
 function isUserAuthorized(user: UserData | null, options: AuthOptions): boolean {
   if (!user) return false;
+
+  if (options.requiredOmekaRole) {
+    return user.role === options.requiredOmekaRole;
+  }
 
   // New permission-based check takes precedence
   if (options.requiredPermission && options.requiredPermission !== 'any') {

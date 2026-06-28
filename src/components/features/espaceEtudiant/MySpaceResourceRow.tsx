@@ -36,11 +36,12 @@ export const MySpaceActionButton: React.FC<MySpaceActionButtonProps> = ({
 
 /** Largeur fixe : 3 boutons (voir + éditer + supprimer) */
 export const MY_SPACE_ACTIONS_WIDTH = '7.5rem';
-export const MY_SPACE_TYPE_WIDTH = '10rem';
+/** Colonne type — libellés longs (ex. « Retour d'expérience (Étudiant) ») */
+export const MY_SPACE_TYPE_WIDTH = '15rem';
 
 /** Grille partagée lignes + en-têtes (desktop) — colonnes type et actions à largeur fixe */
 export const MY_SPACE_ROW_GRID =
-  'grid items-center gap-x-4 grid-cols-[3rem_minmax(0,1fr)_auto_auto] lg:grid-cols-[3rem_minmax(0,28%)_minmax(140px,1fr)_10rem_7.5rem]';
+  'grid items-center gap-x-4 grid-cols-[3rem_minmax(0,1fr)_auto_auto] lg:grid-cols-[3rem_minmax(0,22%)_minmax(140px,1fr)_15rem_7.5rem]';
 
 export const getResourceRowSubtitle = (item: StudentResourceCard): string => {
   const authors = getResourceAuthors(item);
@@ -60,6 +61,9 @@ interface MySpaceResourceRowProps {
   item: StudentResourceCard;
   onEdit?: (id: string, type?: string) => void;
   onDelete?: (id: string) => void;
+  onView?: (id: string, type?: string) => void;
+  subtitleOverride?: string;
+  hideDelete?: boolean;
   compact?: boolean;
 }
 
@@ -67,6 +71,9 @@ export const MySpaceResourceRow: React.FC<MySpaceResourceRowProps> = ({
   item,
   onEdit,
   onDelete,
+  onView,
+  subtitleOverride,
+  hideDelete = false,
   compact = false,
 }) => {
   const navigate = useNavigate();
@@ -74,12 +81,16 @@ export const MySpaceResourceRow: React.FC<MySpaceResourceRowProps> = ({
   const type = item.type || '';
   const formOnly = isFormOnlyResourceType(type);
   const { label: typeLabel, icon: TypeIcon, color: typeColor } = getResourceDisplayTheme(type);
-  const subtitle = getResourceRowSubtitle(item);
+  const subtitle = subtitleOverride ?? getResourceRowSubtitle(item);
   const thumbnail =
     resolveOmekaThumbnail(item.thumbnail) ||
     (item.url?.includes('youtube') || item.url?.includes('youtu.be') ? item.thumbnail : null);
 
   const handleView = () => {
+    if (onView) {
+      onView(id, type);
+      return;
+    }
     const url = getResourceUrl(type, id);
     if (url && url !== '#') navigate(url);
   };
@@ -128,7 +139,7 @@ export const MySpaceResourceRow: React.FC<MySpaceResourceRowProps> = ({
           style={{ backgroundColor: `${typeColor}15` }}>
           <TypeIcon size={12} style={{ color: typeColor }} />
         </div>
-        <span className='text-xs lg:text-sm leading-snug line-clamp-2 break-words min-w-0' style={{ color: typeColor }}>
+        <span className='text-xs lg:text-sm leading-snug lg:whitespace-normal line-clamp-2 break-words min-w-0 flex-1' style={{ color: typeColor }}>
           {typeLabel}
         </span>
       </div>
@@ -144,7 +155,7 @@ export const MySpaceResourceRow: React.FC<MySpaceResourceRowProps> = ({
         <MySpaceActionButton onClick={handleEdit} title='Modifier' aria-label='Modifier la ressource'>
           <EditIcon size={16} />
         </MySpaceActionButton>
-        {onDelete && (
+        {onDelete && !hideDelete && (
           <MySpaceActionButton variant='danger' onClick={handleDelete} title='Supprimer' aria-label='Supprimer la ressource'>
             <TrashIcon size={16} />
           </MySpaceActionButton>

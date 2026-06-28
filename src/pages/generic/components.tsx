@@ -177,6 +177,7 @@ interface ItemsListProps {
   resourceTemplateId?: number; // Template de la vue (règle délier vs supprimer)
   userCreatedResourceIds?: Set<string>; // IDs créés par l'utilisateur dans cette session
   currentOmekaUserId?: number | null; // Propriétaire Omeka S courant (o:owner)
+  isGlobalAdminEdit?: boolean;
 }
 
 export const ItemsList: React.FC<ItemsListProps> = ({
@@ -192,6 +193,7 @@ export const ItemsList: React.FC<ItemsListProps> = ({
   resourceTemplateId,
   userCreatedResourceIds,
   currentOmekaUserId,
+  isGlobalAdminEdit,
 }) => {
   const itemsArray = Array.isArray(items) ? items : items ? [items] : [];
 
@@ -212,10 +214,10 @@ export const ItemsList: React.FC<ItemsListProps> = ({
     <div className='flex flex-col gap-2.5'>
       {itemsArray.map((item) => {
         const mappedItem = mapUrl ? { ...item, url: mapUrl(item) } : item;
-        const canEdit = Boolean(onEdit && canEditLinkedResource(item, currentOmekaUserId, userCreatedResourceIds));
+        const canEdit = Boolean(onEdit && canEditLinkedResource(item, currentOmekaUserId, userCreatedResourceIds, isGlobalAdminEdit));
         const canRemove = Boolean(
           onRemoveItem &&
-          canUnlinkLinkedResource(item, resourceTemplateId, currentOmekaUserId, userCreatedResourceIds),
+          canUnlinkLinkedResource(item, resourceTemplateId, currentOmekaUserId, userCreatedResourceIds, isGlobalAdminEdit),
         );
         const removeLabel = shouldHardDeleteLinkedResource(resourceTemplateId) ? 'Supprimer' : 'Délier';
 

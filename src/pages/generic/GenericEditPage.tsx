@@ -28,7 +28,7 @@ import { EditSaveBar } from '@/components/ui/EditSaveBar';
 import { EditModeBanner } from '@/components/ui/EditModeBanner';
 import { ResourcePicker } from '@/components/features/forms/ResourcePicker';
 import { getTemplatePropertiesMap } from '@/services/Items';
-import { getMonEspacePath, getResourceEditUrl, getResourceConfigByTemplateId, getRessourceLabel, TEMPLATE_ID_TO_TYPE, resolveResourceTypeFromOmekaItem, OMEKA_PROPERTY_IDS } from '@/config/resourceConfig';
+import { getMonEspacePath, getResourceEditUrl, getGlobalAdminEditUrl, getResourceConfigByTemplateId, getRessourceLabel, TEMPLATE_ID_TO_TYPE, resolveResourceTypeFromOmekaItem, OMEKA_PROPERTY_IDS } from '@/config/resourceConfig';
 import {
   buildConferenceTypeOmekaValue,
   CONFERENCE_TEMPLATE_ID,
@@ -222,6 +222,8 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
   const navigate = useNavigate();
   const { userData } = useAuth();
   const monEspacePath = getMonEspacePath(userData?.type);
+  const isGlobalAdminEdit =
+    searchParams.get('globalAdmin') === '1' && userData?.role === 'global_admin';
   const currentOmekaUserId = userData?.omekaUserId ?? (localStorage.getItem('omekaUserId') ? parseInt(localStorage.getItem('omekaUserId')!, 10) : null);
 
   const mode: PageMode = initialMode;
@@ -236,6 +238,25 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       return next;
     });
   }, []);
+
+  const handleEditLinkedResource = useCallback(
+    (viewKey: string, resourceId: string | number, templateId?: number) => {
+      if (onEditResource) {
+        onEditResource(viewKey, resourceId, templateId);
+        return;
+      }
+      const type = templateId != null ? TEMPLATE_ID_TO_TYPE[templateId] : undefined;
+      if (!type) return;
+      navigate(
+        isGlobalAdminEdit
+          ? getGlobalAdminEditUrl(type, resourceId)
+          : getResourceEditUrl(type, resourceId),
+      );
+    },
+    [onEditResource, isGlobalAdminEdit, navigate],
+  );
+
+  const effectiveOnEditResource = onEditResource ?? (isGlobalAdminEdit ? handleEditLinkedResource : undefined);
 
   // ================================
   // Form state
@@ -1556,7 +1577,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       ? { ...itemToDelete, ownerId: itemToDelete.ownerId ?? getResourceOwnerId(cachedOwner) ?? getResourceOwnerId(itemToDelete) }
       : itemToDelete;
 
-    if (!canDeleteLinkedResource(enrichedItem, currentOmekaUserId, userCreatedResourceIds)) {
+    if (!canDeleteLinkedResource(enrichedItem, currentOmekaUserId, userCreatedResourceIds, isGlobalAdminEdit)) {
       addToast({ title: 'Action non autorisée', description: 'Seul le propriétaire de la ressource peut la supprimer.', classNames: { base: 'bg-warning', title: 'text-c6', description: 'text-c5', icon: 'text-c6' } });
       return;
     }
@@ -1720,12 +1741,13 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       onCreateNew: handleCreateNewFromView,
       onRemoveItem: handleRemoveItem,
       onItemsChange: handleItemsChange,
-      onEditResource: onEditResource,
+      onEditResource: effectiveOnEditResource,
       formData,
       onNavigate: undefined,
       updatedResources,
       userCreatedResourceIds,
       currentOmekaUserId,
+      isGlobalAdminEdit,
     });
 
     return content || null;
@@ -1736,11 +1758,12 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     viewData,
     config.viewOptions,
     updatedResources,
-    onEditResource,
+    effectiveOnEditResource,
     handleLinkExisting,
     handleCreateNewFromView,
     userCreatedResourceIds,
     currentOmekaUserId,
+    isGlobalAdminEdit,
     // handleRemoveItem and handleItemsChange are stable useCallback/functions
   ]);
 
@@ -1887,13 +1910,16 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
                 return (
                   <div className='flex flex-wrap gap-2 items-center w-full'>
                     {allContributors.map((item: any, idx: number) => {
-                      const isUserCreated = userCreatedResourceIds?.has(String(item.id)) || String(item.ownerId) === String(currentOmekaUserId);
-                      const canEditChip = isUserCreated && onEditResource;
+                      const isUserCreated =
+                        isGlobalAdminEdit ||
+                        userCreatedResourceIds?.has(String(item.id)) ||
+                        String(item.ownerId) === String(currentOmekaUserId);
+                      const canEditChip = isUserCreated && effectiveOnEditResource;
                       const btn = config.contributorButtons!.find((b) => b.property === item._property);
                       return (
                         <div key={item.id || idx} className={selectedResourceChipClass}>
                           <span
-                            onClick={() => { if (canEditChip && btn) onEditResource(item._property, item.id, btn.templateId); }}
+                            onClick={() => { if (canEditChip && btn) effectiveOnEditResource(item._property, item.id, btn.templateId); }}
                             className={canEditChip ? 'cursor-pointer hover:underline' : ''}>
                             {item.title || item.name}
                           </span>

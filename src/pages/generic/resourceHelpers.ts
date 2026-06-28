@@ -158,12 +158,14 @@ export const getResourceOwnerId = (item: any): number | undefined => {
   return Number.isFinite(id) ? id : undefined;
 };
 
-/** Ressource éditable si créée dans la session ou si l'utilisateur courant est o:owner */
+/** Ressource éditable si créée dans la session, si l'utilisateur courant est o:owner, ou mode super-admin */
 export const canEditLinkedResource = (
   item: { id?: string | number; ownerId?: number },
   currentOmekaUserId: number | null | undefined,
   userCreatedResourceIds?: Set<string>,
+  isGlobalAdminEdit?: boolean,
 ): boolean => {
+  if (isGlobalAdminEdit) return true;
   if (item.id != null && userCreatedResourceIds?.has(String(item.id))) {
     return true;
   }
@@ -196,10 +198,12 @@ export const canUnlinkLinkedResource = (
   viewTemplateId: number | undefined,
   currentOmekaUserId: number | null | undefined,
   userCreatedResourceIds?: Set<string>,
+  isGlobalAdminEdit?: boolean,
 ): boolean => {
+  if (isGlobalAdminEdit) return true;
   const templateId = resolveLinkedItemTemplateId(item, viewTemplateId);
   if (shouldHardDeleteLinkedResource(templateId)) {
-    return canDeleteLinkedResource(item, currentOmekaUserId, userCreatedResourceIds);
+    return canDeleteLinkedResource(item, currentOmekaUserId, userCreatedResourceIds, isGlobalAdminEdit);
   }
   return true;
 };

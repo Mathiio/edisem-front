@@ -572,11 +572,37 @@ export function isCascadeDeleteWithParentTemplate(templateId?: number | null): b
   return getCascadeDeleteWithParentTemplateIds().includes(Number(templateId));
 }
 
+/** Templates gérés depuis la page /administration (global_admin) */
+export const GLOBAL_ADMIN_TEMPLATE_OPTIONS: { id: number; label: string }[] = [
+  { id: 81, label: 'Bibliographie' },
+  { id: 104, label: 'Organisation' },
+  { id: 71, label: 'Conférence' },
+  { id: 108, label: 'Expérimentation chercheur' },
+  { id: 127, label: 'Expérimentation étudiant' },
+  { id: 83, label: 'Médiagraphie' },
+  { id: 114, label: 'Outil chercheur' },
+  { id: 129, label: 'Outil étudiant' },
+  { id: 33, label: 'Personne' },
+  { id: 103, label: 'Récit artistique' },
+  { id: 119, label: 'Récit citoyen' },
+  { id: 120, label: 'Récit médiatique' },
+  { id: 124, label: 'Récit scientifique' },
+  { id: 117, label: 'Récit techno' },
+];
+
+export const GLOBAL_ADMIN_TEMPLATE_IDS = GLOBAL_ADMIN_TEMPLATE_OPTIONS.map((t) => t.id);
+
 /** URL d'édition full-page pour un type de ressource */
 export function getResourceEditUrl(type: string, id: string | number): string {
   const url = getResourceUrl(type, id);
   if (url === '#') return `/espace-etudiant/experimentation/${id}?mode=edit`;
   return `${url}?mode=edit`;
+}
+
+/** URL d'édition en mode super-admin (contourne les restrictions de propriété) */
+export function getGlobalAdminEditUrl(type: string, id: string | number): string {
+  const base = getResourceEditUrl(type, id);
+  return `${base}${base.includes('?') ? '&' : '?'}globalAdmin=1`;
 }
 
 /** Page Mon espace selon le profil (actant → mon-espace-4, étudiant → mon-espace) */

@@ -405,6 +405,8 @@ export const ActantManagement: React.FC<ActantManagementProps> = ({ embedded = f
 
   const Wrapper = embedded ? React.Fragment : Layouts;
   const wrapperProps = embedded ? {} : { className: 'flex flex-col col-span-10 gap-6' };
+  const SectionTitle = embedded ? 'h2' : 'h1';
+  const sectionTitleClass = embedded ? 'text-xl text-c6 font-semibold' : 'text-3xl font-medium text-c6';
 
   if (loading) {
     return (
@@ -423,7 +425,7 @@ export const ActantManagement: React.FC<ActantManagementProps> = ({ embedded = f
         {/* Header */}
         <div className='flex items-center justify-between'>
           <div>
-            <h1 className='text-3xl font-medium text-c6'>Gestion des Actants</h1>
+            <SectionTitle className={sectionTitleClass}>Gestion des Actants</SectionTitle>
             <p className='text-sm text-c5 mt-px'>
               {actants.length} actant{actants.length > 1 ? 's' : ''} (template 72) | {linkedCount} lié{linkedCount > 1 ? 's' : ''} | {unlinkedCount} non lié
               {unlinkedCount > 1 ? 's' : ''}
