@@ -99,6 +99,25 @@ const inlineTimeFieldClass =
   'bg-c2 border-2 border-c3 rounded-lg px-3 py-2 text-c6 text-sm w-28 focus:outline-none focus:border-c3';
 const inlineRemoveButtonClass = [modalCloseButtonClasses, 'inline-flex items-center justify-center shrink-0 p-1.5 text-xl'].join(' ');
 
+const mapReferenceToToolItem = (
+  ref: any,
+  updatedResources?: Record<string, { title?: string; thumbnail?: string }>,
+) => {
+  const refId = String(ref.id || ref['o:id'] || ref['value_resource_id']);
+  return {
+    id: refId,
+    title:
+      updatedResources?.[refId]?.title ||
+      getLinkedResourceTitle(ref) ||
+      ref.title ||
+      ref['o:title'] ||
+      'Ressource',
+    thumbnail: updatedResources?.[refId]?.thumbnail || ref.thumbnail || ref.thumbnailUrl,
+    url: ref.url || '#',
+    ownerId: getResourceOwnerId(ref),
+  };
+};
+
 // ========================================
 // Inline form: Ajouter des citations
 // ========================================
@@ -238,8 +257,6 @@ import {
   getResourceFallbackTitle,
   getResourceOwnerId,
   resolveViewTemplateId,
-  shouldHardDeleteLinkedResource,
-  canUnlinkLinkedResource,
 } from './resourceHelpers';
 
 // ========================================
@@ -1528,26 +1545,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
             return null;
           }
 
-          const renderRefItem = (ref: any, index: number) => {
-            if (!canEdit || !onRemoveItem) return null;
-            const refId = ref.id || ref['o:id'];
-            if (!refId) return null;
-            const refTemplateId = ref.resource_template_id ?? ref.template ?? view.resourceTemplateId;
-            const removeLabel = shouldHardDeleteLinkedResource(Number(refTemplateId) || view.resourceTemplateId)
-              ? 'Supprimer'
-              : 'Délier';
-            if (!canUnlinkLinkedResource(ref, view.resourceTemplateId, currentOmekaUserId, userCreatedResourceIds)) return null;
-            return (
-              <button
-                key={`remove-${refId}-${index}`}
-                onClick={() => onRemoveItem(view.key, refId)}
-                className={`ml-2 ${inlineRemoveButtonClass}`}
-                title={removeLabel}
-                aria-label={removeLabel}>
-                <ModalCloseIcon />
-              </button>
-            );
-          };
+          const refTemplateId = resolveViewTemplateId(view);
 
           return (
             <div className='space-y-6'>
@@ -1555,16 +1553,15 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                 <div>
                   <h3 className='text-lg text-c5 font-semibold mb-4'>Médias</h3>
                   {canEdit ? (
-                    <div className='flex flex-col gap-2'>
-                      {mediagraphies.map((ref: any, i: number) => (
-                        <div key={ref.id || ref['o:id'] || i} className='flex items-center justify-between group'>
-                          <div className='flex-1 min-w-0'>
-                            <Mediagraphies items={[ref]} loading={false} notitle />
-                          </div>
-                          {renderRefItem(ref, i)}
-                        </div>
-                      ))}
-                    </div>
+                    <ItemsList
+                      items={mediagraphies.map((ref: any) => mapReferenceToToolItem(ref, updatedResources))}
+                      isEditing={canEdit}
+                      userCreatedResourceIds={userCreatedResourceIds}
+                      currentOmekaUserId={currentOmekaUserId}
+                      resourceTemplateId={refTemplateId}
+                      onEdit={(id) => onEditResource?.(view.key, id, refTemplateId)}
+                      onRemoveItem={onRemoveItem ? (id) => onRemoveItem(view.key, id) : undefined}
+                    />
                   ) : (
                     <Mediagraphies items={mediagraphies} loading={loadingViews ?? false} notitle />
                   )}
@@ -1575,22 +1572,12 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                   <h3 className='text-lg text-c5 font-semibold mb-4'>Bibliographies</h3>
                   {canEdit ? (
                     <ItemsList
-                      items={bibliographies.map((ref: any) => {
-                        const refId = String(ref.id || ref['o:id'] || ref['value_resource_id']);
-                        return {
-                          id: refId,
-                          title:
-                            updatedResources?.[refId]?.title ||
-                            getLinkedResourceTitle(ref) ||
-                            'Bibliographie',
-                          url: '#',
-                          ownerId: getResourceOwnerId(ref),
-                        };
-                      })}
+                      items={bibliographies.map((ref: any) => mapReferenceToToolItem(ref, updatedResources))}
                       isEditing={canEdit}
                       userCreatedResourceIds={userCreatedResourceIds}
                       currentOmekaUserId={currentOmekaUserId}
-                      onEdit={(id) => onEditResource?.(view.key, id, view.resourceTemplateIds?.[0])}
+                      resourceTemplateId={refTemplateId}
+                      onEdit={(id) => onEditResource?.(view.key, id, refTemplateId)}
                       onRemoveItem={onRemoveItem ? (id) => onRemoveItem(view.key, id) : undefined}
                     />
                   ) : (

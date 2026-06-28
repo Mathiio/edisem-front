@@ -1546,7 +1546,14 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
 
     if (!hardDelete) { unlinkItemFromView(viewKey, itemId); return; }
 
-    if (!canDeleteLinkedResource(itemToDelete, currentOmekaUserId, userCreatedResourceIds)) {
+    // Enrichir avec l'ownerId du resourceCache si manquant dans formData
+    // (le formData peut avoir été initialisé avant que le cache soit chargé)
+    const cachedOwner = itemDetails?.resourceCache?.[itemId];
+    const enrichedItem = itemToDelete
+      ? { ...itemToDelete, ownerId: itemToDelete.ownerId ?? getResourceOwnerId(cachedOwner) ?? getResourceOwnerId(itemToDelete) }
+      : itemToDelete;
+
+    if (!canDeleteLinkedResource(enrichedItem, currentOmekaUserId, userCreatedResourceIds)) {
       addToast({ title: 'Action non autorisée', description: 'Seul le propriétaire de la ressource peut la supprimer.', classNames: { base: 'bg-warning', title: 'text-c6', description: 'text-c5', icon: 'text-c6' } });
       return;
     }
@@ -1589,6 +1596,9 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       let type = r.type;
       if (!type && templateId) type = resolveResourceTypeFromOmekaItem(r) ?? TEMPLATE_ID_TO_TYPE[Number(templateId)];
       const thumbnailUrl = r['thumbnail_display_urls']?.square || r.thumbnailUrl || r.thumbnail || r.picture || null;
+      // owner_id vient du ResourcePickerViewHelper (backend) ou du champ o:owner Omeka
+      const rawOwnerId = r.owner_id ?? r['o:owner']?.['o:id'] ?? null;
+      const ownerId = rawOwnerId != null ? Number(rawOwnerId) : undefined;
       return {
         id: r['o:id'] || r.id,
         title,
@@ -1603,6 +1613,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
         resource_template_id: templateId,
         type,
         template: r.template || (templateId ? { id: templateId } : undefined),
+        ownerId,
       };
     });
     const updatedItems = [...currentItems, ...normalizedResources];

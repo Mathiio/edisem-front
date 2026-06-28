@@ -18,6 +18,7 @@ import { Button } from '@/theme/components/button';
 import { SearchIcon, ThumbnailIcon, UserIcon, AddIcon } from '@/components/ui/icons';
 import { useGetDataByClass } from '@/hooks/useFetchData';
 import { getResourceConfigByTemplateId } from '@/config/resourceConfig';
+import { fetchAllPickerResources, normalizePickerItem } from '@/services/resourcePickerApi';
 import { QUICK_CREATE_CONFIGS, QuickCreateModal, type QuickCreatedItem } from './QuickCreateModal';
 
 export interface ResourcePickerProps {
@@ -47,25 +48,7 @@ export interface ResourcePickerProps {
  * Composant popup réutilisable pour sélectionner des ressources
  * Utilisé pour : keywords, actants, feedbacks, outils, etc.
  */
-// Helper function to load resources by template ID (from Omeka S API)
 const API_BASE = '/omk/api/';
-const ITEMS_PER_PAGE = 100;
-/** Garde-fou : 200 pages × 100 = 20 000 items max par template */
-const MAX_ITEM_PAGES = 200;
-
-const buildItemsQuery = (params: Record<string, string | number | undefined>): string => {
-  const searchParams = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== '') searchParams.set(key, String(value));
-  });
-  return `${API_BASE}items?${searchParams.toString()}`;
-};
-
-const normalizeResource = (item: any) => ({
-  ...item,
-  id: item['o:id'] ?? item.id,
-  title: item['o:title'] || item['dcterms:title']?.[0]?.['@value'] || `Item ${item['o:id']}`,
-});
 
 // Charger les infos d'un template pour avoir son label
 const loadTemplateInfo = async (templateId: number): Promise<string> => {
@@ -85,73 +68,31 @@ const loadTemplateInfo = async (templateId: number): Promise<string> => {
 const loadResourcesByTemplateId = async (
   templateId: number,
   options?: { search?: string },
-): Promise<{ resources: any[]; templateLabel: string; truncated?: boolean }> => {
+): Promise<{ resources: any[]; templateLabel: string }> => {
   try {
-    const allResources: any[] = [];
-    let page = 1;
-    let hasMore = true;
-    let truncated = false;
-
-    const templateLabelPromise = loadTemplateInfo(templateId);
-
-    while (hasMore && page <= MAX_ITEM_PAGES) {
-      const url = buildItemsQuery({
-        resource_template_id: templateId,
-        per_page: ITEMS_PER_PAGE,
-        page,
-        sort_by: 'id',
-        sort_order: 'desc',
-        search: options?.search?.trim() || undefined,
-      });
-      console.log('[ResourcePicker] Fetching:', url);
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        console.error('[ResourcePicker] Erreur chargement ressources par template', response.status);
-        break;
-      }
-
-      const data = await response.json();
-      console.log(`[ResourcePicker] Template ${templateId} - Page ${page}: ${data.length} items`);
-
-      allResources.push(...data.map(normalizeResource));
-      hasMore = data.length === ITEMS_PER_PAGE;
-      page++;
-    }
-
-    if (hasMore) {
-      truncated = true;
-      console.warn(
-        `[ResourcePicker] Template ${templateId}: limite de ${MAX_ITEM_PAGES * ITEMS_PER_PAGE} items atteinte — utilisez la recherche pour affiner.`,
-      );
-    }
-
-    const templateLabel = await templateLabelPromise;
-    console.log(`[ResourcePicker] Template ${templateId} (${templateLabel}) - Total: ${allResources.length} items`);
-
-    return { resources: allResources, templateLabel, truncated };
+    const [items, templateLabel] = await Promise.all([
+      fetchAllPickerResources({ templateId, q: options?.search }),
+      loadTemplateInfo(templateId),
+    ]);
+    return { resources: items.map(normalizePickerItem), templateLabel };
   } catch (err) {
     console.error('[ResourcePicker] Erreur chargement ressources:', err);
     return { resources: [], templateLabel: `Template ${templateId}` };
   }
 };
 
-// Helper function to load resources from item set IDs
 const loadResourcesByItemSetIds = async (itemSetIds: number[]): Promise<TemplateData[]> => {
   try {
-    const allResources: any[] = [];
-    for (const itemSetId of itemSetIds) {
-      const url = `${API_BASE}items?item_set_id=${itemSetId}&per_page=100`;
-      const response = await fetch(url);
-      if (!response.ok) continue;
-      const data = await response.json();
-      allResources.push(...data);
+    const batches = await Promise.all(itemSetIds.map((itemSetId) => fetchAllPickerResources({ itemSetId })));
+    const seen = new Set<number>();
+    const resources: any[] = [];
+    for (const items of batches) {
+      for (const item of items) {
+        if (seen.has(item.id)) continue;
+        seen.add(item.id);
+        resources.push(normalizePickerItem(item));
+      }
     }
-    const resources = allResources.map((item: any) => ({
-      ...item,
-      id: item['o:id'],
-      title: item['o:title'] || item['dcterms:title']?.[0]?.['@value'] || `Item ${item['o:id']}`,
-    }));
     return [{ templateId: 0, templateLabel: 'Domaine', resources }];
   } catch (err) {
     console.error('[ResourcePicker] Erreur chargement ressources par item set:', err);
@@ -195,10 +136,7 @@ const loadResourcesByMultipleTemplateIds = async (templateIds: number[]): Promis
       }
     }
 
-    const results = [...grouped.values()];
-    const total = results.reduce((sum, t) => sum + t.resources.length, 0);
-    console.log('[ResourcePicker] Total ressources chargées:', total, '(' + results.length + ' onglets)');
-    return results;
+    return [...grouped.values()];
   } catch (err) {
     console.error('[ResourcePicker] Erreur chargement ressources multiples:', err);
     return [];
@@ -277,7 +215,7 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
     }
   }, [isOpen, resourceTemplateId, resourceTemplateIds, itemSetIds]);
 
-  // Recherche côté API Omeka (trouve des items au-delà de la liste préchargée)
+  // Recherche côté backend ResourcePicker (q=…)
   useEffect(() => {
     const trimmed = searchTerm.trim();
     const templateIds =
@@ -286,8 +224,9 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
         : resourceTemplateId
           ? [resourceTemplateId]
           : [];
+    const itemSetIdList = itemSetIds && itemSetIds.length > 0 ? itemSetIds : [];
 
-    if (!isOpen || trimmed.length < 2 || templateIds.length === 0) {
+    if (!isOpen || trimmed.length < 2 || (templateIds.length === 0 && itemSetIdList.length === 0)) {
       setApiSearchResults(null);
       setApiSearchLoading(false);
       return;
@@ -296,10 +235,12 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
     const timer = window.setTimeout(async () => {
       setApiSearchLoading(true);
       try {
-        const batches = await Promise.all(templateIds.map((id) => loadResourcesByTemplateId(id, { search: trimmed })));
-        const merged = batches.flatMap((batch) => batch.resources);
+        const batches = await Promise.all([
+          ...templateIds.map((id) => fetchAllPickerResources({ templateId: id, q: trimmed })),
+          ...itemSetIdList.map((id) => fetchAllPickerResources({ itemSetId: id, q: trimmed })),
+        ]);
         const unique = new Map<string | number, any>();
-        merged.forEach((item) => unique.set(item['o:id'] ?? item.id, item));
+        batches.flat().forEach((item) => unique.set(item.id, normalizePickerItem(item)));
         setApiSearchResults([...unique.values()]);
       } catch {
         setApiSearchResults([]);
@@ -309,7 +250,7 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
     }, 350);
 
     return () => window.clearTimeout(timer);
-  }, [isOpen, searchTerm, resourceTemplateId, resourceTemplateIds]);
+  }, [isOpen, searchTerm, resourceTemplateId, resourceTemplateIds, itemSetIds]);
 
   const reloadResources = useCallback(async () => {
     if (itemSetIds && itemSetIds.length > 0) {
@@ -456,8 +397,9 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
     [displayProperty],
   );
 
-  // Extract thumbnail URL from resource
+  // Extract thumbnail URL from resource (backend picker ou Omeka complet)
   const getThumbnailUrl = (resource: any): string | null => {
+    if (typeof resource.thumbnail === 'string' && resource.thumbnail) return resource.thumbnail;
     return (
       resource['thumbnail_display_urls']?.medium ||
       resource['thumbnail_display_urls']?.square ||
@@ -468,8 +410,9 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
     );
   };
 
-  // Extract actant/author name from resource
+  // Extract actant/author name from resource (backend picker ou Omeka complet)
   const getActantName = (resource: any): string | null => {
+    if (typeof resource.subtitle === 'string' && resource.subtitle) return resource.subtitle;
     const actant = resource['jdc:hasActant']?.[0];
     return actant?.['display_title'] || actant?.['@value'] || null;
   };

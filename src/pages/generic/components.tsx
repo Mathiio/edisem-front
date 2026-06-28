@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Spinner } from '@heroui/react';
 import { getYouTubeThumbnailUrl, isValidYouTubeUrl } from '@/lib/utils';
 import { AddResourceCard } from '@/components/features/forms/AddResourceCard';
+import { ThumbnailIcon } from '@/components/ui/icons';
 import { ModalCloseIcon, modalCloseButtonClasses } from '@/theme/components';
 import { canEditLinkedResource, canUnlinkLinkedResource, shouldHardDeleteLinkedResource } from '@/pages/generic/resourceHelpers';
 
@@ -34,7 +35,6 @@ interface ToolItemProps {
   onNavigate?: (url: string) => void; // Callback pour navigation avec animation
   animationDelay?: number; // Délai en ms avant navigation (pour laisser l'animation jouer)
   onEdit?: (id: string | number) => void; // Callback pour édition (ouvre un onglet)
-  isEditable?: boolean; // Style hover + curseur si cliquable pour édition
   disableNavigation?: boolean; // En mode édition : outil non modifiable → aucune action au clic
 }
 
@@ -42,7 +42,6 @@ export const ToolItem: React.FC<ToolItemProps> = ({
   tool,
   onNavigate,
   onEdit,
-  isEditable = false,
   disableNavigation = false,
   animationDelay = 450,
 }) => {
@@ -50,111 +49,87 @@ export const ToolItem: React.FC<ToolItemProps> = ({
   const [isNavigating, setIsNavigating] = useState(false);
   const navigate = useNavigate();
 
-  // Récupérer l'URL
   const itemUrl = tool.url || tool.uri || '#';
 
-  // Gestion du clic avec animation
+  // Complètement verrouillé : ni édition possible, ni navigation
+  const isLocked = disableNavigation && !onEdit;
+
   const handleClick = (e: React.MouseEvent) => {
-    // Si on a un callback d'édition, l'utiliser en priorité
     if (onEdit) {
       e.preventDefault();
       onEdit(tool.id);
       return;
     }
-
-    if (disableNavigation) {
+    if (disableNavigation || !itemUrl || itemUrl === '#') {
       e.preventDefault();
       return;
     }
-
-    if (!itemUrl || itemUrl === '#') {
-      e.preventDefault();
-      return;
-    }
-
-    // Si c'est un lien externe, laisser le comportement par défaut
-    if (itemUrl.startsWith('http')) {
-      return;
-    }
-
-    // Empêcher la navigation immédiate
+    if (itemUrl.startsWith('http')) return;
     e.preventDefault();
-
-    // Signaler que la navigation commence (pour déclencher l'animation)
     setIsNavigating(true);
     if (onNavigate) {
       onNavigate(itemUrl);
     } else {
-      setTimeout(() => {
-        navigate(itemUrl);
-      }, animationDelay);
+      setTimeout(() => navigate(itemUrl), animationDelay);
     }
   };
 
-  // Récupérer la thumbnail
   const getThumbnail = (): string | undefined => {
-    if (tool.thumbnail) {
-      return tool.thumbnail;
-    }
-
-    // Si associatedMedia est un tableau, prendre le premier
+    if (tool.thumbnail) return tool.thumbnail;
     if (Array.isArray(tool.associatedMedia) && tool.associatedMedia.length > 0) {
       const firstMedia = tool.associatedMedia[0];
-
-      // Si c'est un objet
       if (typeof firstMedia === 'object' && firstMedia !== null) {
         const mediaObj = firstMedia as any;
-
         if (mediaObj.url) {
-          const mediaUrl = mediaObj.url;
-          if (isValidYouTubeUrl(mediaUrl)) {
-            return getYouTubeThumbnailUrl(mediaUrl);
-          }
-          return mediaUrl;
+          return isValidYouTubeUrl(mediaObj.url) ? getYouTubeThumbnailUrl(mediaObj.url) : mediaObj.url;
         }
       }
-
-      if (typeof firstMedia === 'string') {
-        return firstMedia;
-      }
+      if (typeof firstMedia === 'string') return firstMedia;
     }
-
-    if (typeof tool.associatedMedia === 'string') {
-      return tool.associatedMedia;
-    }
-
+    if (typeof tool.associatedMedia === 'string') return tool.associatedMedia;
     return undefined;
   };
 
   const thumbnail = getThumbnail();
-  const isClickable = isEditable || !disableNavigation;
-  const borderClass = isClickable && isHovered ? 'border-c4' : 'border-c3';
-  const rowCursorClass = isClickable ? 'cursor-pointer hover:bg-c2/40' : 'cursor-default';
+  const borderClass = !isLocked && isHovered ? 'border-c4' : 'border-c3';
+
+  const innerContent = (
+    <div className='flex flex-row gap-4 items-center min-w-0'>
+      <div className='flex-shrink-0 w-10 h-10 rounded-md overflow-hidden flex items-center justify-center bg-gradient-to-br from-c2 to-c3'>
+        {thumbnail ? (
+          <img src={thumbnail} alt='' className='w-10 h-10 object-cover' />
+        ) : (
+          <ThumbnailIcon className='text-c4/40' size={22} />
+        )}
+      </div>
+      <div className='w-full flex flex-col gap-2.5 min-w-0'>
+        <p className='text-c6 text-base'>{tool.title}</p>
+        {tool.description && (
+          <p className='text-c4 text-sm leading-[120%] text-overflow-ellipsis line-clamp-3 w-full'>{tool.description}</p>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div
-      className={`w-full flex flex-row justify-between border-2 rounded-xl items-center gap-6 transition-colors ${borderClass} ${rowCursorClass} ${isNavigating ? 'opacity-50 pointer-events-none' : ''}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
-      <Link
-        className={`w-full gap-6 p-4 flex flex-row justify-between ${isEditable || isClickable ? 'cursor-pointer' : 'cursor-default'}`}
-        to={itemUrl}
-        target={itemUrl.startsWith('http') ? '_blank' : undefined}
-        onClick={handleClick}>
-        <div className='flex flex-row gap-4 items-center'>
-          {thumbnail && (
-            <div className='flex-shrink-0'>
-              <img src={thumbnail} alt='thumbnail' className='w-10 object-cover rounded-md' />
-            </div>
-          )}
-          <div className='w-full flex flex-col gap-2.5'>
-            <p className='text-c6 text-base'>{tool.title}</p>
-            {tool.description && (
-              <p className='text-c4 text-sm leading-[120%] text-overflow-ellipsis line-clamp-3 w-full'>{tool.description}</p>
-            )}
-          </div>
+      className={`w-full flex flex-row justify-between border-2 rounded-xl items-center gap-6 transition-colors ${borderClass} ${isLocked ? 'cursor-default' : 'cursor-pointer hover:bg-c2/40'} ${isNavigating ? 'opacity-50 pointer-events-none' : ''}`}
+      onMouseEnter={isLocked ? undefined : () => setIsHovered(true)}
+      onMouseLeave={isLocked ? undefined : () => setIsHovered(false)}>
+      {isLocked ? (
+        // Item verrouillé : div non-interactif, aucun effet de survol navigateur
+        <div className='w-full gap-6 p-4 flex flex-row'>
+          {innerContent}
         </div>
-      </Link>
+      ) : (
+        <Link
+          className='w-full gap-6 p-4 flex flex-row cursor-pointer'
+          to={itemUrl}
+          target={itemUrl.startsWith('http') ? '_blank' : undefined}
+          onClick={handleClick}>
+          {innerContent}
+        </Link>
+      )}
     </div>
   );
 };
@@ -250,7 +225,6 @@ export const ItemsList: React.FC<ItemsListProps> = ({
               tool={mappedItem}
               onNavigate={onNavigate}
               onEdit={canEdit ? onEdit : undefined}
-              isEditable={canEdit}
               disableNavigation={isEditing && !canEdit}
             />
             {isEditing && canRemove && (
