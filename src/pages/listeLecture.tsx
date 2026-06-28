@@ -59,6 +59,7 @@ export const ListeLecture = () => {
         icon={<BookMarkIcon size={40} />}
         title='Liste de lecture'
         description='Retrouvez ici les ressources que vous avez sauvegardées pour les consulter plus tard.'
+        backgroundScale={0.80}
       />
 
       <div className='grid grid-cols-4 w-full gap-6'>

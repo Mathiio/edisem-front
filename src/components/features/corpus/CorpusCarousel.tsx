@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion, Variants } from 'framer-motion';
 import { Edition } from '@/types/ui';
 import { getSeasonOrder } from '@/lib/utils';
-import { Skeleton } from '@heroui/react';
 
 interface CorpusCarouselProps {
   editions: Edition[];
@@ -40,14 +39,14 @@ const EditionCard = ({ edition, basePath = '/corpus/seminaires' }: { edition: Ed
       variants={cardVariants}
       onClick={handleClick}
       data-testid="edition-card"
-      className="shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 cursor-pointer p-10 rounded-4xl flex flex-col justify-between gap-10 hover:bg-c2 h-full transition-all ease-in-out duration-200"
+      className="border-c3 border-2 cursor-pointer p-8 rounded-3xl flex flex-col justify-between gap-4 bg-c1 hover:bg-c2/60 h-full transition-all ease-in-out duration-200"
     >
-      <h2 className='text-3xl text-c6'>{edition.title}</h2>
+      <h2 className='text-2xl text-c6 font-medium'>{edition.title}</h2>
       <div className='flex flex-col items-start'>
-        <p className="text-lg text-c4">
+        <p className="text-base text-c4">
           Édition {edition.season} {edition.year}
         </p>
-        <p className="text-lg text-c4">
+        <p className="text-sm text-c4">
           {edition.conferences?.length ?? 0} conférences
         </p>
       </div>
@@ -57,16 +56,16 @@ const EditionCard = ({ edition, basePath = '/corpus/seminaires' }: { edition: Ed
 
 const EditionCardSkeleton = () => {
   return (
-    <div className="shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 p-10 rounded-4xl flex flex-col gap-10 h-full">
-        <div className='flex flex-col items-start gap-2'>
-            <Skeleton className="rounded-lg w-full h-8"/>
-            <Skeleton className="rounded-lg w-full h-8"/>
-            <Skeleton className="rounded-lg w-3/4 h-8"/>
-        </div>
-        <div className='flex flex-col items-start gap-2'>
-            <Skeleton className="rounded-lg w-px/2 h-4"/>
-            <Skeleton className="rounded-lg w-px/4 h-4"/>
-        </div>
+    <div className="border-c3 border-2 p-10 rounded-4xl flex flex-col gap-10 h-full animate-pulse">
+      <div className="flex flex-col items-start gap-2">
+        <div className="rounded-lg w-full h-8 bg-c3/50" />
+        <div className="rounded-lg w-full h-8 bg-c3/50" />
+        <div className="rounded-lg w-3/4 h-8 bg-c3/50" />
+      </div>
+      <div className="flex flex-col items-start gap-2">
+        <div className="rounded-lg w-1/2 h-4 bg-c3/50" />
+        <div className="rounded-lg w-1/4 h-4 bg-c3/50" />
+      </div>
     </div>
   );
 };

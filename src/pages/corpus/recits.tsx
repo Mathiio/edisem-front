@@ -3,9 +3,8 @@ import { Layouts } from "@/components/layout/Layouts";
 import * as Items from '@/services/Items';
 import { FullCarrousel } from '@/components/ui/Carrousels';
 import { PratiqueNarrativeIcon } from '@/components/ui/icons';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { PageBanner } from '@/components/ui/PageBanner';
+import { CorpusNavCard } from '@/components/features/corpus/CorpusNavCard';
 import { ResourceCard, ResourceCardSkeleton } from '@/components/features/corpus/ResourceCard';
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
 
@@ -89,6 +88,7 @@ export const MisesEnRecits: React.FC = () => {
           { label: 'Mises en Récits', value: metrics.totalRecits },
           { label: 'Types de récits', value: metrics.totalTypes }
         ]}
+        backgroundScale={0.80}
       />
 
       <section className="w-full flex flex-col gap-24">
@@ -97,7 +97,7 @@ export const MisesEnRecits: React.FC = () => {
           data={navCards}
           perPage={3}
           perMove={1}
-          renderSlide={(card, index) => <NavCard card={card} index={index} key={card.id} />}
+          renderSlide={(card, index) => <CorpusNavCard card={card} index={index} key={card.id} />}
         />
 
         <SubjectCarousels 
@@ -106,26 +106,6 @@ export const MisesEnRecits: React.FC = () => {
         />
       </section>
     </Layouts>
-  );
-};
-
-const NavCard = ({ card, index }: { card: any, index: number }) => {
-  const navigate = useNavigate();
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: index * 0.2 }}
-      onClick={() => navigate(card.path)}
-      className='shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 cursor-pointer p-10 rounded-4xl justify-between flex flex-col gap-10 hover:bg-c2 h-full transition-all ease-in-out duration-300'
-    >
-      <card.icon size={40} style={{ color: card.color }} />
-      <div className='flex flex-col gap-2.5'>
-        <p className='text-3xl font-medium transition-all ease-in-out duration-200 text-c6'>{card.title}</p>
-        <p className='text-base text-c5 font-normal transition-all ease-in-out duration-200'>{card.description}</p>
-      </div>
-    </motion.div>
   );
 };
 

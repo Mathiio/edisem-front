@@ -36,6 +36,7 @@ export const Seminaires = () => {
           { label: 'éditions', value: totalEditions || 0 },
           { label: 'conférences', value: totalConferences || 0 }
         ]}
+        backgroundScale={0.80}
       />
       <CorpusCarousel editions={seminarEditions} loading={loading} title="Tous nos séminaires" />
     </Layouts>

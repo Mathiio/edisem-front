@@ -13,10 +13,23 @@ interface PageBannerProps {
   stats?: Stat[];
   className?: string;
   edition?: boolean;
+  backgroundScale?: number;
+  backgroundMaxWidth?: string;
+  backgroundClassName?: string;
 }
 
-export const PageBanner = ({ icon, title, description, stats = [], className = '', edition = false }: PageBannerProps) => {
-  const paddingClass = edition ? 'py-[10px]' : 'pt-24';
+export const PageBanner = ({
+  icon,
+  title,
+  description,
+  stats = [],
+  className = '',
+  edition = false,
+  backgroundScale = 1,
+  backgroundMaxWidth = '100%',
+  backgroundClassName = '',
+}: PageBannerProps) => {
+  const paddingClass = edition ? 'py-[10px]' : 'pt-18';
 
   return (
     <div className={`${paddingClass} justify-center flex items-center flex-col gap-5 relative ${className}`}>
@@ -24,11 +37,12 @@ export const PageBanner = ({ icon, title, description, stats = [], className = '
         {/* Icon */}
         {icon && <div className='text-c4'>{icon}</div>}
 
-        {/* Title */}
-        <h1 className='z-[12] text-6xl text-c6 font-medium flex flex-col items-center text-center'>{title}</h1>
-
         {/* Description + Stats */}
-        <div className='flex flex-col gap-5 justify-center items-center'>
+        <div className='flex flex-col gap-3 justify-center items-center'>
+
+          {/* Title */}
+          <h1 className='z-[12] text-5xl text-c6 font-medium flex flex-col items-center text-center'>{title}</h1>
+        
           {/* Description */}
           <p className='text-c5 text-base z-[12] text-center max-w-[600px]'>{description}</p>
 
@@ -43,14 +57,19 @@ export const PageBanner = ({ icon, title, description, stats = [], className = '
         </div>
 
         {/* Animated Background */}
-        <AnimatedBackground color={edition ? '#FF191D' : undefined} />
+        <AnimatedBackground
+          scale={backgroundScale}
+          maxWidth={backgroundMaxWidth}
+          className={backgroundClassName}
+          color={edition ? '#FF191D' : undefined}
+        />
       </div>
     </div>
   );
 };
 
 const StatCard = ({ label, value }: { label: string; value: number }) => (
-  <div className='flex border-3 border-c3 rounded-lg p-2.5'>
+  <div className='flex border-1 border-c4/40 rounded-lg py-2 px-4'>
     <p className='text-sm text-c5'>
       {value} {label}
     </p>

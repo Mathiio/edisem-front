@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Layouts } from '@/components/layout/Layouts';
+import { PageBanner } from '@/components/ui/PageBanner';
 import { UserIcon } from '@/components/ui/icons';
 import { StudentManagement } from './StudentManagement';
 import { CourseManagement } from './CourseManagement';
@@ -26,14 +27,13 @@ export const AdminDashboard: React.FC = () => {
   );
 
   return (
-    <Layouts className='flex flex-col col-span-10 gap-12 z-0 overflow-visible pt-16'>
-      <div className='flex items-center gap-3'>
-        <UserIcon size={28} className='text-c5 shrink-0' />
-        <div className='flex flex-col'>
-          <h1 className='text-3xl text-c6 font-semibold'>Utilisateurs</h1>
-          <p className='text-c4 text-sm'>Gestion des actants, étudiants et cours.</p>
-        </div>
-      </div>
+    <Layouts className='col-span-10 flex flex-col gap-36 z-0 overflow-visible'>
+      <PageBanner
+        icon={<UserIcon />}
+        title='Utilisateurs'
+        description='Gestion des actants, étudiants et cours.'
+        backgroundScale={0.60}
+      />
 
       <section className='flex flex-col gap-4'>
         <ActantManagement embedded />

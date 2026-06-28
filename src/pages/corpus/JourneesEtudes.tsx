@@ -36,6 +36,7 @@ export const JourneesEtudes = () => {
           { label: 'éditions', value: totalEditions || 0 },
           { label: 'conférences', value: totalConferences || 0 }
         ]}
+        backgroundScale={0.80}
       />
       <CorpusCarousel editions={studyDayEditions} loading={loading} title="Toutes nos Journées d'études" basePath="/corpus/journees-etudes" />
     </Layouts>

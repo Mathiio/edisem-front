@@ -124,7 +124,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
     collectionUrl: '/corpus/recits-scientifiques',
     collectionLabel: 'Récits Scientifiques',
     color: '#AFC8FF',
-    description: 'Analyses des publications scientifiques et académiques.',
+    description: 'Analyses de publications scientifiques et académiques.',
     createUrl: '/add-resource/recit-scientifique',
   },
 

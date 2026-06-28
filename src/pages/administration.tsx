@@ -8,6 +8,7 @@ import {
   getResourceRowSubtitle,
 } from '@/components/features/espaceEtudiant/MySpaceResourceRow';
 import { AlertModal } from '@/components/ui/AlertModal';
+import { PageBanner } from '@/components/ui/PageBanner';
 import { SearchIcon, SettingsIcon } from '@/components/ui/icons';
 import {
   GLOBAL_ADMIN_TEMPLATE_OPTIONS,
@@ -24,7 +25,7 @@ import {
 import { deleteUserResource } from '@/services/UserSpace';
 
 const RECENT_COUNT = 20;
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 8;
 const CATALOG_LIMIT = 100;
 
 const paginationClassNames = {
@@ -261,18 +262,13 @@ export const AdministrationPage: React.FC = () => {
   );
 
   return (
-    <Layouts className='col-span-10 flex flex-col gap-12 z-0 overflow-visible'>
-      <div className='flex flex-col gap-2 pt-16'>
-        <div className='flex items-center gap-3'>
-          <SettingsIcon size={28} className='text-c5 shrink-0' />
-          <div className='flex flex-col'>
-            <h1 className='text-3xl text-c6 font-semibold'>Administration</h1>
-            <p className='text-c4 text-sm max-w-2xl'>
-              Gestion globale des ressources Edisem. 
-            </p>
-          </div>
-        </div>
-      </div>
+    <Layouts className='col-span-10 flex flex-col gap-36 z-0 overflow-visible'>
+      <PageBanner
+        icon={<SettingsIcon />}
+        title='Administration'
+        description='Gestion globale des ressources Edisem.'
+        backgroundScale={0.60}
+      />
 
       <section className='flex flex-col gap-4'>
         <h2 className='text-xl text-c6 font-semibold'>Dernières modifications</h2>

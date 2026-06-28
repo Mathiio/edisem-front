@@ -40,6 +40,7 @@ export const Experimentations: React.FC = () => {
         icon={<ExperimentationIcon size={40} />}
         title='Expérimentations Edisem'
         description="Plongez au cœur des collections intellectuelles d'EdiSem, une fenêtre ouverte sur la diversité des savoirs et des pratiques qui nourrissent nos événements."
+        backgroundScale={0.80}
       />
       <div className='grid grid-cols-4 w-full gap-6'>
         {loading
