@@ -6,9 +6,10 @@ import { VocabGroupField } from '../simplifiedConfig';
  */
 export const IMAGINAIRE_IA_VOCAB_FIELDS: VocabGroupField[] = [
   {
-    label: "Position de l'IA / Technologie au sein de l'oeuvre",
+    label: "Position de l'IA / Technologie au sein du récit",
     property: 'schema:characterAttribute',
     type: 'textarea',
+    propertyId: 534,
     placeholder: "Décrivez la position de l'IA dans l'œuvre...",
   },
   {

@@ -2015,6 +2015,63 @@ function buildOmekaResourceLinks(items: { id?: number; 'o:id'?: number; value_re
 
 const URL_OMEKA_PROPERTIES = new Set(['bibo:uri', 'schema:url']);
 
+const LINKED_RESOURCE_RENDER_TYPES = new Set(['items', 'references', 'microresumes', 'citations']);
+
+/** Vues dont la propriété Omeka référence d'autres items (pas un champ texte / vocab). */
+function isLinkedResourceView(view: { renderType?: string }): boolean {
+  return LINKED_RESOURCE_RENDER_TYPES.has(view.renderType ?? '');
+}
+
+function buildLinkedResourceViewMaps(views?: { key?: string; property?: string; renderType?: string }[]) {
+  const viewKeyToPropertyMap: Record<string, string> = {};
+  views?.forEach((view) => {
+    if (view.key && view.property && isLinkedResourceView(view)) {
+      viewKeyToPropertyMap[view.key] = view.property;
+    }
+  });
+  return {
+    viewKeyToPropertyMap,
+    linkedViewKeys: new Set(Object.keys(viewKeyToPropertyMap)),
+    linkedOmekaProperties: new Set(Object.values(viewKeyToPropertyMap)),
+  };
+}
+
+function isOmekaValueObjectArray(value: unknown[]): boolean {
+  if (value.length === 0) return true;
+  const first = value[0];
+  if (typeof first === 'string') return false;
+  if (typeof first !== 'object' || first == null) return false;
+  const entry = first as Record<string, unknown>;
+  return (
+    entry['@value'] !== undefined &&
+    entry.value_resource_id == null &&
+    entry.id == null &&
+    entry['o:id'] == null
+  );
+}
+
+function buildOmekaValueEntries(
+  value: unknown[],
+  propertyId: number,
+  omekaProperty: string,
+  customVocabByProperty: Record<string, number>,
+) {
+  const vocabId = customVocabByProperty[omekaProperty];
+  return (value as any[])
+    .map((v: any) => {
+      if (typeof v === 'object' && v?.property_id && v?.type && v?.['@value'] !== undefined) return v;
+      const str = typeof v === 'string' ? v : String(v?.['@value'] ?? '');
+      if (!str.trim()) return null;
+      return {
+        type: v?.type ?? (vocabId ? `customvocab:${vocabId}` : 'literal'),
+        property_id: v?.property_id ?? propertyId,
+        '@value': str,
+        is_public: v?.is_public ?? true,
+      };
+    })
+    .filter(Boolean);
+}
+
 function isUrlOmekaField(
   formKey: string,
   omekaProperty: string,
@@ -2053,6 +2110,12 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
       if (f.type === 'customVocab' && f.vocabId) {
         customVocabByProperty[f.property] = f.vocabId;
       }
+    });
+  });
+  const vocabPropertyIds: Record<string, number> = {};
+  config.views?.forEach((view) => {
+    view.vocabFields?.forEach((f) => {
+      if (f.propertyId) vocabPropertyIds[f.property] = f.propertyId;
     });
   });
 
@@ -2156,17 +2219,8 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
         'thumbnail_display_urls',
       ]);
 
-      // Mapping viewKey → propriété Omeka (pour délier / lier sans écrasement)
-      const viewKeyToPropertyMap: Record<string, string> = {};
-      if (config.views) {
-        config.views.forEach((view) => {
-          if (view.key && view.property) {
-            viewKeyToPropertyMap[view.key] = view.property;
-          }
-        });
-      }
-      const linkedViewKeys = new Set(Object.keys(viewKeyToPropertyMap));
-      const linkedOmekaProperties = new Set(Object.values(viewKeyToPropertyMap));
+      // Mapping viewKey → propriété Omeka (uniquement vues « ressources liées »)
+      const { linkedViewKeys, linkedOmekaProperties } = buildLinkedResourceViewMaps(config.views);
       const writtenOmekaProperties = new Set<string>();
 
       // Propriété Omeka → clé formulaire préférée (keywords, genre, domaine…)
@@ -2188,7 +2242,9 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
         if (writtenOmekaProperties.has(omekaProperty)) continue;
 
         const items = normalizeResourceItems(raw);
-        const propertyId = await resolveOmekaPropertyId(omekaProperty, propMap, updatedItem);
+        const propertyId =
+          vocabPropertyIds[omekaProperty] ??
+          (await resolveOmekaPropertyId(omekaProperty, propMap, updatedItem));
         if (!propertyId) {
           console.warn(`[handleSave] Property ID non trouvé pour: ${omekaProperty} (clé: ${field.key})`);
           continue;
@@ -2229,7 +2285,9 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
             continue;
           }
 
-          const propertyId = await resolveOmekaPropertyId(omekaProperty, propMap, updatedItem);
+          const propertyId =
+          vocabPropertyIds[omekaProperty] ??
+          (await resolveOmekaPropertyId(omekaProperty, propMap, updatedItem));
           if (!propertyId) {
             console.warn(`[handleSave] Property ID non trouvé pour: ${omekaProperty} (clé: ${key})`);
             continue;
@@ -2243,7 +2301,9 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
           continue;
         }
 
-        const propertyId = await resolveOmekaPropertyId(omekaProperty, propMap, updatedItem);
+        const propertyId =
+          vocabPropertyIds[omekaProperty] ??
+          (await resolveOmekaPropertyId(omekaProperty, propMap, updatedItem));
 
         if (!propertyId) {
           console.warn(`[handleSave] Property ID non trouvé pour: ${omekaProperty} (clé: ${key})`);
@@ -2307,6 +2367,9 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
               value_resource_id: resourceId,
               is_public: true,
             }));
+            writtenOmekaProperties.add(omekaProperty);
+          } else if (isOmekaValueObjectArray(value)) {
+            updatedItem[omekaProperty] = buildOmekaValueEntries(value, propertyId, omekaProperty, customVocabByProperty);
             writtenOmekaProperties.add(omekaProperty);
           }
         }

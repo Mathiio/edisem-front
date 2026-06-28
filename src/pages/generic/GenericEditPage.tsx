@@ -867,16 +867,19 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       writtenOmekaProperties.add(omekaPropertyKey);
     }
 
-    // Ensemble des propriétés Omeka brutes qui sont déjà couvertes par une clé de vue.
-    // Ex : 'dcterms:description' est la cible de la vue 'AnalyseCritique'.
-    // Si on laisse la clé brute être traitée en premier, elle écrase la propriété
-    // avec l'ancienne valeur et empêche la clé de vue de l'écrire ensuite.
-    const viewMappedOmekaProperties = new Set(Object.values(config.viewKeyToProperty ?? {}));
+    // Propriétés Omeka des vues « ressources liées » uniquement (pas vocabGroup / text).
+    // Ex : 'dcterms:description' via 'AnalyseCritique', pas 'schema:characterAttribute' via 'ImagiaireIA'.
+    const linkedResourceViewProperties = new Set<string>();
+    config.viewOptions?.forEach((view) => {
+      if (view.viewKind === 'resources' && view.key) {
+        const prop = config.viewKeyToProperty?.[view.key];
+        if (prop) linkedResourceViewProperties.add(prop);
+      }
+    });
 
     for (const [key, value] of Object.entries(data)) {
-      // Sauter les propriétés Omeka brutes qui seront gérées via leur clé de vue.
-      // Ex : 'dcterms:description' doit être écrit par 'AnalyseCritique', pas directement.
-      if (viewMappedOmekaProperties.has(key)) continue;
+      // Sauter les propriétés Omeka brutes gérées via une clé de vue ressources liées.
+      if (linkedResourceViewProperties.has(key)) continue;
 
       if (key.includes(':')) {
         const preferredKey = formPropertyToKey[key];
