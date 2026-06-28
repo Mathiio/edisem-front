@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileIcon } from '@/components/ui/icons';
+import { EmptyStateCard } from '@/components/ui/EmptyStateCard';
 import { Bibliography } from '@/types/ui';
 import { getFormOnlyExternalUrl, isHttpUrl } from '@/lib/resourceUtils';
 
@@ -304,7 +304,9 @@ export const Bibliographies: React.FC<BibliographiesProps> = ({ sections = [], b
             )}
 
             {/* Si aucune bibliographie n'est disponible */}
-            {totalBibliographies === 0 && !loading && <UnloadedCard />}
+            {totalBibliographies === 0 && !loading && (
+              <EmptyStateCard message="Aucune bibliographie n'est liée à cette conférence." />
+            )}
           </>
         )}
       </div>
@@ -312,14 +314,3 @@ export const Bibliographies: React.FC<BibliographiesProps> = ({ sections = [], b
   );
 };
 
-export const UnloadedCard: React.FC = () => {
-  return (
-    <div className='w-full h-full flex flex-col justify-center items-center gap-5 mt-12'>
-      <FileIcon size={42} className='text-c6' />
-      <div className='w-[80%] flex flex-col justify-center items-center gap-2.5'>
-        <h2 className='text-c6 text-3xl font-medium'>Oups !</h2>
-        <p className='text-c5 text-base text-center'>Aucune bibliographie n'est liée à cette conférence. Veuillez vérifier plus tard ou explorer d'autres sections.</p>
-      </div>
-    </div>
-  );
-};

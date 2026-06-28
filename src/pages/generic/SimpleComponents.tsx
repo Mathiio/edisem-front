@@ -13,7 +13,8 @@ import { FormAutoResizeTextareaInput, FormDateInput } from '@/components/feature
 import { formatFlexibleDateDisplay } from '@/lib/flexibleDate';
 import { Splide, SplideTrack, SplideSlide } from '@splidejs/react-splide';
 import { carouselArrowButtonClass } from '@/components/ui/Carrousels';
-import { ImageIcon, UserIcon, ShareIcon, MovieIcon, ArrowIcon, AddIcon } from '@/components/ui/icons';
+import { EmptyStateCard } from '@/components/ui/EmptyStateCard';
+import { UserIcon, ShareIcon, MovieIcon, ArrowIcon, AddIcon } from '@/components/ui/icons';
 import MediaViewer from '@/components/features/conference/MediaViewer';
 import { MediaDropzone, MediaFile } from '@/components/features/forms/MediaDropzone';
 import { InternalFieldConfig, getOverviewFields, getDetailsFields, getHeaderFields, VocabGroupField } from './simplifiedConfig';
@@ -413,7 +414,12 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
             )}
           </div>
         ) : (
-          <UnloadedCard />
+          <EmptyStateCard
+            variant='media'
+            icon='thumbnail'
+            message="Aucune Image ou Vidéo n'est liée à ce contenu."
+            className='rounded-2xl gap-4'
+          />
         )}
       </motion.div>
       )}
@@ -875,20 +881,6 @@ export const SimpleDetailsSkeleton: React.FC = () => (
       <div className='w-full h-4 bg-c3 rounded-lg animate-pulse' />
     </div>
     <div className='w-1/5 h-4 bg-c3 rounded-lg animate-pulse' />
-  </div>
-);
-
-// ========================================
-// UnloadedCard
-// ========================================
-
-export const UnloadedCard: React.FC = () => (
-  <div className='lg:w-full lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px] flex flex-col items-center justify-center p-5 bg-c3 rounded-2xl gap-5'>
-    <ImageIcon size={42} className='text-c4' />
-    <div className='w-4/5 max-w-lg flex flex-col justify-center items-center gap-2.5'>
-      <h2 className='text-c5 text-3xl font-semibold'>Oups !</h2>
-      <p className='max-w-md w-full text-c5 text-base font-normal text-center'>Aucun média n'est lié à ce contenu. Veuillez vérifier plus tard ou explorer d'autres sections.</p>
-    </div>
   </div>
 );
 

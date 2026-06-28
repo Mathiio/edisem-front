@@ -9,6 +9,7 @@ import { Splide, SplideTrack, SplideSlide } from '@splidejs/react-splide';
 import MediaViewer from '../conference/MediaViewer';
 import { MediaFile } from '@/components/features/forms/MediaDropzone';
 import { carouselArrowButtonClass } from '@/components/ui/Carrousels';
+import { EmptyStateCard } from '@/components/ui/EmptyStateCard';
 import { dropdownContentClassNames } from '@/theme/components/dropdown';
 
 // Helper function to get the correct route based on person type
@@ -523,7 +524,11 @@ export const ExpOverviewCard: React.FC<ExpOverviewProps> = ({
             )}
           </div>
         ) : (
-          <UnloadedCard />
+          <EmptyStateCard
+            variant='media'
+            icon='thumbnail'
+            message="Aucun média n'est lié au contenu de cette œuvre."
+          />
         )}
       </motion.div>
 
@@ -722,20 +727,6 @@ export const ExpOverviewSkeleton: React.FC = () => {
         </div>
       </div>
       <div className='rounded-xl w-full h-2 bg-c2 animate-pulse' />
-    </div>
-  );
-};
-
-export const UnloadedCard: React.FC = () => {
-  return (
-    <div className='lg:w-[100%] lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px] flex flex-col items-center justify-center p-5 bg-c3 rounded-xl gap-5'>
-      <ImageIcon size={42} className='text-c4' />
-      <div className='w-[80%] flex flex-col justify-center items-center gap-2.5'>
-        <h2 className='text-c5 text-3xl font-medium'>Oups !</h2>
-        <p className='w-[400px] text-c5 text-base text-regular text-center'>
-          Aucune Image ou Vidéo n'est liée à ce contenu. Veuillez vérifier plus tard ou explorer d'autres sections de notre site.
-        </p>
-      </div>
     </div>
   );
 };

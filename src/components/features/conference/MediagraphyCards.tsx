@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ImageIcon, FileIcon } from '@/components/ui/icons';
+import { ImageIcon } from '@/components/ui/icons';
+import { EmptyStateCard } from '@/components/ui/EmptyStateCard';
 import { getFormOnlyExternalUrl, isHttpUrl } from '@/lib/resourceUtils';
 
 const formatAuthors = (creators: { first_name: string; last_name: string }[] = []) => {
@@ -341,23 +342,18 @@ export const Mediagraphies: React.FC<{ items: Mediagraphy[]; loading: boolean; n
         )}
 
         {/* Si aucune médiagraphie n'est disponible */}
-        {items.length === 0 && !loading && <UnloadedCard />}
+        {items.length === 0 && !loading && (
+          <EmptyStateCard
+            message="Aucune médiagraphie n'est liée au contenu de cette conférence."
+            iconSize={42}
+            iconClassName='text-c6'
+          />
+        )}
       </div>
     </div>
   );
 };
 
-export const UnloadedCard: React.FC = () => (
-  <div className='w-full h-full flex flex-col justify-center items-center gap-5 mt-12'>
-    <FileIcon size={42} className='text-c6' />
-    <div className='w-[80%] flex flex-col justify-center items-center gap-2.5'>
-      <h2 className='text-c6 text-3xl font-medium'>Oups !</h2>
-      <p className='text-c5 text-base text-center'>
-        Aucune médiagraphie n'est liée au contenu de cette conférence. Veuillez vérifier plus tard ou explorer d'autres sections de notre site.
-      </p>
-    </div>
-  </div>
-);
 
 export const MediagraphySkeleton: React.FC = () => (
   <div className='w-full flex justify-between rounded-xl items-center bg-c3 gap-6 p-6'>

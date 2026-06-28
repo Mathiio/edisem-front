@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ImageIcon, UserIcon, ShareIcon, MovieIcon, ArrowIcon, SettingsIcon } from '@/components/ui/icons';
+import { UserIcon, ShareIcon, MovieIcon, ArrowIcon, SettingsIcon } from '@/components/ui/icons';
 import { motion, Variants } from 'framer-motion';
 import { addToast } from '@/theme/components';
 import { Skeleton, Button, cn, DropdownMenu, Dropdown, DropdownItem, DropdownTrigger } from '@heroui/react';
 import { dropdownContentClassNames, dropdownMenuClassNames } from '@/theme/components/dropdown';
 import { Splide, SplideTrack, SplideSlide } from '@splidejs/react-splide';
 import MediaViewer from '../conference/MediaViewer';
+import { EmptyStateCard } from '@/components/ui/EmptyStateCard';
 import { getYouTubeThumbnailUrl } from '@/lib/utils';
 
 const itemVariants: Variants = {
@@ -156,7 +157,11 @@ export const RecitiaOverviewCard: React.FC<RecitiaOverviewProps> = ({ id: _id, t
             )}
           </div>
         ) : (
-          <UnloadedCard />
+          <EmptyStateCard
+            variant='media'
+            icon='thumbnail'
+            message="Aucun média n'est lié au contenu de cette œuvre."
+          />
         )}
       </motion.div>
 
@@ -365,16 +370,3 @@ export const RecitiaOverviewSkeleton: React.FC = () => {
   );
 };
 
-export const UnloadedCard: React.FC = () => {
-  return (
-    <div className='lg:w-[100%] lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px] flex flex-col items-center justify-center p-5 bg-c3 rounded-xl gap-5'>
-      <ImageIcon size={42} className='text-c4' />
-      <div className='w-[80%] flex flex-col justify-center items-center gap-2.5'>
-        <h2 className='text-c5 text-3xl font-medium'>Oups !</h2>
-        <p className='w-[400px] text-c5 text-base text-regular text-center'>
-          Aucun média n'est lié au contenu de cette œuvre. Veuillez vérifier plus tard ou explorer d'autres sections de notre site.
-        </p>
-      </div>
-    </div>
-  );
-};

@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ImageIcon, UserIcon, ShareIcon, MovieIcon } from '@/components/ui/icons';
+import { UserIcon, ShareIcon, MovieIcon } from '@/components/ui/icons';
 import { motion, Variants } from 'framer-motion';
 import { addToast } from '@/theme/components';
 import { Link, Button, cn, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/react';
 import { dropdownContentClassNames, dropdownMenuClassNames } from '@/theme/components/dropdown';
+import { EmptyStateCard } from '@/components/ui/EmptyStateCard';
 import { Conference } from '@/types/ui';
 
 const itemVariants: Variants = {
@@ -135,7 +136,12 @@ export const ConfOverviewCard: React.FC<ConfOverviewProps> = ({ conf, currentTim
             src={videoUrl}
             allowFullScreen></iframe>
         ) : (
-          <UnloadedCard />
+          <EmptyStateCard
+            variant='media'
+            icon='image'
+            message="Aucune Image ou Vidéo n'est liée à ce contenu. Veuillez vérifier plus tard ou explorer d'autres sections de notre site."
+            messageClassName='w-[400px] text-c5 text-base text-regular text-center'
+          />
         )}
       </motion.div>
       <motion.div variants={itemVariants} className='w-full flex flex-col gap-6'>
@@ -282,16 +288,3 @@ export const ConfOverviewSkeleton: React.FC = () => {
   );
 };
 
-export const UnloadedCard: React.FC = () => {
-  return (
-    <div className='lg:w-[100%] lg:h-[400px] xl:h-[450px] h-[450px] sm:h-[450px] xs:h-[250px] flex flex-col items-center justify-center p-5 bg-c3 rounded-xl gap-5'>
-      <ImageIcon size={42} className='text-c4' />
-      <div className='w-[80%] flex flex-col justify-center items-center gap-2.5'>
-        <h2 className='text-c5 text-3xl font-medium'>Oups !</h2>
-        <p className='w-[400px] text-c5 text-base text-regular text-center'>
-          Aucune Image ou Vidéo n'est liée à ce contenu. Veuillez vérifier plus tard ou explorer d'autres sections de notre site.
-        </p>
-      </div>
-    </div>
-  );
-};

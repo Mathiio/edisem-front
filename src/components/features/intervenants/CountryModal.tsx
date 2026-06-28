@@ -1,20 +1,19 @@
 import React from 'react';
-import { Link, Modal, ModalBody, ModalContent, ModalHeader } from '@heroui/react';
 import { IntervenantLongCard } from '@/components/features/intervenants/IntervenantCards';
 import { getFrCountryName } from '@/components/features/intervenants/CountryUtils';
-import { CrossIcon } from '@/components/ui/icons';
+import { Modal, ModalBody, ModalContent, ModalHeader, modalCloseButtonClasses } from '@/theme/components';
 import { Actant, University } from '@/types/ui';
 
 export interface UniversityWithIntervenants {
-  university: University; // University metadata
-  intervenants: Actant[]; // List of intervenants for the university
-  [x: string]: any; // Allow additional dynamic fields
+  university: University;
+  intervenants: Actant[];
+  [x: string]: any;
 }
 
 interface CountryModalProps {
-  selectedCountry: string | null; // Name of selected country
-  universityGroups: any[]; // Array of universities with grouped intervenants
-  onClose: () => void; // Function to close the modal
+  selectedCountry: string | null;
+  universityGroups: any[];
+  onClose: () => void;
 }
 
 const MODAL_MOTION_PROPS = {
@@ -22,54 +21,49 @@ const MODAL_MOTION_PROPS = {
     enter: {
       y: 0,
       opacity: 1,
-      transition: { duration: 0.3, ease: 'easeOut' }, // Slide-in animation
+      transition: { duration: 0.3, ease: 'easeOut' },
     },
     exit: {
       y: -20,
       opacity: 0,
-      transition: { duration: 0.2, ease: 'easeIn' }, // Slide-out animation
+      transition: { duration: 0.2, ease: 'easeIn' },
     },
   },
 };
 
-export const CountryModal: React.FC<CountryModalProps> = ({ selectedCountry, universityGroups, onClose }) => (
-  <Modal
-    backdrop='blur' // Blurred background
-    className='bg-c2 rounded-4xl'
-    size='3xl'
-    isOpen={!!selectedCountry} // Modal visibility based on selection
-    onClose={onClose}
-    hideCloseButton={true}
-    scrollBehavior='inside' // Allow inner scrolling
-    motionProps={MODAL_MOTION_PROPS as any} // Custom animation
-  >
-    <ModalContent>
-      {(onClose) => (
-        <>
-          <ModalHeader className='flex justify-between p-10 border-b-2 border-c3'>
-            <h2 className='text-c6 text-3xl font-medium'>Intervenants – {selectedCountry ? getFrCountryName(selectedCountry) : 'Pays'}</h2>
-            <Link onPress={onClose}>
-              <CrossIcon className='text-c4 cursor-pointer hover:text-c6 transition-all ease-in-out duration-200' size={24} />
-            </Link>
-          </ModalHeader>
-          <ModalBody className='flex flex-col gap-10 p-10'>
-            {universityGroups.length > 0 ? (
-              universityGroups.map((group) => (
-                <div key={group.university.name} className='flex flex-col gap-5'>
-                  <h2 className='text-2xl font-medium text-c6'>{group.university.name}</h2>
-                  <div className='flex flex-col gap-2.5'>
-                    {group.intervenants.map((intervenant: any) => (
-                      <IntervenantLongCard key={intervenant.id} {...intervenant} />
-                    ))}
-                  </div>
+export const CountryModal: React.FC<CountryModalProps> = ({ selectedCountry, universityGroups, onClose }) => {
+  const countryLabel = selectedCountry ? getFrCountryName(selectedCountry) : 'Pays';
+
+  return (
+    <Modal
+      backdrop='blur'
+      size='2xl'
+      isOpen={!!selectedCountry}
+      onClose={onClose}
+      scrollBehavior='inside'
+      classNames={{ closeButton: modalCloseButtonClasses }}
+      motionProps={MODAL_MOTION_PROPS as any}>
+      <ModalContent>
+        <ModalHeader className='flex flex-col gap-px py-4'>
+          <h2 className='text-c6 text-lg font-semibold'>Intervenants – {countryLabel}</h2>
+        </ModalHeader>
+        <ModalBody className='flex flex-col gap-6 py-4'>
+          {universityGroups.length > 0 ? (
+            universityGroups.map((group) => (
+              <div key={group.university.name} className='flex flex-col gap-3'>
+                <h3 className='text-base font-medium text-c6'>{group.university.name}</h3>
+                <div className='flex flex-col gap-2'>
+                  {group.intervenants.map((intervenant: any) => (
+                    <IntervenantLongCard key={intervenant.id} {...intervenant} />
+                  ))}
                 </div>
-              ))
-            ) : (
-              <p className='text-c5 text-base'>Aucun intervenant répertorié.</p>
-            )}
-          </ModalBody>
-        </>
-      )}
-    </ModalContent>
-  </Modal>
-);
+              </div>
+            ))
+          ) : (
+            <p className='text-c5 text-sm'>Aucun intervenant répertorié.</p>
+          )}
+        </ModalBody>
+      </ModalContent>
+    </Modal>
+  );
+};

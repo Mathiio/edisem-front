@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Button, Link } from '@heroui/react';
-import { FileIcon } from '@/components/ui/icons';
 
 import { motion, Variants } from 'framer-motion';
 
@@ -138,16 +137,3 @@ export const Microresumes: React.FC<MicroresumesProps> = ({ microresumes, loadin
   );
 };
 
-export const UnloadedCard: React.FC = () => {
-  return (
-    <div className='w-full h-full flex flex-col justify-center items-center gap-5 mt-12'>
-      <FileIcon size={42} className='text-c6' />
-      <div className='w-[80%] flex flex-col justify-center items-center gap-2.5'>
-        <h2 className='text-c6 text-3xl font-medium'>Oups !</h2>
-        <p className='text-c5 text-base text-regular text-center'>
-          Aucune citation n'est liée au contenu de cette conférence. Veuillez vérifier plus tard ou explorer d'autres sections de notre site.
-        </p>
-      </div>
-    </div>
-  );
-};

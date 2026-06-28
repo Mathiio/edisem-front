@@ -130,17 +130,17 @@ export const IntervenantLongCard: React.FC<Actant> = ({ id, firstname, lastname,
   return (
     <div
       onClick={openIntervenantPage}
-      className={`shadow-[inset_0_0px_25px_rgba(255,255,255,0.05)] border-c3 border-2 hover:bg-c3 cursor-pointer h-full rounded-3xl flex items-center justify-between p-5 gap-5 transition-transform-all duration-200 ${className || ''}`}>
-      <div className='flex items-center justify-start gap-5'>
+      className={`border-c3 border-2 hover:bg-c3/60 bg-c3/20 cursor-pointer h-full rounded-3xl flex items-center justify-between p-4 gap-4 transition-transform-all duration-200 ${className || ''}`}>
+      <div className='flex items-center justify-start gap-4'>
         {/* Picture or fallback icon */}
         {picture ? (
-          <img src={picture} alt={`${firstname} ${lastname}`} className='w-20 h-20 object-cover rounded-xl' />
+          <img src={picture} alt={`${firstname} ${lastname}`} className='w-14 h-14 object-cover rounded-xl' />
         ) : (
-          <div className='w-20 h-20 rounded-xl object-cover flex items-center justify-center bg-c3'>
-            <UserIcon size={24} className='text-c6' />
+          <div className='w-14 h-14 rounded-xl object-cover flex items-center justify-center bg-c3'>
+            <UserIcon size={16} className='text-c6' />
           </div>
         )}
-        <div className='flex flex-col justify-center items-start gap-2.5'>
+        <div className='flex flex-col justify-center items-start gap-1'>
           <p className='text-base text-center text-c6 font-medium'>
             {firstname} {lastname}
           </p>

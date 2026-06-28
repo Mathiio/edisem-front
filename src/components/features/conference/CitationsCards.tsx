@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@heroui/react';
-import { FileIcon } from '@/components/ui/icons';
+import { EmptyStateCard } from '@/components/ui/EmptyStateCard';
 import { motion, Variants } from 'framer-motion';
 
 const fadeIn: Variants = {
@@ -89,7 +89,7 @@ export const Citations: React.FC<CitationsProps> = ({ citations, loading, onTime
     <div className='w-full h-max flex flex-col gap-5'>
       <div className='flex flex-col gap-5 h-full overflow-y-auto scroll-container'>
         {citations.length === 0 ? (
-          <UnloadedCard />
+          <EmptyStateCard message="Aucune citation n'est liée au contenu de cette conférence." />
         ) : (
           citations.map((citation, index) => (
             <motion.div key={citation.id} initial='hidden' animate='visible' variants={fadeIn} custom={index}>
@@ -110,16 +110,3 @@ export const Citations: React.FC<CitationsProps> = ({ citations, loading, onTime
   );
 };
 
-export const UnloadedCard: React.FC = () => {
-  return (
-    <div className='w-full h-full flex flex-col justify-center items-center gap-5 mt-12'>
-      <FileIcon size={42} className='text-c6' />
-      <div className='w-[80%] flex flex-col justify-center items-center gap-2.5'>
-        <h2 className='text-c6 text-3xl font-medium'>Oups !</h2>
-        <p className='text-c5 text-base text-regular text-center'>
-          Aucune citation n'est liée au contenu de cette conférence. Veuillez vérifier plus tard ou explorer d'autres sections de notre site.
-        </p>
-      </div>
-    </div>
-  );
-};
