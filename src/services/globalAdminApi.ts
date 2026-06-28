@@ -28,16 +28,6 @@ export interface AdminResourceCard extends StudentResourceCard {
   owner_name?: string | null;
 }
 
-function authHeaders(): HeadersInit {
-  const token = localStorage.getItem('token');
-  const headers: HeadersInit = {};
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-    headers['X-Edisem-Token'] = token;
-  }
-  return headers;
-}
-
 async function fetchGlobalAdmin<T>(action: string, params: Record<string, string | number | undefined> = {}): Promise<T> {
   const token = localStorage.getItem('token');
   const searchParams = new URLSearchParams({
@@ -58,15 +48,11 @@ async function fetchGlobalAdmin<T>(action: string, params: Record<string, string
 
   const response = await fetch(`${EDISEM_AJAX_BASE}?${searchParams.toString()}`, {
     credentials: 'include',
-    headers: authHeaders(),
   });
 
   const data = await response.json();
 
   if (!response.ok || data?.success === false) {
-    if (data?.code === 403) {
-      throw new Error(data?.error || 'Accès refusé — reconnectez-vous avec un compte global_admin.');
-    }
     throw new Error(data?.error || 'Erreur lors de la requête administration');
   }
 
