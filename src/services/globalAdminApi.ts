@@ -33,16 +33,22 @@ function authHeaders(): HeadersInit {
   const headers: HeadersInit = {};
   if (token) {
     headers.Authorization = `Bearer ${token}`;
+    headers['X-Edisem-Token'] = token;
   }
   return headers;
 }
 
 async function fetchGlobalAdmin<T>(action: string, params: Record<string, string | number | undefined> = {}): Promise<T> {
+  const token = localStorage.getItem('token');
   const searchParams = new URLSearchParams({
     helper: 'GlobalAdmin',
     action,
     json: '1',
   });
+
+  if (token) {
+    searchParams.set('token', token);
+  }
 
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== '') {
@@ -58,6 +64,9 @@ async function fetchGlobalAdmin<T>(action: string, params: Record<string, string
   const data = await response.json();
 
   if (!response.ok || data?.success === false) {
+    if (data?.code === 403) {
+      throw new Error(data?.error || 'Accès refusé — reconnectez-vous avec un compte global_admin.');
+    }
     throw new Error(data?.error || 'Erreur lors de la requête administration');
   }
 

@@ -46,7 +46,6 @@ function checkAndClearDailyCache(): void {
 
     // Si c'est un nouveau jour, vider tous les caches
     if (lastCacheDate !== today) {
-      console.log('🗑️ Vidage du cache journalier - Nouveau jour détecté');
 
       // Vider tous les caches
       CACHE_KEYS.forEach((key) => {
