@@ -3,7 +3,6 @@
 Interface React de la plateforme d'éditorialisation de la recherche Edisem (Arcanes / CRILCQ), dédiée à l'exploration des corpus scientifiques sur l'IA générative, les pratiques narratives et l'auctorialité.
 
 Production : [edisem.arcanes.ca](https://edisem.arcanes.ca)  
-Environnement de test : [tests.arcanes.ca](https://tests.arcanes.ca)
 
 ---
 
@@ -41,7 +40,6 @@ L'application démarre sur `http://localhost:5173`.
 En développement, Vite proxifie les appels API pour éviter les erreurs CORS :
 
 - `/omk/api` → `https://edisem.arcanes.ca`
-- `/tests-api` → `https://tests.arcanes.ca/omk/api`
 
 ---
 
