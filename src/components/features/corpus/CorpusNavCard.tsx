@@ -28,7 +28,7 @@ export const CorpusNavCard = ({ card, index = 0, testId }: CorpusNavCardProps) =
       transition={{ delay: index * 0.2 }}
       onClick={() => navigate(card.path)}
       data-testid={testId}
-      className='border-c3 border-2 cursor-pointer p-8 rounded-3xl justify-between flex flex-col gap-6 bg-c1 hover:bg-c2/60 h-full transition-all ease-in-out duration-200'
+      className='border-c3 border-2 cursor-pointer p-8 rounded-3xl justify-between flex flex-col gap-6 bg-c1 hover:bg-c2/80 h-full transition-all ease-in-out duration-200'
     >
       <Icon
         size={40}

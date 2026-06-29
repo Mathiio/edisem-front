@@ -28,7 +28,7 @@ import { EditSaveBar } from '@/components/ui/EditSaveBar';
 import { EditModeBanner } from '@/components/ui/EditModeBanner';
 import { ResourcePicker } from '@/components/features/forms/ResourcePicker';
 import { getTemplatePropertiesMap } from '@/services/Items';
-import { getMonEspacePath, getResourceEditUrl, getGlobalAdminEditUrl, getResourceConfigByTemplateId, getRessourceLabel, TEMPLATE_ID_TO_TYPE, resolveResourceTypeFromOmekaItem, OMEKA_PROPERTY_IDS } from '@/config/resourceConfig';
+import { getEditExitPath, getResourceEditUrl, getGlobalAdminEditUrl, getResourceConfigByTemplateId, getRessourceLabel, TEMPLATE_ID_TO_TYPE, resolveResourceTypeFromOmekaItem, OMEKA_PROPERTY_IDS } from '@/config/resourceConfig';
 import {
   buildConferenceTypeOmekaValue,
   CONFERENCE_TEMPLATE_ID,
@@ -221,9 +221,9 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
   const id = initialMode === 'create' && propItemId === undefined ? undefined : propItemId || paramId;
   const navigate = useNavigate();
   const { userData } = useAuth();
-  const monEspacePath = getMonEspacePath(userData?.type);
   const isGlobalAdminEdit =
     searchParams.get('globalAdmin') === '1' && userData?.role === 'global_admin';
+  const editExitPath = getEditExitPath(isGlobalAdminEdit, userData?.type);
   const currentOmekaUserId = userData?.omekaUserId ?? (localStorage.getItem('omekaUserId') ? parseInt(localStorage.getItem('omekaUserId')!, 10) : null);
 
   const mode: PageMode = initialMode;
@@ -1256,7 +1256,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     if (config.formOnly) {
       const resourceType = config.resourceType || config.type;
       if (resourceType) navigate(getResourceEditUrl(resourceType, newItemId));
-      else navigate(monEspacePath);
+      else navigate(editExitPath);
       return result;
     }
 
@@ -1400,10 +1400,10 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     if (mode === 'create') {
       const pickerParams = new URLSearchParams(window.location.search);
       if (pickerParams.get('fromPicker') === '1' && window.opener) { window.close(); return; }
-      if (config.formOnly) navigate(monEspacePath);
+      if (config.formOnly) navigate(editExitPath);
       else navigate(-1);
     } else {
-      navigate(monEspacePath);
+      navigate(editExitPath);
     }
   };
 
@@ -1414,7 +1414,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       await deleteUserResource(id);
       bypassBlockerRef.current = true;
       if (blocker.state === 'blocked') blocker.proceed();
-      navigate(monEspacePath);
+      navigate(editExitPath);
     } catch (err) {
       console.error('Error deleting draft:', err);
       addToast({

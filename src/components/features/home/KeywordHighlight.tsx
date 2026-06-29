@@ -51,7 +51,7 @@ export const KeywordHighlight: React.FC = () => {
   return (
     <div data-testid="keyword-section" className='w-full justify-center flex items-center flex-col gap-6 overflow-visible'>
       <div className='py-12 gap-5 justify-between flex items-center flex-col'>
-        <h2 className='z-[12] text-6xl text-c6 font-medium flex flex-col items-center transition-all ease-in-out duration-200 '>
+        <h2 className='z-[12] text-5xl text-c6 font-medium flex flex-col items-center transition-all ease-in-out duration-200 '>
           <span>Sujets autour de</span>
           <span className='text-center bg-gradient-to-t from-action to-action2 text-transparent bg-clip-text bg-[length:150%] bg-top font-[500]'>
             "{selectedKeyword?.title || ''}"

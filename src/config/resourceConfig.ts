@@ -605,6 +605,12 @@ export function getGlobalAdminEditUrl(type: string, id: string | number): string
   return `${base}${base.includes('?') ? '&' : '?'}globalAdmin=1`;
 }
 
+/** Page de retour après annulation / sortie du mode édition */
+export function getEditExitPath(isGlobalAdminEdit?: boolean, userType?: string | null): string {
+  if (isGlobalAdminEdit) return '/administration';
+  return getMonEspacePath(userType);
+}
+
 /** Page Mon espace selon le profil (actant → mon-espace-4, étudiant → mon-espace) */
 export function getMonEspacePath(userType?: string | null): string {
   if (userType === 'actant') return '/mon-espace-4';
