@@ -249,7 +249,7 @@ const InlineMicroresumeForm: React.FC<{
 import { getResourceConfigByTemplateId, isFormOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
 import { buildCachedResourceUrl } from '@/lib/resourceUtils';
 import { enrichItemWithResourceOwner } from '@/lib/resourceOwner';
-import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/features/forms/fields/AutoResizingTextarea';
+import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/ui/form/AutoResizingTextarea';
 import {
   inferViewCreateOnly,
   getLinkedResourceId,
@@ -257,7 +257,7 @@ import {
   getResourceFallbackTitle,
   getResourceOwnerId,
   resolveViewTemplateId,
-} from './resourceHelpers';
+} from '@/lib/resourceEditHelpers';
 
 // ========================================
 // Helpers pour extraire les valeurs Omeka S
@@ -1585,7 +1585,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                       onRemoveItem={onRemoveItem ? (id) => onRemoveItem(view.key, id) : undefined}
                     />
                   ) : (
-                    <Bibliographies sections={[{ title: 'Bibliographies', bibliographies }]} loading={loadingViews ?? false} notitle />
+                    <Bibliographies sections={[{ title: 'Bibliographies', bibliographies }]} notitle />
                   )}
                 </div>
               )}

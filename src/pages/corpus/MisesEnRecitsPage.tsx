@@ -9,7 +9,7 @@ import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
 
 
-export const MisesEnRecits: React.FC = () => {
+export const MisesEnRecitsPage: React.FC = () => {
   const [recits, setRecits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState({

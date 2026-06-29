@@ -5,7 +5,7 @@ import { getYouTubeThumbnailUrl, isValidYouTubeUrl } from '@/lib/utils';
 import { AddResourceCard } from '@/components/features/forms/edit/AddResourceCard';
 import { ThumbnailIcon } from '@/components/ui/icons';
 import { ModalCloseIcon, modalCloseButtonClasses } from '@/theme/components';
-import { canEditLinkedResource, canUnlinkLinkedResource, shouldHardDeleteLinkedResource } from '@/pages/generic/resourceHelpers';
+import { canEditLinkedResource, canUnlinkLinkedResource, shouldHardDeleteLinkedResource } from '@/lib/resourceEditHelpers';
 
 /**
  * Composants réutilisables pour les viewOptions

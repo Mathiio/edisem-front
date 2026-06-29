@@ -37,7 +37,7 @@ interface CourseWithResources extends Course {
   loading: boolean;
 }
 
-export const EspaceEtudiant: React.FC = () => {
+export const EspaceEtudiantPage: React.FC = () => {
   const [coursesWithResources, setCoursesWithResources] = useState<CourseWithResources[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [filters, setFilters] = useState<Record<number, 'all' | 'experimentation' | 'outil' | 'retour_experience'>>({});

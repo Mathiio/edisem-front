@@ -8,7 +8,7 @@ import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared
 import { SearchModal, SearchModalRef } from '@/components/features/shared/search/SearchModal';
 import { ThumbnailIcon, ArrowIcon } from '@/components/ui/icons';
 import { ResourceOwnerAttribution } from '@/components/ui/ResourceOwnerAttribution';
-import CommentSection from '@/components/layout/CommentSection';
+import CommentSection from '@/components/features/shared/CommentSection';
 import { DynamicBreadcrumbs } from '@/components/layout/DynamicBreadcrumbs';
 import {
   Dropdown,

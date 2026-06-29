@@ -144,7 +144,7 @@ export const UnloadedCard: React.FC = () => (
   </div>
 );
 
-export const CahierRecherche: React.FC = () => {
+export const CahierRecherchePage: React.FC = () => {
   const userString = localStorage.getItem('user');
   const user: { id: string } | null = userString ? JSON.parse(userString) : null;
 

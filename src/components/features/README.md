@@ -7,12 +7,13 @@ Organisation par **rôle** des composants métier (hors `ui/` et `layout/`).
 ```
 features/
   shared/              Composants réutilisés par plusieurs domaines
+    CommentSection.tsx Commentaires sur une ressource (GenericViewPage)
     corpus/            ResourceCard, CorpusNavCard, CorpusCarousel, KeywordsBarChart
     my-space/          MySpaceResourceRow, MySpaceResourceCard, CreateResourceAction
-    search/            SearchModal, SearchInput, WideResourceCard
+    search/            SearchModal, WideResourceCard
   resource-links/      Vues de ressources liées (biblio, médiagraphie, citations, mots-clés…)
   forms/
-    fields/            Primitives (AutoResizingTextarea, SelectionInput, TimecodeInput…)
+    fields/            Primitives métier (SelectionInput, TimecodeInput…)
     modals/            EditModal, ResourcePicker, QuickCreateModal
     edit/              FormFields, MediaDropzone, StudentFormWrapper, AddResourceCard…
   pages/               Composants propres à une page ou un domaine

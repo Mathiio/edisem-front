@@ -137,7 +137,7 @@ function applyMonEspaceFilters(items: StudentResourceCard[]): StudentResourceCar
     .sort(sortByModifiedDesc);
 }
 
-export const MonEspace4: React.FC = () => {
+export const ActantMySpace: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { userData } = useAuth();

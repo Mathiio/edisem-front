@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { resolveResourceOwner, type ResourceOwnerInfo } from '@/lib/resourceOwner';
-import { getResourceOwnerId } from '@/pages/generic/resourceHelpers';
+import { getResourceOwnerId } from '@/lib/resourceEditHelpers';
 
 /** Résout resourceOwner depuis itemDetails (cache enrichi ou lookup actant). */
 export function useResourceOwner(itemDetails: any): ResourceOwnerInfo | null {

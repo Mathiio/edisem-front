@@ -28,7 +28,7 @@ import {
   SelectItem,
 } from '@heroui/react';
 import { ArrowIcon, SearchIcon } from '@/components/ui/icons';
-import { SidebarProvider, useSidebar } from '@/components/ui/AppSidebar';
+import { SidebarProvider, useSidebar } from '@/components/layout/AppSidebar';
 import { PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight, LibraryBig, Settings, Construction } from 'lucide-react';
 import SearchHistory from '@/components/features/pages/visualisation/SearchHistory';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -40,8 +40,6 @@ import { BGPattern } from '@/components/ui/bg-pattern';
 // Nouveaux composants extraits
 import { DatavisSidebar } from './visualisation/components/DatavisSidebar';
 import { CahiersView } from './visualisation/components/CahiersView';
-import { RadialClusterView } from './visualisation/components/RadialClusterView';
-import { RecitsClusterView } from './visualisation/components/RecitsClusterView';
 import { getConfigKey, getImageForType, getRadiusForType, getSizeForType } from './visualisation/utils/nodeHelpers';
 
 // Configuration des couleurs et labels pour les types de relations
@@ -116,6 +114,7 @@ const getRelationConfig = (sourceType: string, targetType: string): { color: str
 import { CoverageMatrix } from './visualisation/components/analytics/CoverageMatrix';
 import { ActivityHeatmap } from './visualisation/components/analytics/ActivityHeatmap';
 import { Dashboard, type DashboardView } from './visualisation/components/analytics/Dashboard';
+import type { GeneratedImage } from './visualisation/types';
 
 const containerVariants: Variants = {
   hidden: { opacity: 1 },
@@ -127,12 +126,6 @@ const containerVariants: Variants = {
     },
   },
 };
-
-export interface GeneratedImage {
-  dataUrl: string;
-  width: number;
-  height: number;
-}
 
 // Header unifié qui s'étend sur toute la largeur (sidebar + zone principale)
 // Composant boutons navigation
@@ -237,7 +230,7 @@ const Visualisation = () => {
   const [filteredLinks, setFilteredLinks] = useState<any[]>([]);
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
   const [showOverlay, setShowOverlay] = useState(true);
-  const [activeView, setActiveView] = useState<'datavis' | 'cahiers' | 'radialTree' | 'oeuvres' | 'coverageMatrix' | 'activityHeatmap' | 'dashboard'>('oeuvres');
+  const [activeView, setActiveView] = useState<'datavis' | 'cahiers' | 'coverageMatrix' | 'activityHeatmap' | 'dashboard'>('datavis');
   const [dashboardView, setDashboardView] = useState<DashboardView>('overview');
   const [coverageTopKeywords, setCoverageTopKeywords] = useState(200);
   const [heatmapYear, setHeatmapYear] = useState(new Date().getFullYear());
@@ -352,7 +345,7 @@ const Visualisation = () => {
 
   // Navigation simple entre vues
   const navigateToView = useCallback(
-    (view: 'datavis' | 'cahiers' | 'radialTree' | 'oeuvres' | 'coverageMatrix' | 'activityHeatmap' | 'dashboard') => {
+    (view: 'datavis' | 'cahiers' | 'coverageMatrix' | 'activityHeatmap' | 'dashboard') => {
       if (view !== activeView) {
         setActiveView(view);
       }
@@ -1373,18 +1366,6 @@ const Visualisation = () => {
                       <span className='text-c6'>Cahiers de recherche</span>
                     </BreadcrumbItem>
                   </Breadcrumbs>
-                ) : activeView === 'radialTree' ? (
-                  <Breadcrumbs underline='hover' size='sm'>
-                    <BreadcrumbItem isCurrent>
-                      <span className='text-c6'>Vue hiérarchique</span>
-                    </BreadcrumbItem>
-                  </Breadcrumbs>
-                ) : activeView === 'oeuvres' ? (
-                  <Breadcrumbs underline='hover' size='sm'>
-                    <BreadcrumbItem isCurrent>
-                      <span className='text-c6'>Mises en récits de l'IA</span>
-                    </BreadcrumbItem>
-                  </Breadcrumbs>
                 ) : activeView === 'coverageMatrix' ? (
                   <Breadcrumbs underline='hover' size='sm'>
                     <BreadcrumbItem isCurrent>
@@ -1571,8 +1552,6 @@ const Visualisation = () => {
                 activeView={activeView}
                 onShowDatavis={() => navigateToView('datavis')}
                 onShowCahiers={() => navigateToView('cahiers')}
-                onShowRadialTree={() => navigateToView('radialTree')}
-                onShowOeuvres={() => navigateToView('oeuvres')}
                 onShowCoverageMatrix={() => navigateToView('coverageMatrix')}
                 onShowActivityHeatmap={() => navigateToView('activityHeatmap')}
                 onShowDashboard={() => navigateToView('dashboard')}
@@ -1598,32 +1577,6 @@ const Visualisation = () => {
                     onSelectConfig={(filters, nodePositions) => {
                       handleOverlaySelect(filters, false, nodePositions);
                       navigateToView('datavis');
-                    }}
-                  />
-                )}
-                {activeView === 'radialTree' && (
-                  <RadialClusterView
-                    externalData={itemsDataviz.length > 0 ? itemsDataviz : undefined}
-                    onNodeClick={(node) => {
-                      const apiBase = 'https://tests.arcanes.ca/omk/api/';
-                      const itemUrl = `${apiBase}items/${node.id}`;
-                      setCurrentItemUrl(itemUrl);
-                      setSelectedConfigKey(getConfigKey(node.type));
-                      setSelectedConfig(node.type);
-                      onOpenEdit();
-                    }}
-                    visibleTypes={visibleTypes.length > 0 ? visibleTypes : undefined}
-                  />
-                )}
-                {activeView === 'oeuvres' && (
-                  <RecitsClusterView
-                    onNodeClick={(node) => {
-                      const apiBase = 'https://tests.arcanes.ca/omk/api/';
-                      const itemUrl = `${apiBase}items/${node.id}`;
-                      setCurrentItemUrl(itemUrl);
-                      setSelectedConfigKey(getConfigKey(node.type));
-                      setSelectedConfig(node.type);
-                      onOpenEdit();
                     }}
                   />
                 )}

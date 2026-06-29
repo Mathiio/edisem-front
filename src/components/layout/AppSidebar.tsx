@@ -1,6 +1,6 @@
 import { useState, createContext, useContext, ReactNode } from 'react';
 import { Button, Tooltip } from '@heroui/react';
-import { ArrowIcon } from './icons';
+import { ArrowIcon } from '@/components/ui/icons';
 
 // Context pour gérer l'état de la sidebar
 interface SidebarContextType {

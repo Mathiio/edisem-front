@@ -5,7 +5,7 @@ import { Button, Spinner } from '@heroui/react';
 import { Input, Select, SelectItem } from '@/theme/components';
 import { CrossIcon, SearchIcon } from '@/components/ui/icons';
 
-import AutoResizingField from './AutoResizingTextarea';
+import AutoResizingField from '@/components/ui/form/AutoResizingTextarea';
 
 interface SelectionInputProps {
   col: InputConfig;

@@ -1,15 +1,12 @@
 import { useState } from 'react';
 import {
   Pencil,
-
   MessageSquare,
   Eye,
   PenTool,
   ChevronDown,
   ChevronRight,
   LibraryBig,
-  Network,
-  Palette,
   Grid3X3,
   Calendar,
   LayoutDashboard,
@@ -17,15 +14,13 @@ import {
   Minimize,
 } from 'lucide-react';
 import { SearchIcon } from '@/components/ui/icons';
-import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarSeparator, useSidebar } from '@/components/ui/AppSidebar';
+import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarSeparator, useSidebar } from '@/components/layout/AppSidebar';
 import { useAuth } from '@/hooks/useAuth';
 
 interface DatavisSidebarProps {
-  activeView: 'datavis' | 'cahiers' | 'radialTree' | 'oeuvres' | 'coverageMatrix' | 'activityHeatmap' | 'dashboard';
+  activeView: 'datavis' | 'cahiers' | 'coverageMatrix' | 'activityHeatmap' | 'dashboard';
   onShowDatavis: () => void;
   onShowCahiers: () => void;
-  onShowRadialTree: () => void;
-  onShowOeuvres: () => void;
   onShowCoverageMatrix?: () => void;
   onShowActivityHeatmap?: () => void;
   onShowDashboard?: () => void;
@@ -48,8 +43,6 @@ export const DatavisSidebar = ({
   activeView,
   onShowDatavis,
   onShowCahiers,
-  onShowRadialTree,
-  onShowOeuvres,
   onShowCoverageMatrix,
   onShowActivityHeatmap,
   onShowDashboard,
@@ -148,16 +141,6 @@ export const DatavisSidebar = ({
               )}
             </div>
             <SidebarMenuItem icon={<LibraryBig size={20} />} label='Cahier de recherche' onClick={onShowCahiers} isActive={activeView === 'cahiers'} />
-          </SidebarMenu>
-        </SidebarGroup>
-
-        <SidebarSeparator />
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Visualisations</SidebarGroupLabel>
-          <SidebarMenu>
-            <SidebarMenuItem icon={<Network size={18} />} label='Vue hiérarchique' onClick={onShowRadialTree} isActive={activeView === 'radialTree'} />
-            <SidebarMenuItem icon={<Palette size={18} />} label='Mises en récits' onClick={onShowOeuvres} isActive={activeView === 'oeuvres'} />
           </SidebarMenu>
         </SidebarGroup>
 

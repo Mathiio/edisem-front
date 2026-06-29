@@ -74,7 +74,7 @@ function ResourceTablePagination({
   );
 }
 
-export const AdministrationPage: React.FC = () => {
+export const GlobalAdministration: React.FC = () => {
   const navigate = useNavigate();
 
   const [loadingRecent, setLoadingRecent] = useState(true);
@@ -420,4 +420,4 @@ export const AdministrationPage: React.FC = () => {
   );
 };
 
-export default AdministrationPage;
+export default GlobalAdministration;

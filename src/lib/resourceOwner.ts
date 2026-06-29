@@ -1,5 +1,5 @@
 import { getActantsForLogin, type Actant } from '@/services/UserSpace';
-import { getResourceOwnerId } from '@/pages/generic/resourceHelpers';
+import { getResourceOwnerId } from '@/lib/resourceEditHelpers';
 
 export type ResourceOwnerInfo = {
   omekaUserId: number;

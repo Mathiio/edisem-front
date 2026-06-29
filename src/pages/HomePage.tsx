@@ -7,7 +7,7 @@ import { IntervenantsSection } from '@/components/features/pages/home/Intervenan
 import { CorpusSection } from '@/components/features/pages/home/CorpusSection';
 
 
-export const Home: React.FC = () => {
+export const HomePage: React.FC = () => {
 
   return (
     <Layouts className='col-span-10 flex flex-col gap-36 z-0 overflow-visible'>

@@ -222,19 +222,6 @@ export const BibliographyCard: React.FC<Bibliography & { uniqueKey?: number; onE
   );
 };
 
-export const BibliographySkeleton: React.FC = () => {
-  return (
-    <div className='w-full flex flex-col justify-start rounded-xl items-start bg-c3 p-2.5 gap-2.5'>
-      <div className='w-full flex flex-col justify-start items-start gap-1.5'>
-        <div className='w-[30%] rounded-md bg-gray-300 h-6'></div>
-        <div className='w-full rounded-md bg-gray-300 h-4'></div>
-        <div className='w-[80%] rounded-md bg-gray-300 h-4'></div>
-      </div>
-      <div className='w-[30%] rounded-md bg-gray-300 h-4'></div>
-    </div>
-  );
-};
-
 interface BibliographySection {
   title: string;
   bibliographies: Bibliography[];
@@ -245,7 +232,6 @@ interface BibliographiesProps {
   sections?: BibliographySection[];
   // Système legacy : un seul tableau avec filtrage par resource_template_id
   bibliographies?: Bibliography[];
-  loading: boolean;
   type?: 'scientific' | 'cultural';
   notitle?: boolean;
   onEdit?: (id: number) => void;
@@ -257,7 +243,7 @@ interface BibliographiesProps {
   };
 }
 
-export const Bibliographies: React.FC<BibliographiesProps> = ({ sections = [], bibliographies = [], loading, legacyConfig, notitle = false, onEdit }) => {
+export const Bibliographies: React.FC<BibliographiesProps> = ({ sections = [], bibliographies = [], legacyConfig, notitle = false, onEdit }) => {
   // Déterminer quelle méthode utiliser
   const useLegacyMode = bibliographies.length > 0 && !sections.length;
 
@@ -284,30 +270,22 @@ export const Bibliographies: React.FC<BibliographiesProps> = ({ sections = [], b
   return (
     <div className='w-full h-full overflow-hidden flex flex-col gap-5'>
       <div className='flex flex-col gap-5 overflow-y-auto scroll-container'>
-        {loading ? (
-          Array.from({ length: totalBibliographies }).map((_, index) => <BibliographySkeleton key={index} />)
-        ) : (
-          <>
-            {/* Rendu dynamique des sections */}
-            {finalSections.map(
-              (section, sectionIndex) =>
-                section.bibliographies.length > 0 && (
-                  <div key={sectionIndex}>
-                    {!notitle && <h2 className='text-base text-c5 font-medium'>{section.title}</h2>}
-                    <div className='flex flex-col gap-2.5'>
-                      {section.bibliographies.map((bibliography, index) => (
-                        <BibliographyCard key={`${sectionIndex}-${index}`} {...bibliography} uniqueKey={index} onEdit={onEdit} />
-                      ))}
-                    </div>
-                  </div>
-                ),
-            )}
+        {finalSections.map(
+          (section, sectionIndex) =>
+            section.bibliographies.length > 0 && (
+              <div key={sectionIndex}>
+                {!notitle && <h2 className='text-base text-c5 font-medium'>{section.title}</h2>}
+                <div className='flex flex-col gap-2.5'>
+                  {section.bibliographies.map((bibliography, index) => (
+                    <BibliographyCard key={`${sectionIndex}-${index}`} {...bibliography} uniqueKey={index} onEdit={onEdit} />
+                  ))}
+                </div>
+              </div>
+            ),
+        )}
 
-            {/* Si aucune bibliographie n'est disponible */}
-            {totalBibliographies === 0 && !loading && (
-              <EmptyStateCard message="Aucune bibliographie n'est liée à cette conférence." />
-            )}
-          </>
+        {totalBibliographies === 0 && (
+          <EmptyStateCard message="Aucune bibliographie n'est liée à cette conférence." />
         )}
       </div>
     </div>

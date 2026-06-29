@@ -6,7 +6,7 @@ import { ApiProxy } from '@/services/ApiProxy';
 import { getComments } from '@/services/Items';
 import { formatDate } from '@/lib/utils';
 
-import { AlertModal } from '../ui/AlertModal';
+import { AlertModal } from '@/components/ui/AlertModal';
 
 interface Comment {
   id: number;

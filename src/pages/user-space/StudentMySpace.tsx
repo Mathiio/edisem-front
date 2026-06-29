@@ -44,7 +44,7 @@ const fadeIn: Variants = {
   }),
 };
 
-export const MonEspace: React.FC = () => {
+export const StudentMySpace: React.FC = () => {
   const navigate = useNavigate();
   const { userData } = useAuth();
   const [loading, setLoading] = useState(true);

@@ -4,7 +4,7 @@ import { Spinner } from '@heroui/react';
 import { Button } from '@/theme/components/button';
 import { GenericDetailPageConfig } from './config';
 import { getResourceEditUrl } from '@/config/resourceConfig';
-import { getAutoContributorConfig } from './resourceHelpers';
+import { getAutoContributorConfig } from '@/lib/resourceEditHelpers';
 import { getTemplatePropertiesMap } from '@/services/Items';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl } from '@/utils/omekaApi';
 

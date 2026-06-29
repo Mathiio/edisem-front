@@ -1,25 +1,25 @@
 import { useThemeMode } from '@/hooks/useThemeMode';
 import { Route, Routes, Navigate } from 'react-router-dom';
-import { Intervenant } from '@/pages/intervenant';
-import { Home } from '@/pages/home';
-import { Edition } from '@/pages/corpus/confsByEdition';
-import { LoginPage } from '@/pages/login';
-import { CahierRecherche } from '@/pages/cahierRecherche';
-import { withAuth } from '@/pages/withAuth';
+import { Intervenant } from '@/pages/people/IntervenantPage';
+import { HomePage } from '@/pages/HomePage';
+import { Edition } from '@/pages/corpus/ConfsByEdition';
+import { LoginPage } from '@/pages/auth/LoginPage';
+import { CahierRecherchePage } from '@/pages/research/CahierRecherchePage';
+import { withAuth } from '@/hooks/withAuth';
 import Visualisation from '@/pages/visualisation';
 import { AppToastProvider } from '@/theme/components';
-import { Intervenants } from '@/pages/intervenants';
+import { Intervenants } from '@/pages/people/IntervenantsPage';
 import { Colloques } from '@/pages/corpus/Colloques';
-import { PratiquesNarratives } from '@/pages/corpus/pratiquesNarratives';
+import { PratiquesNarratives } from '@/pages/corpus/PratiquesNarratives';
 import { JourneesEtudes } from '@/pages/corpus/JourneesEtudes';
 import { Seminaires } from '@/pages/corpus/Seminaires';
 import { Experimentations } from '@/pages/corpus/Experimentations';
-import { MisesEnRecits } from '@/pages/corpus/recits';
-import { Personne } from '@/pages/personne';
+import { MisesEnRecitsPage } from '@/pages/corpus/MisesEnRecitsPage';
+import { Personne } from '@/pages/people/PersonnePage';
 import { toolConfig, toolStudentConfig } from '@/pages/generic/config/toolConfig';
 import { ToolDetailPage } from '@/pages/generic/ToolDetailPage';
-import { RecitsByGenre } from '@/pages/corpus/recitsByGenre';
-import { RecitsByType } from '@/pages/corpus/recitsByType';
+import { RecitsByGenre } from '@/pages/corpus/RecitsByGenrePage';
+import { RecitsByType } from '@/pages/corpus/RecitsByTypePage';
 import { ConfigurableDetailPage } from '@/pages/generic/ConfigurableDetailPage';
 import { conferenceConfig } from '@/pages/generic/config/conferenceConfig';
 import { experimentationConfig } from '@/pages/generic/config/experimentationConfig';
@@ -41,21 +41,20 @@ import { ecoleDoctoraleConfig } from '@/pages/generic/config/ecoleDoctoraleConfi
 import { laboratoireConfig } from '@/pages/generic/config/laboratoireConfig';
 import { NavigationTrailProvider } from './hooks/useNavigationTrail';
 import { WatchlistProvider } from './hooks/useWatchlist';
-import { EspaceEtudiant } from './pages/espaceEtudiant';
+import { EspaceEtudiantPage } from '@/pages/user-space/EspaceEtudiantPage';
 import { LoadingScreen } from './components/layout/LoadingScreen';
 import { useState, useCallback, useEffect, createContext, useContext } from 'react';
 import { experimentationStudentConfig } from './pages/generic/config/experimentationStudentConfig';
 import { feedbackStudentConfig } from './pages/generic/config/feedbackStudentConfig';
 import { bibliographyConfig } from './pages/generic/config/bibliographyConfig';
 import { mediagraphyConfig } from './pages/generic/config/mediagraphyConfig';
-import { MonEspace } from './pages/monespace';
-
-import { MonEspace4 } from './pages/monespace4';
-import { ListeLecture } from './pages/listeLecture';
-import { MotsClesPage } from '@/pages/mots-cles';
-import TestOmekaEdit from './pages/test-omeka-edit';
+import { StudentMySpace } from '@/pages/user-space/StudentMySpace';
+import { ActantMySpace } from '@/pages/user-space/ActantMySpace';
+import { WatchlistPage } from '@/pages/user-space/WatchlistPage';
+import { MotsClesPage } from '@/pages/admin/MotsClesPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
-import AdministrationPage from './pages/administration';
+import GlobalAdministration from '@/pages/admin/GlobalAdministration';
+import { CreateResourcePage } from '@/pages/generic/CreateResourcePage';
 
 // Create context for navbar ready callback
 interface NavbarReadyContextType {
@@ -70,16 +69,15 @@ export const useNavbarReadyContext = () => {
 };
 
 const ProtectedUsersPage = withAuth(AdminDashboard, { requiredPermission: 'admin' });
-const ProtectedAdministration = withAuth(AdministrationPage, { requiredOmekaRole: 'global_admin' });
+const ProtectedAdministration = withAuth(GlobalAdministration, { requiredOmekaRole: 'global_admin' });
 const ProtectedMotsCles = withAuth(MotsClesPage, { requiredPermission: 'admin' });
-const ProtectedListeLecture = withAuth(ListeLecture, { requiredRole: 'actant' });
+const ProtectedWatchlistPage = withAuth(WatchlistPage, { requiredRole: 'actant' });
 
 // Wrapper pour protéger ConfigurableDetailPage en mode création (actants et étudiants)
 const ProtectedAdminConfigurableDetailPage = withAuth(ConfigurableDetailPage, { requiredPermission: 'admin' });
-import { CreateResourcePage } from '@/pages/generic/CreateResourcePage';
 const ProtectedCreateResourcePage = withAuth(CreateResourcePage, { requiredRole: 'any' });
 const ProtectedAdminCreateResourcePage = withAuth(CreateResourcePage, { requiredPermission: 'admin' });
-//const ProtectedCahierRecherche = withAuth(CahierRecherche, { requiredRole: 'actant' });
+//const ProtectedCahierRecherche = withAuth(CahierRecherchePage, { requiredRole: 'actant' });
 
 function App() {
   useThemeMode();
@@ -109,17 +107,16 @@ function App() {
           <WatchlistProvider>
           <Routes>
             {/* Base routes */}
-            <Route index path='/' Component={Home} />
+            <Route index path='/' Component={HomePage} />
             <Route path='/login' Component={LoginPage} />
             <Route path='/intervenants' Component={Intervenants} />
             <Route path='/visualisation' Component={Visualisation} />
-            <Route path='/recherche/' Component={CahierRecherche} />
-            <Route path='/espace-etudiant' Component={EspaceEtudiant} />
-            <Route path='/mon-espace' Component={MonEspace} />
+            <Route path='/recherche/' Component={CahierRecherchePage} />
+            <Route path='/espace-etudiant' Component={EspaceEtudiantPage} />
+            <Route path='/mon-espace' Component={StudentMySpace} />
 
-            <Route path='/mon-espace-4' Component={MonEspace4} />
-            <Route path='/liste-de-lecture' Component={ProtectedListeLecture} />
-            <Route path='/test-omeka-edit' Component={TestOmekaEdit} />
+            <Route path='/mon-espace-4' Component={ActantMySpace} />
+            <Route path='/liste-de-lecture' Component={ProtectedWatchlistPage} />
 
             {/* Utilisateurs (actants, étudiants, cours) */}
             <Route path='/users' Component={ProtectedUsersPage} />
@@ -140,7 +137,7 @@ function App() {
             <Route path='/corpus/journees-etudes' Component={JourneesEtudes} />
             <Route path='/corpus/pratiques-narratives' Component={PratiquesNarratives} />
             <Route path='/corpus/experimentations' Component={Experimentations} />
-            <Route path='/corpus/mises-en-recits' Component={MisesEnRecits} />
+            <Route path='/corpus/mises-en-recits' Component={MisesEnRecitsPage} />
 
             {/* Recits by Genre Routes */}
             <Route path='/corpus/recits-scientifiques' Component={RecitsByType} />

@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Checkbox, cn, Divider, Input } from '@heroui/react';
 import { addToast } from '@/theme/components';
 import { useState } from 'react';
-import { GeneratedImage } from '@/pages/visualisation';
+import { GeneratedImage } from '@/pages/visualisation/types';
 import { ShareIcon } from '@/components/ui/icons';
 import { AlertModal } from '@/components/ui/AlertModal';
 

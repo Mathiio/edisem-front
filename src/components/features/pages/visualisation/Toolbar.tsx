@@ -4,7 +4,7 @@ import FilterPopup, { FilterGroup } from './FilterPopup';
 import { Button, Divider } from '@heroui/react';
 import { SearchIcon, ImportIcon, NewItemIcon, AssociateIcon, ExportIcon, EditIcon, AnnotateIcon } from '@/components/ui/icons';
 import { IconSvgProps } from '@/types/ui';
-import { GeneratedImage } from '@/pages/visualisation';
+import { GeneratedImage } from '@/pages/visualisation/types';
 import { ExportPopup } from './ExportPopup';
 import ImportPopup from './ImportPopup';
 import LinkPopup from './LinkPopup';

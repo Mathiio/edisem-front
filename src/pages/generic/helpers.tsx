@@ -6,7 +6,7 @@ import { ReferenceAddButtons } from '@/components/features/forms/edit/AddResourc
 import { FormTextInput, FormAutoResizeTextareaInput, formFieldLabelClass } from '@/components/features/forms/edit/FormFields';
 import { getResourceConfigByTemplateId, getRessourceLabel } from '@/config/resourceConfig';
 import { getResourceLinkHref } from '@/lib/resourceUtils';
-import { getLinkedResourceId } from '@/pages/generic/resourceHelpers';
+import { getLinkedResourceId } from '@/lib/resourceEditHelpers';
 
 /**
  * Helpers pour créer des viewOptions communes facilement
@@ -304,7 +304,7 @@ export const createScientificReferencesView = (options?: { resourceTemplateIds?:
     title: 'Contenus scientifiques',
     editable: options?.editable !== false,
     resourceTemplateIds: options?.resourceTemplateIds || defaultTemplateIds,
-    renderContent: ({ itemDetails, loading, isEditing, onLinkExisting }) => {
+    renderContent: ({ itemDetails, isEditing, onLinkExisting }) => {
       let references = itemDetails?.referencesScient || itemDetails?.references || [];
 
       // En mode édition, vérifier aussi les ressources ajoutées via formData
@@ -354,7 +354,7 @@ export const createScientificReferencesView = (options?: { resourceTemplateIds?:
           {bibliographies.length > 0 && (
             <div>
               <h3 className='text-lg text-c5 font-medium mb-4'>Bibliographies</h3>
-              <Bibliographies sections={[{ title: 'Bibliographies', bibliographies }]} loading={loading} notitle />
+              <Bibliographies sections={[{ title: 'Bibliographies', bibliographies }]} notitle />
             </div>
           )}
 
@@ -384,7 +384,7 @@ export const createCulturalReferencesView = (options?: { resourceTemplateIds?: n
     title: 'Contenus culturels',
     editable: options?.editable !== false,
     resourceTemplateIds: options?.resourceTemplateIds || defaultTemplateIds,
-    renderContent: ({ itemDetails, loading, isEditing, onLinkExisting }) => {
+    renderContent: ({ itemDetails, isEditing, onLinkExisting }) => {
       let references = itemDetails?.referencesCultu || itemDetails?.bibliographicCitations || [];
 
       // En mode édition, vérifier aussi les ressources ajoutées via formData
@@ -434,7 +434,7 @@ export const createCulturalReferencesView = (options?: { resourceTemplateIds?: n
           {bibliographies.length > 0 && (
             <div>
               <h3 className='text-lg text-c5 font-medium mb-4'>Bibliographies</h3>
-              <Bibliographies sections={[{ title: 'Bibliographies', bibliographies }]} loading={loading} notitle />
+              <Bibliographies sections={[{ title: 'Bibliographies', bibliographies }]} notitle />
             </div>
           )}
 
@@ -778,7 +778,7 @@ export const createTargetView = (options?: { key?: string; title?: string; getTa
 // Mapping type -> rendu du composant métier correct
 // Note: Certains types (bibliographie, mediagraphie) ont des composants spéciaux
 const TARGET_COMPONENT_MAP: Record<string, (target: any) => JSX.Element> = {
-  bibliographie: (t) => <Bibliographies bibliographies={[t]} loading={false} notitle />,
+  bibliographie: (t) => <Bibliographies bibliographies={[t]} notitle />,
   mediagraphie: (t) => <Mediagraphies items={[t]} notitle />,
 };
 

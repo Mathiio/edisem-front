@@ -17,7 +17,7 @@ const fadeIn: Variants = {
   }),
 };
 
-export const ListeLecture = () => {
+export const WatchlistPage = () => {
   const { refresh: refreshWatchlistIds } = useWatchlist();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<WatchlistCard[]>([]);

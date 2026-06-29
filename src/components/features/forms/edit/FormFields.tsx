@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { InputOtp } from '@heroui/input-otp';
 import { Input, Textarea, formFieldLabelClass } from '@/theme/components';
-import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/features/forms/fields/AutoResizingTextarea';
+import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/ui/form/AutoResizingTextarea';
 import {
   buildFlexibleDate,
   getDatePartsErrorMessage,

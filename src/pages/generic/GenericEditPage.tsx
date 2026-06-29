@@ -48,7 +48,7 @@ import {
   resolveViewResourceTemplateId,
   shouldHardDeleteLinkedResource,
   canDeleteLinkedResource,
-} from './resourceHelpers';
+} from '@/lib/resourceEditHelpers';
 import { deleteUserResource } from '@/services/UserSpace';
 import { useFormState } from '@/hooks/useFormState';
 import { useAuth } from '@/hooks/useAuth';
