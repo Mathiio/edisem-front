@@ -3,13 +3,14 @@ import { Input, Spinner, Button, ModalBody, ModalFooter, ModalContent, Modal, Mo
 import { addToast } from '@/theme/components';
 import { modalCloseButtonClasses } from '@/theme/components/modal';
 import { useGetDataByClassDetails } from '@/hooks/useFetchData';
-import { SelectionInput } from '@/components/features/database/SelectionInput';
+import { SelectionInput } from '@/components/features/forms/SelectionInput';
 import { Textarea } from '@heroui/react';
 
-import { TimecodeInput, DatePicker } from '@/components/features/database/TimecodeInput';
+import { TimecodeInput, DatePicker } from '@/components/features/forms/TimecodeInput';
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { EditIcon, EyeIcon } from '@/components/ui/icons';
-import MultipleInputs from '@/components/features/database/MultipleInputs';
+import MultipleInputs from '@/components/features/forms/MultipleInputs';
+import type { InputConfig } from '@/components/features/forms/editModalTypes';
 
 import Omk from '@/services/Omk';
 
@@ -32,14 +33,7 @@ function getValueByPath<T>(object: T[], path: string): any {
   return value;
 }
 
-export interface InputConfig {
-  key: string;
-  label: string;
-  dataPath: string;
-  type: 'input' | 'selection' | 'textarea' | 'time' | 'inputs' | 'intervalTime' | 'date' | 'lien';
-  options?: (string | number)[];
-  selectionId?: number[];
-}
+export type { InputConfig } from '@/components/features/forms/editModalTypes';
 
 interface EditModalProps {
   isOpen: boolean;

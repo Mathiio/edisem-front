@@ -249,7 +249,7 @@ const InlineMicroresumeForm: React.FC<{
 import { getResourceConfigByTemplateId, isFormOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
 import { buildCachedResourceUrl } from '@/lib/resourceUtils';
 import { enrichItemWithResourceOwner } from '@/lib/resourceOwner';
-import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/features/database/AutoResizingTextarea';
+import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/features/forms/AutoResizingTextarea';
 import {
   inferViewCreateOnly,
   getLinkedResourceId,
@@ -1566,7 +1566,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                       onRemoveItem={onRemoveItem ? (id) => onRemoveItem(view.key, id) : undefined}
                     />
                   ) : (
-                    <Mediagraphies items={mediagraphies} loading={loadingViews ?? false} notitle />
+                    <Mediagraphies items={mediagraphies} notitle />
                   )}
                 </div>
               )}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@heroui/react';
 import { Input, Select, SelectItem } from '@/theme/components';
-import { InputConfig } from '@/components/features/database/EditModal';
+import { InputConfig } from '@/components/features/forms/editModalTypes';
 import { AddIcon } from '@/components/ui/icons';
 
 interface SelectionInputProps {

@@ -32,7 +32,7 @@ import { SidebarProvider, useSidebar } from '@/components/ui/AppSidebar';
 import { PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight, LibraryBig, Settings, Construction } from 'lucide-react';
 import SearchHistory from '@/components/features/datavisualisation/SearchHistory';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { EditModal } from '@/components/features/database/EditModal';
+import { EditModal } from '@/components/features/forms/EditModal';
 import { useLocalStorageProperties } from '@/hooks/useLocalStorageProperties';
 import { Layouts } from '@/components/layout/Layouts';
 import { BGPattern } from '@/components/ui/bg-pattern';

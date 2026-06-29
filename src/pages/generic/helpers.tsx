@@ -348,7 +348,7 @@ export const createScientificReferencesView = (options?: { resourceTemplateIds?:
           {mediagraphies.length > 0 && (
             <div>
               <h3 className='text-lg text-c5 font-medium mb-4'>Médias</h3>
-              <Mediagraphies items={mediagraphies} loading={loading} notitle />
+              <Mediagraphies items={mediagraphies} notitle />
             </div>
           )}
           {bibliographies.length > 0 && (
@@ -428,7 +428,7 @@ export const createCulturalReferencesView = (options?: { resourceTemplateIds?: n
           {mediagraphies.length > 0 && (
             <div>
               <h3 className='text-lg text-c5 font-medium mb-4'>Médias</h3>
-              <Mediagraphies items={mediagraphies} loading={loading} notitle />
+              <Mediagraphies items={mediagraphies} notitle />
             </div>
           )}
           {bibliographies.length > 0 && (
@@ -779,7 +779,7 @@ export const createTargetView = (options?: { key?: string; title?: string; getTa
 // Note: Certains types (bibliographie, mediagraphie) ont des composants spéciaux
 const TARGET_COMPONENT_MAP: Record<string, (target: any) => JSX.Element> = {
   bibliographie: (t) => <Bibliographies bibliographies={[t]} loading={false} notitle />,
-  mediagraphie: (t) => <Mediagraphies items={[t]} loading={false} notitle />,
+  mediagraphie: (t) => <Mediagraphies items={[t]} notitle />,
 };
 
 /**

@@ -276,7 +276,7 @@ export const MediagraphyCard: React.FC<Mediagraphy> = ({
   );
 };
 
-export const Mediagraphies: React.FC<{ items: Mediagraphy[]; loading: boolean; notitle?: boolean }> = ({ items, loading, notitle }) => {
+export const Mediagraphies: React.FC<{ items: Mediagraphy[]; notitle?: boolean }> = ({ items, notitle }) => {
   // Fonction de tri pour comparer les noms de famille des créateurs ou réalisateurs
   const sortByLastName = (a: Mediagraphy, b: Mediagraphy) => {
     const getLastName = (item: Mediagraphy) => {
@@ -311,38 +311,29 @@ export const Mediagraphies: React.FC<{ items: Mediagraphy[]; loading: boolean; n
   return (
     <div className='w-full h-full overflow-hidden flex flex-col gap-5'>
       <div className='flex flex-col gap-5 overflow-y-auto scroll-container'>
-        {loading ? (
-          Array.from({ length: items.length }).map((_, index) => <MediagraphySkeleton key={index} />)
-        ) : (
+        {sortedConferenceMediagraphies.length > 0 && (
           <>
-            {/* Mediagraphies de conférence */}
-            {sortedConferenceMediagraphies.length > 0 && (
-              <>
-                {!notitle && <h2 className='text-base text-c5 font-medium'>Médiagraphies de Conférence</h2>}
-                <div className='flex flex-col gap-2.5'>
-                  {sortedConferenceMediagraphies.map((item, index) => (
-                    <MediagraphyCard key={index} {...item} />
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* Médiagraphies complémentaires */}
-            {sortedComplementaryMediagraphies.length > 0 && (
-              <>
-                {!notitle && <h2 className='text-base text-c5 font-medium'>Médiagraphies Complémentaires</h2>}
-                <div className='flex flex-col gap-2.5'>
-                  {sortedComplementaryMediagraphies.map((item, index) => (
-                    <MediagraphyCard key={index} {...item} />
-                  ))}
-                </div>
-              </>
-            )}
+            {!notitle && <h2 className='text-base text-c5 font-medium'>Médiagraphies de Conférence</h2>}
+            <div className='flex flex-col gap-2.5'>
+              {sortedConferenceMediagraphies.map((item, index) => (
+                <MediagraphyCard key={index} {...item} />
+              ))}
+            </div>
           </>
         )}
 
-        {/* Si aucune médiagraphie n'est disponible */}
-        {items.length === 0 && !loading && (
+        {sortedComplementaryMediagraphies.length > 0 && (
+          <>
+            {!notitle && <h2 className='text-base text-c5 font-medium'>Médiagraphies Complémentaires</h2>}
+            <div className='flex flex-col gap-2.5'>
+              {sortedComplementaryMediagraphies.map((item, index) => (
+                <MediagraphyCard key={index} {...item} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {items.length === 0 && (
           <EmptyStateCard
             message="Aucune médiagraphie n'est liée au contenu de cette conférence."
             iconSize={42}
@@ -353,19 +344,3 @@ export const Mediagraphies: React.FC<{ items: Mediagraphy[]; loading: boolean; n
     </div>
   );
 };
-
-
-export const MediagraphySkeleton: React.FC = () => (
-  <div className='w-full flex justify-between rounded-xl items-center bg-c3 gap-6 p-6'>
-    <div className='w-[30px] h-[24px] bg-gray-300 rounded-md'></div>
-    <div className='w-full flex flex-col gap-2.5'>
-      <div className='flex flex-col gap-1.5'>
-        <div className='w-full h-[16px] bg-gray-300 rounded-md'></div>
-        <div className='w-[80%] h-[16px] bg-gray-300 rounded-md'></div>
-        <div className='w-1/2 h-[14px] bg-gray-300 rounded-md'></div>
-      </div>
-      <div className='w-[30%] h-[14px] bg-gray-300 rounded-md'></div>
-    </div>
-    <div className='w-[30px] h-[24px] bg-gray-300 rounded-md'></div>
-  </div>
-);
