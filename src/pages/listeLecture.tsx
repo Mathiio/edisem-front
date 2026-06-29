@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import { addToast } from '@/theme/components';
 import { Layouts } from '@/components/layout/Layouts';
-import { ResourceCard, ResourceCardSkeleton } from '@/components/features/corpus/ResourceCard';
+import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared/corpus/ResourceCard';
 import { PageBanner } from '@/components/ui/PageBanner';
 import { BookMarkIcon } from '@/components/ui/icons';
 import { getWatchlistCards, type WatchlistCard } from '@/services/UserSpace';

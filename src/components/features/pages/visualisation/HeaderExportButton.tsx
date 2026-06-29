@@ -4,7 +4,7 @@ import { addToast } from '@/theme/components';
 import { ExportIcon, ShareIcon } from '@/components/ui/icons';
 import { GeneratedImage } from '@/pages/visualisation';
 import { saveResearch } from '@/services/UserSpace';
-import { FilterGroup, NodePosition } from '@/components/features/datavisualisation/FilterPopup';
+import { FilterGroup, NodePosition } from '@/components/features/pages/visualisation/FilterPopup';
 
 interface HeaderExportButtonProps {
   handleExportClick: () => Promise<GeneratedImage>;

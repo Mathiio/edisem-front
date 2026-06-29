@@ -4,7 +4,7 @@ import { Layouts } from "@/components/layout/Layouts";
 import * as Items from '@/services/Items';
 import { motion, Variants } from 'framer-motion';
 import { BackgroundEllipse } from '@/assets/svg/BackgroundEllipse';
-import { ResourceCard, ResourceCardSkeleton } from '@/components/features/corpus/ResourceCard';
+import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared/corpus/ResourceCard';
 import { getResourceConfigByCollectionUrl } from '@/config/resourceConfig';
 import { FullCarrousel } from '@/components/ui/Carrousels';
 import { slugUtils } from '@/lib/utils';

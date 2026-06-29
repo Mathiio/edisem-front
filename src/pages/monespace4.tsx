@@ -3,12 +3,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { addToast } from '@/theme/components';
 import { Input, Select, SelectItem, Pagination } from '@/theme/components';
-import { CreateResourceAction } from '@/components/features/espaceEtudiant/CreateResourceAction';
+import { CreateResourceAction } from '@/components/features/shared/my-space/CreateResourceAction';
 import {
   MySpaceResourceRow,
   MySpaceResourceRowSkeleton,
   getResourceRowSubtitle,
-} from '@/components/features/espaceEtudiant/MySpaceResourceRow';
+} from '@/components/features/shared/my-space/MySpaceResourceRow';
 import { AlertModal } from '@/components/ui/AlertModal';
 import {
   ExperimentationIcon,

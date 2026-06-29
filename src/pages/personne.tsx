@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import * as Items from '@/services/Items';
 import { LinkIcon, UniversityIcon, SchoolIcon, LaboritoryIcon } from '@/components/ui/icons';
-import { InfoCard, InfoSkeleton } from '@/components/features/intervenants/IntervenantCards';
+import { InfoCard, InfoSkeleton } from '@/components/features/pages/intervenants/IntervenantCards';
 import { Link } from '@heroui/react';
 import { Layouts } from '@/components/layout/Layouts';
 

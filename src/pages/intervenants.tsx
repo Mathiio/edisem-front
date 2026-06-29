@@ -1,11 +1,11 @@
 import { Layouts } from "@/components/layout/Layouts";
 import { getActantsGlobalStats, getRandomActants, getActantsByCountry } from "@/services/Items";
 import { useEffect, useState } from "react";
-import { IntervenantsCarousel } from "@/components/features/intervenants/IntervenantsCarousel"; 
-import { IntervenantsWorldMap } from "@/components/features/intervenants/IntervenantsWorldMap";
-import IntervenantsStats from "@/components/features/intervenants/IntervenantsStats";
-import KeywordUsageChart from "@/components/features/intervenants/KeywordUsageChart";
-import TopIntervenants from "@/components/features/intervenants/TopIntervenants";
+import { IntervenantsCarousel } from "@/components/features/pages/intervenants/IntervenantsCarousel"; 
+import { IntervenantsWorldMap } from "@/components/features/pages/intervenants/IntervenantsWorldMap";
+import IntervenantsStats from "@/components/features/pages/intervenants/IntervenantsStats";
+import KeywordUsageChart from "@/components/features/pages/intervenants/KeywordUsageChart";
+import TopIntervenants from "@/components/features/pages/intervenants/TopIntervenants";
 import { PageBanner } from "@/components/ui/PageBanner";
 
 type LoadingState = {

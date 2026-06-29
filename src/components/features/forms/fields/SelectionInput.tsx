@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { InputConfig } from '@/components/features/forms/editModalTypes';
+import { InputConfig } from '@/components/features/forms/fields/editModalTypes';
 import { useGetDataByClass } from '@/hooks/useFetchData';
 import { Button, Spinner } from '@heroui/react';
 import { Input, Select, SelectItem } from '@/theme/components';

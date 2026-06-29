@@ -1,4 +1,4 @@
-import { CorpusCarousel } from "@/components/features/corpus/CorpusCarousel";
+import { CorpusCarousel } from "@/components/features/shared/corpus/CorpusCarousel";
 import { Layouts } from "@/components/layout/Layouts";
 import * as Items from "@/services/Items";
 import { useEffect, useState } from 'react';

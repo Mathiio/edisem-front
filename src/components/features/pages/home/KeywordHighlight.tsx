@@ -1,7 +1,7 @@
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { motion, Variants } from 'framer-motion';
-import { ResourceCard, ResourceCardSkeleton } from '@/components/features/corpus/ResourceCard';
+import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared/corpus/ResourceCard';
 import * as Items from '@/services/Items';
 import { Keyword } from '@/types/ui';
 

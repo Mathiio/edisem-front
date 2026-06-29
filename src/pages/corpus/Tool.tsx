@@ -5,9 +5,9 @@ import { Layouts } from '@/components/layout/Layouts';
 import { DynamicBreadcrumbs } from '@/components/layout/DynamicBreadcrumbs';
 import { Link, Skeleton } from '@heroui/react';
 import { FullCarrousel } from '@/components/ui/Carrousels';
-import { ResourceCard } from '@/components/features/corpus/ResourceCard';
+import { ResourceCard } from '@/components/features/shared/corpus/ResourceCard';
 import { ThumbnailIcon } from '@/components/ui/icons';
-import MediaViewer from '@/components/features/conference/MediaViewer';
+import MediaViewer from '@/components/features/resource-links/MediaViewer';
 
 // Interfaces based on backend response
 interface ToolDetails {

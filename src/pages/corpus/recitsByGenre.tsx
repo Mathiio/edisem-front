@@ -1,5 +1,5 @@
 import { BackgroundEllipse } from '@/assets/svg/BackgroundEllipse';
-import { ResourceCard, ResourceCardSkeleton } from '@/components/features/corpus/ResourceCard';
+import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared/corpus/ResourceCard';
 import { Layouts } from '@/components/layout/Layouts';
 import { slugUtils } from '@/lib/utils';
 import * as Items from '@/services/Items';

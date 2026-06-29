@@ -3,7 +3,7 @@ import { DotsIcon } from '@/components/ui/icons';
 import { Dropdown, DropdownItem, DropdownMenu, DropdownTrigger, Card, Skeleton, Button } from '@heroui/react';
 import { dropdownContentClassNames, dropdownMenuClassNames } from '@/theme/components/dropdown';
 import { getResearchByActant } from '@/services/api';
-import { FilterGroup, NodePosition } from '@/components/features/datavisualisation/FilterPopup';
+import { FilterGroup, NodePosition } from '@/components/features/pages/visualisation/FilterPopup';
 import { LibraryBig, History, Trash2 } from 'lucide-react';
 
 interface Recherche {

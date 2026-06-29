@@ -1,6 +1,6 @@
 import React from 'react';
 import { Conference } from '@/types/ui';
-import { ResourceCard } from '@/components/features/corpus/ResourceCard';
+import { ResourceCard } from '@/components/features/shared/corpus/ResourceCard';
 
 interface IntervenantInterventionsProps {
   interventions: Conference[];

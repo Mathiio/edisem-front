@@ -12,7 +12,7 @@ import {
 } from '@/theme/components/modal';
 import { Button } from '@/theme/components/button';
 import { AlertModal } from '@/components/ui/AlertModal';
-import { FormTextInput } from '@/components/features/forms/FormFields';
+import { FormTextInput } from '@/components/features/forms/edit/FormFields';
 import { CrossIcon, UploadIcon, AddIcon, MovieIcon } from '@/components/ui/icons';
 import { isValidYouTubeUrl } from '@/lib/utils';
 

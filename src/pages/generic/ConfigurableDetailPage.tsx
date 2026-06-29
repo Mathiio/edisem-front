@@ -2,7 +2,7 @@ import React from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { GenericDetailPage } from './GenericDetailPage';
 import { GenericDetailPageConfig, PageMode } from './config';
-import { StudentFormWrapper } from '@/components/features/forms/StudentFormWrapper';
+import { StudentFormWrapper } from '@/components/features/forms/edit/StudentFormWrapper';
 import { FormOnlyResourceGate } from './FormOnlyResourceGate';
 
 interface ConfigurableDetailPageProps {

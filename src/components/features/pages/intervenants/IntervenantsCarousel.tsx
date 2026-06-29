@@ -1,6 +1,6 @@
 import React from 'react';
 import { InfiniteCarousel } from '@/components/ui/InfiniteCarousel';
-import { IntervenantCard, IntervenantSkeleton } from '@/components/features/intervenants/IntervenantCards';
+import { IntervenantCard, IntervenantSkeleton } from '@/components/features/pages/intervenants/IntervenantCards';
 import { Actant } from '@/types/ui';
 
 type IntervenantsCarouselProps = {

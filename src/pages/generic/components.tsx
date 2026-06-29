@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Spinner } from '@heroui/react';
 import { getYouTubeThumbnailUrl, isValidYouTubeUrl } from '@/lib/utils';
-import { AddResourceCard } from '@/components/features/forms/AddResourceCard';
+import { AddResourceCard } from '@/components/features/forms/edit/AddResourceCard';
 import { ThumbnailIcon } from '@/components/ui/icons';
 import { ModalCloseIcon, modalCloseButtonClasses } from '@/theme/components';
 import { canEditLinkedResource, canUnlinkLinkedResource, shouldHardDeleteLinkedResource } from '@/pages/generic/resourceHelpers';

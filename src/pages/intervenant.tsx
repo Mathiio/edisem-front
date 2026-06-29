@@ -2,13 +2,13 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 
 import * as Items from '@/services/Items';
-import { IntervenantAffiliations } from '@/components/features/intervenants/IntervenantAffiliations';
+import { IntervenantAffiliations } from '@/components/features/pages/intervenants/IntervenantAffiliations';
 import { Link, Skeleton } from '@heroui/react';
 import { Layouts } from '@/components/layout/Layouts';
 import { DynamicBreadcrumbs } from '@/components/layout/DynamicBreadcrumbs';
-import { IntervenantKeywordCloud } from '@/components/features/intervenants/IntervenantKeywordCloud';
-import { IntervenantNetwork } from '@/components/features/intervenants/IntervenantNetwork';
-import { IntervenantInterventions } from '@/components/features/intervenants/IntervenantInterventions';
+import { IntervenantKeywordCloud } from '@/components/features/pages/intervenants/IntervenantKeywordCloud';
+import { IntervenantNetwork } from '@/components/features/pages/intervenants/IntervenantNetwork';
+import { IntervenantInterventions } from '@/components/features/pages/intervenants/IntervenantInterventions';
 import { UserIcon } from '@/components/ui/icons';
 
 export const Intervenant: React.FC = () => {

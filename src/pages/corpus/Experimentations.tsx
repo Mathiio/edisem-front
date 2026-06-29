@@ -1,4 +1,4 @@
-import { ResourceCard, ResourceCardSkeleton } from '@/components/features/corpus/ResourceCard';
+import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared/corpus/ResourceCard';
 import { Layouts } from '@/components/layout/Layouts';
 import { ExperimentationIcon } from '@/components/ui/icons';
 import { PageBanner } from '@/components/ui/PageBanner';

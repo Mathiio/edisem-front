@@ -18,15 +18,15 @@ import {
   dropdownItemInnerPadding,
 } from '@/theme/components/dropdown';
 import { Select, SelectItem } from '@/theme/components/select';
-import { FormTextInput, FormAutoResizeTextareaInput, FormDateInput, formFieldLabelClass } from '@/components/features/forms/FormFields';
-import { KeywordsCarouselSkeleton } from '@/components/features/conference/KeywordsCards';
+import { FormTextInput, FormAutoResizeTextareaInput, FormDateInput, formFieldLabelClass } from '@/components/features/forms/edit/FormFields';
+import { KeywordsCarouselSkeleton } from '@/components/features/resource-links/KeywordsCards';
 import { Layouts } from '@/components/layout/Layouts';
-import { SearchModal, SearchModalRef } from '@/components/features/search/SearchModal';
+import { SearchModal, SearchModalRef } from '@/components/features/shared/search/SearchModal';
 import { ArrowIcon, AddIcon } from '@/components/ui/icons';
 import { AlertModal } from '@/components/ui/AlertModal';
 import { EditSaveBar } from '@/components/ui/EditSaveBar';
 import { EditModeBanner } from '@/components/ui/EditModeBanner';
-import { ResourcePicker } from '@/components/features/forms/ResourcePicker';
+import { ResourcePicker } from '@/components/features/forms/modals/ResourcePicker';
 import { getTemplatePropertiesMap } from '@/services/Items';
 import { getEditExitPath, getResourceEditUrl, getGlobalAdminEditUrl, getResourceConfigByTemplateId, getRessourceLabel, TEMPLATE_ID_TO_TYPE, resolveResourceTypeFromOmekaItem, OMEKA_PROPERTY_IDS } from '@/config/resourceConfig';
 import {
@@ -35,7 +35,7 @@ import {
   CONFERENCE_TYPE_VOCAB_ID,
   isConferenceTypeOmekaProperty,
 } from '@/config/conferenceTypeConfig';
-import { QUICK_CREATE_CONFIGS } from '@/components/features/forms/QuickCreateModal';
+import { QUICK_CREATE_CONFIGS } from '@/components/features/forms/modals/QuickCreateModal';
 import {
   getLinkedResourceId,
   getLinkedResourceTitle,
@@ -54,7 +54,7 @@ import { useFormState } from '@/hooks/useFormState';
 import { useAuth } from '@/hooks/useAuth';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '@/utils/omekaApi';
 import { resolveOmekaPropertyId, deleteMedia } from './simplifiedConfigAdapter';
-import { MediaFile, DEFAULT_AUTHOR_TEMPLATE_IDS } from '@/components/features/forms/MediaDropzone';
+import { MediaFile, DEFAULT_AUTHOR_TEMPLATE_IDS } from '@/components/features/forms/edit/MediaDropzone';
 import { GenericDetailPageConfig, PageMode } from './config';
 
 // ================================

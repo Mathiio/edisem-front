@@ -1,7 +1,7 @@
 import React from 'react';
 import { Input, Select, SelectItem, Pagination } from '@/theme/components';
 import { SearchIcon } from '@/components/ui/icons';
-import { adminPaginationClassNames, type AdminSortOrder } from '@/components/features/admin/adminListConfig';
+import { adminPaginationClassNames, type AdminSortOrder } from '@/components/features/pages/user-management/adminListConfig';
 
 interface AdminListToolbarProps {
   searchQuery: string;

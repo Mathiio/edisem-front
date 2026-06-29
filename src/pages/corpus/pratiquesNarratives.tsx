@@ -4,9 +4,9 @@ import * as Items from '@/services/Items';
 import * as Analytics from '@/services/Analytics';
 import { FullCarrousel } from '@/components/ui/Carrousels';
 import { PratiqueNarrativeIcon } from '@/components/ui/icons';
-import { KeywordsBarChart } from '@/components/features/pratiquesNarratives/KeywordsBarChart';
-import { CorpusNavCard } from '@/components/features/corpus/CorpusNavCard';
-import { ResourceCard } from '@/components/features/corpus/ResourceCard';
+import { KeywordsBarChart } from '@/components/features/shared/corpus/KeywordsBarChart';
+import { CorpusNavCard } from '@/components/features/shared/corpus/CorpusNavCard';
+import { ResourceCard } from '@/components/features/shared/corpus/ResourceCard';
 import { PageBanner } from '@/components/ui/PageBanner';
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
 

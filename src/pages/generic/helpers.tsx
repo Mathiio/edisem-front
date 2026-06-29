@@ -1,9 +1,9 @@
 import { ViewOption, SmartRecommendationsStrategy } from './config';
 import { ItemsList, SimpleTextBlock, ToolItemData } from './components';
-import { Bibliographies } from '@/components/features/conference/BibliographyCards';
-import { Mediagraphies } from '@/components/features/conference/MediagraphyCards';
-import { ReferenceAddButtons } from '@/components/features/forms/AddResourceCard';
-import { FormTextInput, FormAutoResizeTextareaInput, formFieldLabelClass } from '@/components/features/forms/FormFields';
+import { Bibliographies } from '@/components/features/resource-links/BibliographyCards';
+import { Mediagraphies } from '@/components/features/resource-links/MediagraphyCards';
+import { ReferenceAddButtons } from '@/components/features/forms/edit/AddResourceCard';
+import { FormTextInput, FormAutoResizeTextareaInput, formFieldLabelClass } from '@/components/features/forms/edit/FormFields';
 import { getResourceConfigByTemplateId, getRessourceLabel } from '@/config/resourceConfig';
 import { getResourceLinkHref } from '@/lib/resourceUtils';
 import { getLinkedResourceId } from '@/pages/generic/resourceHelpers';

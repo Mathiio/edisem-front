@@ -1,11 +1,11 @@
 import { Layouts } from '@/components/layout/Layouts';
 import { PageBanner } from '@/components/ui/PageBanner';
 import { motion, Variants } from 'framer-motion';
-import { MySpaceResourceCard, MySpaceResourceCardSkeleton } from '@/components/features/espaceEtudiant/MySpaceResourceCard';
+import { MySpaceResourceCard, MySpaceResourceCardSkeleton } from '@/components/features/shared/my-space/MySpaceResourceCard';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { getUserResources, getStudentCourses, getCourses, deleteUserResource, type Course } from '@/services/UserSpace';
 import { addToast } from '@/theme/components';
-import { CreateResourceAction } from '@/components/features/espaceEtudiant/CreateResourceAction';
+import { CreateResourceAction } from '@/components/features/shared/my-space/CreateResourceAction';
 import { ExperimentationIcon, UniversityIcon, WarningIcon, BookIcon } from '@/components/ui/icons';
 import { useNavigate } from 'react-router-dom';
 import { experimentationStudentConfigSimplified } from '@/pages/generic/config/experimentationStudentConfig';

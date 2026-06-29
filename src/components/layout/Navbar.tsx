@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Image } from '@/theme/components';
 import Logo from '@/assets/svg/logo.svg';
 import { ProfilDropdown } from '@/components/layout/ProfilDropdown';
-import { SearchModal, SearchModalRef } from '@/components/features/search/SearchModal';
+import { SearchModal, SearchModalRef } from '@/components/features/shared/search/SearchModal';
 import { ArrowIcon, SeminaireIcon, StudyDayIcon, PratiqueNarrativeIcon, ColloqueIcon, ExperimentationIcon } from '@/components/ui/icons';
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
 

@@ -22,15 +22,15 @@ import { Layouts } from '@/components/layout/Layouts';
 import { ChainLinkIcon, UserIcon, UploadIcon, TrashIcon, EditIcon } from '@/components/ui/icons';
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { AlertModal } from '@/components/ui/AlertModal';
-import { MySpaceActionButton } from '@/components/features/espaceEtudiant/MySpaceResourceRow';
+import { MySpaceActionButton } from '@/components/features/shared/my-space/MySpaceResourceRow';
 import {
   AdminListToolbar,
   AdminListPagination,
   AdminListEmptyState,
   adminTableClassNames,
   adminActionsWrapperClass,
-} from '@/components/features/admin/AdminListToolbar';
-import { matchesAdminSearch, sortByStringField } from '@/components/features/admin/adminListConfig';
+} from '@/components/features/pages/user-management/AdminListToolbar';
+import { matchesAdminSearch, sortByStringField } from '@/components/features/pages/user-management/adminListConfig';
 import { useAdminListControls } from '@/hooks/useAdminListControls';
 import { getActantsForLogin, linkActantToUser, createOmekaUserForActant, createActantWithUser, deleteActant, type Actant } from '@/services/UserSpace';
 

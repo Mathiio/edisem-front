@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { WorldMapVisualization } from '@/components/features/intervenants/WorldMapVisualization.tsx';
-import { translateCountries, getOriginalCountryName, getFrCountryName } from '@/components/features/intervenants/CountryUtils';
-import { CountryModal } from '@/components/features/intervenants/CountryModal';
+import { WorldMapVisualization } from '@/components/features/pages/intervenants/WorldMapVisualization';
+import { translateCountries, getOriginalCountryName, getFrCountryName } from '@/components/features/pages/intervenants/CountryUtils';
+import { CountryModal } from '@/components/features/pages/intervenants/CountryModal';
 import { Actant, University } from '@/types/ui';
 
 interface CountryData {

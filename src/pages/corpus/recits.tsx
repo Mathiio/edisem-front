@@ -4,8 +4,8 @@ import * as Items from '@/services/Items';
 import { FullCarrousel } from '@/components/ui/Carrousels';
 import { PratiqueNarrativeIcon } from '@/components/ui/icons';
 import { PageBanner } from '@/components/ui/PageBanner';
-import { CorpusNavCard } from '@/components/features/corpus/CorpusNavCard';
-import { ResourceCard, ResourceCardSkeleton } from '@/components/features/corpus/ResourceCard';
+import { CorpusNavCard } from '@/components/features/shared/corpus/CorpusNavCard';
+import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared/corpus/ResourceCard';
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
 
 

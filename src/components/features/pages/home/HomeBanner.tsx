@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 
 
 
-export const HomeBaner: React.FC = () => {
+export const HomeBanner: React.FC = () => {
   return (
     <div className='pt-18 justify-center flex items-center flex-col gap-8'>
       {/* Main title with gradient highlight */}

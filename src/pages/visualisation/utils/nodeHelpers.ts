@@ -1,4 +1,4 @@
-import { images } from '@/components/features/datavisualisation/images';
+import { images } from '@/components/features/pages/visualisation/images';
 
 // Fonction de mapping des types de noeud aux configurations
 export const getConfigKey = (nodeType: string): string | null => {

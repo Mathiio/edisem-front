@@ -6,7 +6,7 @@ import {
   MySpaceResourceRow,
   MySpaceResourceRowSkeleton,
   getResourceRowSubtitle,
-} from '@/components/features/espaceEtudiant/MySpaceResourceRow';
+} from '@/components/features/shared/my-space/MySpaceResourceRow';
 import { AlertModal } from '@/components/ui/AlertModal';
 import { PageBanner } from '@/components/ui/PageBanner';
 import { SearchIcon, SettingsIcon } from '@/components/ui/icons';

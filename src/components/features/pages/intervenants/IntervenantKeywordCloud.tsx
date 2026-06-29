@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { SearchModal, SearchModalRef } from '@/components/features/search/SearchModal';
+import { SearchModal, SearchModalRef } from '@/components/features/shared/search/SearchModal';
 import { Tooltip } from '@heroui/react';
 
 interface IntervenantKeywordCloudProps {

@@ -3,13 +3,13 @@ import * as d3 from 'd3';
 import { getAllItems } from '@/services/Items';
 
 import { motion, Variants } from 'framer-motion';
-import ZoomControl from '@/components/features/datavisualisation/ZoomControl';
+import ZoomControl from '@/components/features/pages/visualisation/ZoomControl';
 
-import { compareValues, FilterGroup, getDataByType, getPropertyValue, storeSearchHistory, NodePosition } from '@/components/features/datavisualisation/FilterPopup';
-import VisualFilterOverlay, { VISUAL_TYPES, OverlayState } from '@/components/features/datavisualisation/VisualFilterOverlay';
-import TypeFilterDropdown from '@/components/features/datavisualisation/TypeFilterDropdown';
-import HeaderImportButton from '@/components/features/datavisualisation/HeaderImportButton';
-import HeaderExportButton from '@/components/features/datavisualisation/HeaderExportButton';
+import { compareValues, FilterGroup, getDataByType, getPropertyValue, storeSearchHistory, NodePosition } from '@/components/features/pages/visualisation/FilterPopup';
+import VisualFilterOverlay, { VISUAL_TYPES, OverlayState } from '@/components/features/pages/visualisation/VisualFilterOverlay';
+import TypeFilterDropdown from '@/components/features/pages/visualisation/TypeFilterDropdown';
+import HeaderImportButton from '@/components/features/pages/visualisation/HeaderImportButton';
+import HeaderExportButton from '@/components/features/pages/visualisation/HeaderExportButton';
 import { getLinksFromType } from '@/services/Links';
 import {
   Button,
@@ -30,9 +30,9 @@ import {
 import { ArrowIcon, SearchIcon } from '@/components/ui/icons';
 import { SidebarProvider, useSidebar } from '@/components/ui/AppSidebar';
 import { PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight, LibraryBig, Settings, Construction } from 'lucide-react';
-import SearchHistory from '@/components/features/datavisualisation/SearchHistory';
+import SearchHistory from '@/components/features/pages/visualisation/SearchHistory';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { EditModal } from '@/components/features/forms/EditModal';
+import { EditModal } from '@/components/features/forms/modals/EditModal';
 import { useLocalStorageProperties } from '@/hooks/useLocalStorageProperties';
 import { Layouts } from '@/components/layout/Layouts';
 import { BGPattern } from '@/components/ui/bg-pattern';

@@ -2,10 +2,10 @@ import { Layouts } from '@/components/layout/Layouts';
 import { PageBanner } from '@/components/ui/PageBanner';
 import { UniversityIcon, ExperimentationIcon, SettingsIcon, CitationIcon, SchoolIcon } from '@/components/ui/icons';
 import { motion, Variants } from 'framer-motion';
-import { MySpaceResourceCard, MySpaceResourceCardSkeleton } from '@/components/features/espaceEtudiant/MySpaceResourceCard';
+import { MySpaceResourceCard, MySpaceResourceCardSkeleton } from '@/components/features/shared/my-space/MySpaceResourceCard';
 import { useEffect, useState } from 'react';
 import { getCourses, getResourcesByCourse, getTeacherResources, type AllStudentResources, type StudentResourceCard, type Course } from '@/services/UserSpace';
-import { CorpusSection } from '@/components/features/home/CorpusSection';
+import { CorpusSection } from '@/components/features/pages/home/CorpusSection';
 
 const fadeIn: Variants = {
   hidden: { opacity: 0, y: 6 },

@@ -1,6 +1,6 @@
 import React from 'react';
-import { IntervenantLongCard } from '@/components/features/intervenants/IntervenantCards';
-import { getFrCountryName } from '@/components/features/intervenants/CountryUtils';
+import { IntervenantLongCard } from '@/components/features/pages/intervenants/IntervenantCards';
+import { getFrCountryName } from '@/components/features/pages/intervenants/CountryUtils';
 import { Modal, ModalBody, ModalContent, ModalHeader, modalCloseButtonClasses } from '@/theme/components';
 import { Actant, University } from '@/types/ui';
 

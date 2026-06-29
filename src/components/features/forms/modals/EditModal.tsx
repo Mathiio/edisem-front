@@ -3,14 +3,14 @@ import { Input, Spinner, Button, ModalBody, ModalFooter, ModalContent, Modal, Mo
 import { addToast } from '@/theme/components';
 import { modalCloseButtonClasses } from '@/theme/components/modal';
 import { useGetDataByClassDetails } from '@/hooks/useFetchData';
-import { SelectionInput } from '@/components/features/forms/SelectionInput';
+import { SelectionInput } from '@/components/features/forms/fields/SelectionInput';
 import { Textarea } from '@heroui/react';
 
-import { TimecodeInput, DatePicker } from '@/components/features/forms/TimecodeInput';
+import { TimecodeInput, DatePicker } from '@/components/features/forms/fields/TimecodeInput';
 import { ModalTitle } from '@/components/ui/ModalTitle';
 import { EditIcon, EyeIcon } from '@/components/ui/icons';
-import MultipleInputs from '@/components/features/forms/MultipleInputs';
-import type { InputConfig } from '@/components/features/forms/editModalTypes';
+import MultipleInputs from '@/components/features/forms/fields/MultipleInputs';
+import type { InputConfig } from '@/components/features/forms/fields/editModalTypes';
 
 import Omk from '@/services/Omk';
 
@@ -33,7 +33,7 @@ function getValueByPath<T>(object: T[], path: string): any {
   return value;
 }
 
-export type { InputConfig } from '@/components/features/forms/editModalTypes';
+export type { InputConfig } from '@/components/features/forms/fields/editModalTypes';
 
 interface EditModalProps {
   isOpen: boolean;

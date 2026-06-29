@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { IntervenantCard } from '@/components/features/intervenants/IntervenantCards';
+import { IntervenantCard } from '@/components/features/pages/intervenants/IntervenantCards';
 import { getRandomActants } from '@/services/Items';
 import { BGPattern } from '@/components/ui/bg-pattern';
 

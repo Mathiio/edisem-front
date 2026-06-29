@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ADMIN_LIST_PAGE_SIZE, type AdminSortOrder } from '@/components/features/admin/adminListConfig';
+import { ADMIN_LIST_PAGE_SIZE, type AdminSortOrder } from '@/components/features/pages/user-management/adminListConfig';
 
 interface UseAdminListControlsOptions<T> {
   items: T[];

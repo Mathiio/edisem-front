@@ -3,7 +3,7 @@ import { Input, Spinner, useDisclosure } from '@heroui/react';
 import { SearchIcon } from '@/components/ui/icons';
 import { useDebounce } from '@/hooks/useDebounce';
 import { advancedSearch } from '@/services/Items';
-import { WideResourceCard } from '@/components/features/search/WideResourceCard';
+import { WideResourceCard } from '@/components/features/shared/search/WideResourceCard';
 import { RESOURCE_TYPES, ResourceType } from '@/config/resourceConfig';
 import { Modal, ModalBody, ModalContent, ModalHeader, modalBottomFadeClass, modalCloseButtonClasses } from '@/theme/components';
 

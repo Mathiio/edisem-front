@@ -1,6 +1,6 @@
 import React from 'react';
 import { FullCarrousel } from '@/components/ui/Carrousels';
-import { CorpusNavCard, type CorpusNavCardData } from '@/components/features/corpus/CorpusNavCard';
+import { CorpusNavCard, type CorpusNavCardData } from '@/components/features/shared/corpus/CorpusNavCard';
 import { ColloqueIcon, PratiqueNarrativeIcon, SeminaireIcon, StudyDayIcon } from '@/components/ui/icons';
 
 const corpusCards: CorpusNavCardData[] = [

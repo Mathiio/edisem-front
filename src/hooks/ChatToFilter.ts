@@ -1,5 +1,5 @@
-import { PredefinedFilter } from "@/components/features/datavisualisation/OverlaySelector";
-import { ITEM_TYPES } from "@/components/features/datavisualisation/FilterPopup";  
+import { PredefinedFilter } from "@/components/features/pages/visualisation/OverlaySelector";
+import { ITEM_TYPES } from "@/components/features/pages/visualisation/FilterPopup";  
 
 // ----------------------
 // 1. Dictionnaire des types

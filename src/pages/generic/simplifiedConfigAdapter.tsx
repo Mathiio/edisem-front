@@ -24,10 +24,10 @@ import { GenericDetailPageConfig, FetchResult, ViewOption, ProgressiveDataFetche
 import { SimplifiedDetailConfig, SimplifiedViewConfig, InternalFieldConfig, FieldType, extractFieldsFromConfig } from './simplifiedConfig';
 import { SimpleOverviewCard, SimpleDetailsCard, SimpleOverviewSkeleton, SimpleDetailsSkeleton, VocabGroupRenderer } from './SimpleComponents';
 import { ItemsList, SimpleTextBlock } from './components';
-import { Bibliographies } from '@/components/features/conference/BibliographyCards';
-import { Mediagraphies } from '@/components/features/conference/MediagraphyCards';
-import { Citations } from '@/components/features/conference/CitationsCards';
-import { Microresumes } from '@/components/features/conference/MicroresumesCards';
+import { Bibliographies } from '@/components/features/resource-links/BibliographyCards';
+import { Mediagraphies } from '@/components/features/resource-links/MediagraphyCards';
+import { Citations } from '@/components/features/resource-links/CitationsCards';
+import { Microresumes } from '@/components/features/resource-links/MicroresumesCards';
 import { getResourceDetails } from '@/services/resourceDetails';
 
 // ========================================
@@ -71,7 +71,7 @@ const MicroresumesView: React.FC<{ itemId: string | number; onTimeChange?: (time
   if (!loading && microresumes.length === 0) return null;
   return <Microresumes microresumes={microresumes} loading={loading} onTimeChange={onTimeChange ?? (() => {})} />;
 };
-import { ReferenceAddButtons } from '@/components/features/forms/AddResourceCard';
+import { ReferenceAddButtons } from '@/components/features/forms/edit/AddResourceCard';
 import { outlineButtonClass } from '@/theme/components/button';
 import { GenericDetailPage } from './GenericDetailPage';
 
@@ -249,7 +249,7 @@ const InlineMicroresumeForm: React.FC<{
 import { getResourceConfigByTemplateId, isFormOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
 import { buildCachedResourceUrl } from '@/lib/resourceUtils';
 import { enrichItemWithResourceOwner } from '@/lib/resourceOwner';
-import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/features/forms/AutoResizingTextarea';
+import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/features/forms/fields/AutoResizingTextarea';
 import {
   inferViewCreateOnly,
   getLinkedResourceId,
