@@ -549,6 +549,15 @@ export async function getCardsByActant(actantId: string | number, types: string[
   }
 }
 
+export async function getCardsByPersonne(personneId: string | number) {
+  try {
+    return await getDataByUrl(`https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getCardsByPersonne&personneId=${personneId}&json=1`);
+  } catch (error) {
+    console.error('Error fetching cards by personne:', error);
+    return [];
+  }
+}
+
 /**
  * Get cards filtered by Keyword (Concept) ID
  * @param keywordId - Keyword resource ID

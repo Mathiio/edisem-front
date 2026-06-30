@@ -1,6 +1,5 @@
 import React from 'react';
 import { UniversityIcon, SchoolIcon, LaboritoryIcon } from '@/components/ui/icons';
-import { Skeleton } from '@heroui/react';
 
 interface AffiliationItem {
   name?: string;
@@ -17,20 +16,20 @@ interface AffiliationCardProps {
 
 const AffiliationCard: React.FC<AffiliationCardProps> = ({ title, icon, items, emptyMessage, loading }) => {
   return (
-    <div className='shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c3 border-2 p-6 rounded-3xl flex flex-col gap-1.5 h-full'>
-      <div className='flex items-center gap-2.5 border-b-1 border-c3 pb-2.5'>
+    <div className='border-c3 border-2 p-6 rounded-4xl bg-c2/60 flex flex-col gap-1.5 h-full'>
+      <div className='flex items-center gap-2.5 border-b-1 border-c4/20 pb-2.5'>
         <div className='text-c6'>
           {icon}
         </div>
         <h3 className='text-base font-medium text-c6'>{title}</h3>
       </div>
       
-      <div className='flex flex-col gap-2.5'>
+      <div className='flex flex-col gap-2'>
         {loading ? (
-           <div className="flex flex-col gap-2.5">
-              <Skeleton className="h-6 w-3/4 rounded-lg" />
-              <Skeleton className="h-6 w-px/2 rounded-lg" />
-           </div>
+          <div className='flex flex-col gap-2 animate-pulse'>
+            <div className='h-9 w-3/4 rounded-lg bg-c3/50' />
+            <div className='h-9 w-1/2 rounded-lg bg-c3/50' />
+          </div>
         ) : items && items.length > 0 ? (
           items.map((item, index) => (
             <a 

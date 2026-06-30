@@ -240,7 +240,9 @@ export const IntervenantNetwork: React.FC<IntervenantNetworkProps> = ({ currentA
     return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
   }
 
-  if (loading) return <div className="w-full h-[600px] flex items-center justify-center text-c5">Chargement du réseau...</div>;
+  if (loading) return (
+    <div className='w-full h-[600px] rounded-3xl bg-c3/50 animate-pulse' />
+  );
   if (nodes.length < 2) return null;
 
   return (

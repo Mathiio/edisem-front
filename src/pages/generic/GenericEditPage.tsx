@@ -90,7 +90,8 @@ export interface GenericEditPageProps {
 // ================================
 // Styles partagés
 // ================================
-const selectedResourceChipClass = 'flex items-center gap-2 pl-4 pr-2 h-12 border-2 border-c3 text-c6 rounded-xl text-sm';
+const selectedResourceChipClass = 'flex items-center gap-2 pl-4 pr-2 h-12 border-2 border-c3 text-c6 rounded-xl text-sm transition-colors duration-200';
+const selectedResourceChipEditableClass = `${selectedResourceChipClass} hover:border-c5 cursor-pointer`;
 const selectedResourceRemoveButtonClass = [
   modalCloseButtonClasses,
   'inline-flex items-center justify-center shrink-0 p-1 text-sm',
@@ -1836,22 +1837,31 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
               ) : (
                 <div className='flex flex-col gap-2'>
                   <div className='flex flex-wrap gap-2 items-center w-full'>
-                    {sortedKeywords?.map((keyword: any) => (
-                      <div key={keyword.id || keyword.title} className={selectedResourceChipClass}>
-                        <span>{keyword.title}</span>
-                        <button
-                          type='button'
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const current = formData.keywords || [];
-                            setValue('keywords', current.filter((k: any) => k.id !== keyword.id));
-                          }}
-                          className={selectedResourceRemoveButtonClass}
-                          aria-label='Retirer le mot-clé'>
-                          <ModalCloseIcon />
-                        </button>
-                      </div>
-                    ))}
+                    {sortedKeywords?.map((keyword: any) => {
+                      const canEditKeyword =
+                        isGlobalAdminEdit ||
+                        userCreatedResourceIds?.has(String(keyword.id)) ||
+                        String(keyword.ownerId) === String(currentOmekaUserId);
+                      return (
+                        <div
+                          key={keyword.id || keyword.title}
+                          className={canEditKeyword ? selectedResourceChipEditableClass : selectedResourceChipClass}
+                          onClick={() => { if (canEditKeyword) handleEditLinkedResource('jdc:hasConcept', keyword.id, 34); }}>
+                          <span>{keyword.title}</span>
+                          <button
+                            type='button'
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const current = formData.keywords || [];
+                              setValue('keywords', current.filter((k: any) => k.id !== keyword.id));
+                            }}
+                            className={selectedResourceRemoveButtonClass}
+                            aria-label='Retirer le mot-clé'>
+                            <ModalCloseIcon />
+                          </button>
+                        </div>
+                      );
+                    })}
                     <button
                       type='button'
                       onClick={() => handleLinkExisting('keywords')}
@@ -1917,15 +1927,15 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
                       const canEditChip = isUserCreated && effectiveOnEditResource;
                       const btn = config.contributorButtons!.find((b) => b.property === item._property);
                       return (
-                        <div key={item.id || idx} className={selectedResourceChipClass}>
-                          <span
-                            onClick={() => { if (canEditChip && btn) effectiveOnEditResource(item._property, item.id, btn.templateId); }}
-                            className={canEditChip ? 'cursor-pointer hover:underline' : ''}>
-                            {item.title || item.name}
-                          </span>
+                        <div
+                          key={item.id || idx}
+                          className={canEditChip ? selectedResourceChipEditableClass : selectedResourceChipClass}
+                          onClick={() => { if (canEditChip && btn) effectiveOnEditResource(item._property, item.id, btn.templateId); }}>
+                          <span>{item.title || item.name}</span>
                           <button
                             type='button'
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               const prop = item._property;
                               const current: any[] = Array.isArray(formData[prop]) ? formData[prop] : [];
                               setValue(prop, current.filter((c: any) => String(getLinkedResourceId(c)) !== String(item.id)));

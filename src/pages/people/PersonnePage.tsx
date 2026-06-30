@@ -1,32 +1,28 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import * as Items from '@/services/Items';
-import { LinkIcon, UniversityIcon, SchoolIcon, LaboritoryIcon } from '@/components/ui/icons';
-import { InfoCard, InfoSkeleton } from '@/components/features/pages/intervenants/IntervenantCards';
-import { Link } from '@heroui/react';
+import { UserIcon } from '@/components/ui/icons';
 import { Layouts } from '@/components/layout/Layouts';
-
+import { DynamicBreadcrumbs } from '@/components/layout/DynamicBreadcrumbs';
+import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared/corpus/ResourceCard';
 
 export const Personne: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [personne, setPersonne] = useState<any>(null);
+  const [resources, setResources] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingResources, setLoadingResources] = useState(true);
+  const [breadcrumbTitle, setBreadcrumbTitle] = useState('Personne');
 
   const fetchPersonneData = useCallback(async () => {
+    if (!id) return;
     setLoading(true);
     try {
-      // Vider le cache pour forcer le rechargement avec les données normalisées
-      sessionStorage.removeItem('personnes');
-      sessionStorage.removeItem('recitsArtistiques');
-      sessionStorage.removeItem('elementNarratifs');
-      sessionStorage.removeItem('elementEsthetique');
-      sessionStorage.removeItem('annotations');
+      const data = await Items.getPersonnes(Number(id));
+      setPersonne(data);
 
-      const [personne] = await Promise.all([Items.getPersonnes(Number(id))]);
-
-      // Les données sont déjà normalisées dans le service
-      setPersonne(personne);
-
+      const name = data?.name || `${data?.firstName ?? ''} ${data?.lastName ?? ''}`.trim();
+      if (name) setBreadcrumbTitle(`${name} - Personne`);
     } catch (error) {
       console.error('Error fetching personne data:', error);
     } finally {
@@ -34,96 +30,112 @@ export const Personne: React.FC = () => {
     }
   }, [id]);
 
+  const fetchResources = useCallback(async () => {
+    if (!id) return;
+    setLoadingResources(true);
+    try {
+      const data = await Items.getCardsByPersonne(id);
+      setResources(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching personne resources:', error);
+    } finally {
+      setLoadingResources(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchPersonneData();
-  }, [id, fetchPersonneData]);
+    fetchResources();
+  }, [id, fetchPersonneData, fetchResources]);
+
+  const jobTitles: string[] = personne?.jobTitle?.map((j: any) => j.title ?? j) ?? [];
 
   return (
     <Layouts className='col-span-10 flex flex-col gap-24'>
-      <div className='flex flex-col gap-12'>
-        <Link isExternal className='gap-5 text-c6 w-fit' href={!loading ? personne?.source : '#'} showAnchorIcon anchorIcon={<LinkIcon size={28} />}>
-          {personne?.picture ? (
-            <img className='w-5 h-5 object-cover rounded-xl' src={personne.picture} alt='' />
-          ) : (
-            <div className='w-5 h-5 rounded-xl object-cover flex items-center justify-center bg-c3'>
-              <svg width='26' height='38' viewBox='0 0 32 44' fill='none' xmlns='http://www.w3.org/2000/svg'>
-                <path
-                  d='M15.999 0C10.397 0 5.8427 4.6862 5.8427 10.4504C5.8427 16.1047 10.1404 20.6809 15.7424 20.8789C15.9135 20.8569 16.0845 20.8569 16.2128 20.8789C16.2556 20.8789 16.2769 20.8789 16.3197 20.8789C16.3411 20.8789 16.3411 20.8789 16.3625 20.8789C21.8362 20.6809 26.1339 16.1047 26.1553 10.4504C26.1553 4.6862 21.601 0 15.999 0Z'
-                  fill='#A1A1AA'
-                />
-                <path
-                  d='M26.8617 26.7293C20.8962 22.6371 11.1677 22.6371 5.15945 26.7293C2.44398 28.5993 0.947266 31.1295 0.947266 33.8356C0.947266 36.5417 2.44398 39.0498 5.13807 40.8979C8.1315 42.966 12.0656 44 15.9999 44C19.9341 44 23.8683 42.966 26.8617 40.8979C29.5558 39.0278 31.0525 36.5197 31.0525 33.7916C31.0311 31.0854 29.5558 28.5773 26.8617 26.7293Z'
-                  fill='#A1A1AA'
-                />
-              </svg>
+      <DynamicBreadcrumbs itemTitle={breadcrumbTitle} />
+
+      {/* Header – avatar + nom + métier */}
+      <div className='flex flex-col items-center gap-5'>
+        {loading ? (
+          <div className='flex flex-col items-center gap-5 animate-pulse'>
+            <div className='w-24 h-24 rounded-2xl bg-c3/50' />
+            <div className='flex flex-col items-center gap-2.5'>
+              <div className='w-80 h-14 rounded-xl bg-c3/50' />
+              <div className='w-48 h-5 rounded-lg bg-c3/50' />
             </div>
-          )}
-          <div className='flex flex-col gap-4'>
-            <p className='text-3xl font-medium text-c6'>{loading ? '' : personne?.name}</p>
-            <div className='flex flex-col gap-1.5'>
-              {personne?.firstName && personne?.lastName && (
-                <p className='text-sm text-c4 font-regular'>
-                  {personne.firstName} {personne.lastName}
+          </div>
+        ) : (
+          <div className='flex flex-col items-center gap-5 text-c6'>
+            {personne?.picture ? (
+              <img
+                className='w-24 h-24 object-cover rounded-4xl'
+                src={personne.picture}
+                alt=''
+              />
+            ) : (
+              <div className='w-24 h-24 rounded-4xl flex items-center justify-center bg-c3'>
+                <UserIcon size={40} className='text-c6' />
+              </div>
+            )}
+            <div className='flex flex-col items-center gap-1'>
+              <h1 className='text-6xl font-medium text-c6'>{personne?.name}</h1>
+              {jobTitles.length > 0 && (
+                <p className='text-base text-c5'>
+                  {jobTitles.length === 1 ? 'Intervient en tant que' : 'Intervient en tant que'} {jobTitles.join(' · ')}
                 </p>
               )}
-              {personne?.birthday && <p className='text-sm text-c4 font-regular'>Né(e) le {personne.birthday}</p>}
             </div>
           </div>
-        </Link>
-        <div className='flex gap-5 justify-between items-center'>
-          <div className='h-full w-full flex flex-col gap-2.5'>
-            <div className='flex gap-2.5'>
-              <div className='w-[22px]'>
-                <UniversityIcon className='transition-transform-colors-opacity text-c6' size={22} />
+        )}
+      </div>
+
+      {/* Description */}
+      <div className='w-full flex justify-center'>
+        <div className='w-full max-w-[1000px]'>
+          {loading ? (
+            <div className='animate-pulse border-c3 border-2 p-6 rounded-3xl flex flex-col gap-3'>
+              <div className='w-32 h-5 rounded-lg bg-c3/50' />
+              <div className='flex flex-col gap-2'>
+                <div className='w-full h-4 rounded-lg bg-c3/50' />
+                <div className='w-full h-4 rounded-lg bg-c3/50' />
+                <div className='w-3/4 h-4 rounded-lg bg-c3/50' />
               </div>
-              <h3 className='text-base text-left text-c6 font-medium'>Métier(s)</h3>
             </div>
-            <div className='flex flex-col justify-center items-start gap-2.5'>
-              {loading ? (
-                Array.from({ length: 2 }).map((_, index) => <InfoSkeleton key={index} />)
-              ) : personne?.jobTitle && personne.jobTitle.length > 0 ? (
-                personne.jobTitle.map((item: any, index: React.Key | null | undefined) => <InfoCard key={index} link={''} name={item.title} />)
+          ) : (
+            <div className='bg-c2/40 border-c3 border-2 p-6 rounded-3xl flex flex-col gap-3'>
+              {personne?.description ? (
+                <p className='text-sm text-c5 leading-relaxed text-center px-1'>{personne.description}</p>
               ) : (
-                <InfoCard key={0} link={''} name={'Aucun métier trouvé'} />
+                <p className='text-sm text-c5 italic opacity-50 px-1'>Aucune description disponible.</p>
               )}
             </div>
-          </div>
-          <div className='h-full w-full flex flex-col gap-2.5'>
-            <div className='flex gap-2.5'>
-              <div className='w-[22px]'>
-                <SchoolIcon className='transition-transform-colors-opacity text-c6' size={22} />
-              </div>
-              <h3 className='text-base text-left text-c6 font-medium'>Description</h3>
-            </div>
-            <div className='flex flex-col justify-center items-start gap-2.5'>
-              {loading ? (
-                Array.from({ length: 2 }).map((_, index) => <InfoSkeleton key={index} />)
-              ) : personne?.description ? (
-                <InfoCard key={0} link={''} name={personne.description.length > 200 ? `${personne.description.substring(0, 200)}...` : personne.description} />
-              ) : (
-                <InfoCard key={0} link={''} name={'Aucune description trouvée'} />
-              )}
-            </div>
-          </div>
-          <div className='h-full w-full flex flex-col gap-2.5'>
-            <div className='flex gap-2.5'>
-              <div className='w-[22px]'>
-                <LaboritoryIcon className='transition-transform-colors-opacity text-c6' size={22} />
-              </div>
-              <h3 className='text-base text-left text-c6 font-medium'>Pays d'origine</h3>
-            </div>
-            <div className='flex flex-col justify-center items-start gap-2.5'>
-              {loading ? (
-                Array.from({ length: 2 }).map((_, index) => <InfoSkeleton key={index} />)
-              ) : personne?.countryOfOrigin && personne.countryOfOrigin.length > 0 ? (
-                personne.countryOfOrigin.map((item: any, index: React.Key | null | undefined) => <InfoCard key={index} link={''} name={item.name} />)
-              ) : (
-                <InfoCard key={0} link={''} name={"Aucun pays d'origine trouvé"} />
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </div>
+
+      {/* Ressources associées */}
+      {(loadingResources || resources.length > 0) && (
+        <div className='w-full flex flex-col items-center gap-12'>
+          <div className='flex flex-col gap-2 justify-center items-center'>
+            {loadingResources ? (
+              <div className='flex flex-col items-center gap-2 animate-pulse'>
+                <div className='w-52 h-9 rounded-xl bg-c3/50' />
+                <div className='w-72 h-5 rounded-lg bg-c3/50' />
+              </div>
+            ) : (
+              <>
+                <h2 className='text-c6 text-3xl'>Ressources associées</h2>
+                <p className='text-base text-c5'>Découvrez les ressources liées à cette personne</p>
+              </>
+            )}
+          </div>
+          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full'>
+            {loadingResources
+              ? Array.from({ length: 8 }).map((_, i) => <ResourceCardSkeleton key={i} />)
+              : resources.map((item, i) => <ResourceCard key={i} item={item} />)}
+          </div>
+        </div>
+      )}
     </Layouts>
   );
 };

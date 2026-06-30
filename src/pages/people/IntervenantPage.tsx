@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 
 import * as Items from '@/services/Items';
 import { IntervenantAffiliations } from '@/components/features/pages/intervenants/IntervenantAffiliations';
-import { Link, Skeleton } from '@heroui/react';
+import { Link } from '@heroui/react';
 import { Layouts } from '@/components/layout/Layouts';
 import { DynamicBreadcrumbs } from '@/components/layout/DynamicBreadcrumbs';
 import { IntervenantKeywordCloud } from '@/components/features/pages/intervenants/IntervenantKeywordCloud';
@@ -53,25 +53,25 @@ export const Intervenant: React.FC = () => {
       <DynamicBreadcrumbs itemTitle={breadcrumbTitle} />
       <div className='flex flex-col items-center gap-20'>
         {loading ? (
-          <div className='gap-5 w-full flex flex-col items-center'>
-            <Skeleton className="rounded-2xl w-24 h-24 bg-c2" />
-            <div className='flex flex-col items-center gap-2.5 w-full'>
-              <Skeleton className="w-[400px] h-14 rounded-lg bg-c3" />
-              <Skeleton className="rounded-lg w-[200px] h-6 bg-c3" />
+          <div className='gap-5 w-full flex flex-col items-center animate-pulse'>
+            <div className='w-24 h-24 rounded-2xl bg-c3/50' />
+            <div className='flex flex-col items-center gap-2.5'>
+              <div className='w-80 h-14 rounded-xl bg-c3/50' />
+              <div className='w-40 h-5 rounded-lg bg-c3/50' />
             </div>
           </div>
         ) : (
           <div className='gap-5 text-c6 w-full flex flex-col items-center'>
             {actant?.picture ? (
-              <img className='w-24 h-24 object-cover rounded-2xl' src={actant.picture} alt='' />
+              <img className='w-24 h-24 object-cover rounded-4xl' src={actant.picture} alt='' />
             ) : (
-              <div className='w-24 h-24 rounded-2xl object-cover flex items-center justify-center bg-c3'>
+              <div className='w-24 h-24 rounded-4xl object-cover flex items-center justify-center bg-c3'>
                 <UserIcon size={40} className='text-c6' />
               </div>
             )}
-            <Link isExternal className='flex flex-col items-center gap-2.5' href={actant?.url || '#'}>
+            <Link isExternal className='flex flex-col items-center gap-1' href={actant?.url || '#'}>
               <h1 className='text-6xl font-medium text-c6'>{actant?.firstname} {actant?.lastname}</h1>
-              <p className='text-base text-c6'>{actant?.interventions} participations</p>
+              <p className='text-base text-c6'>{actant?.interventions} participation{actant?.interventions == 1 ? '' : 's'} sur la plateforme Edisem</p>
             </Link>
           </div>
         )}
@@ -87,8 +87,13 @@ export const Intervenant: React.FC = () => {
         </div>
       </div>
 
-      {/* Keyword Cloud - using keyword stats from merged API call */}
-      {actant?.keywordStats && (
+      {/* Keyword Cloud */}
+      {loading ? (
+        <div className='w-full flex flex-col items-center gap-5 animate-pulse'>
+          <div className='w-72 h-8 rounded-xl bg-c3/50' />
+          <div className='w-full max-w-3xl h-48 rounded-2xl bg-c3/50' />
+        </div>
+      ) : actant?.keywordStats && (
         <IntervenantKeywordCloud keywordStats={actant.keywordStats} />
       )}
 
@@ -101,7 +106,7 @@ export const Intervenant: React.FC = () => {
         <IntervenantNetwork currentActantId={id!} />
       </div>
 
-      <IntervenantInterventions interventions={conf} />
+      <IntervenantInterventions interventions={conf} loading={loading} />
     </Layouts>
   );
 };

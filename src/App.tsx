@@ -15,7 +15,6 @@ import { JourneesEtudes } from '@/pages/corpus/JourneesEtudes';
 import { Seminaires } from '@/pages/corpus/Seminaires';
 import { Experimentations } from '@/pages/corpus/Experimentations';
 import { MisesEnRecitsPage } from '@/pages/corpus/MisesEnRecitsPage';
-import { Personne } from '@/pages/people/PersonnePage';
 import { toolConfig, toolStudentConfig } from '@/pages/generic/config/toolConfig';
 import { ToolDetailPage } from '@/pages/generic/ToolDetailPage';
 import { RecitsByGenre } from '@/pages/corpus/RecitsByGenrePage';
@@ -186,9 +185,9 @@ function App() {
             <Route path='/corpus/recit-artistique/:id' element={<ConfigurableDetailPage config={recitArtitstiqueConfig} />} />
             <Route path='/corpus/recit-techno-industriel/:id' element={<ConfigurableDetailPage config={recitTechnoConfig} />} />
 
-            {/* Routes pour les personnes/intervenants (toujours utilisées directement) */}
+            {/* Routes pour les personnes/intervenants */}
             <Route path='/intervenant/:id' Component={Intervenant} />
-            <Route path='/personne/:id' Component={Personne} />
+            <Route path='/personne/:id' element={<ConfigurableDetailPage config={personneConfig} />} />
 
             {/* Routes entités / structures (édition depuis Mon espace) */}
             <Route path='/organisation/:id' element={<ConfigurableDetailPage config={organisationConfig} />} />
