@@ -93,6 +93,11 @@ test.describe('Home page', () => {
     });
 
     test('KeywordHighlight: displays at least one result card', async ({ page }) => {
+        await page.waitForResponse(
+            (response) => response.url().includes('getResourceCardsByKeyword') && response.ok(),
+            { timeout: 30_000 },
+        ).catch(() => undefined);
+
         const keywordSection = page.getByTestId('keyword-section').first();
         await expect(keywordSection).toBeVisible({ timeout: 20_000 });
 

@@ -4,17 +4,28 @@ import { Breadcrumbs, BreadcrumbItem, Spinner } from '@heroui/react';
 import { useNavigationTrail } from '@/hooks/useNavigationTrail';
 import { HomeIcon } from '@/components/ui/icons';
 
+const BREADCRUMB_MAX_LENGTH = 120;
+
+const truncateBreadcrumbLabel = (label: string): string => {
+  if (label.length <= BREADCRUMB_MAX_LENGTH) return label;
+  return `${label.slice(0, BREADCRUMB_MAX_LENGTH)}...`;
+};
+
 interface LoadingBreadcrumbItemProps {
   label: string;
   isLoading?: boolean;
 }
 
-const LoadingBreadcrumbItem: React.FC<LoadingBreadcrumbItemProps> = ({ label, isLoading = false }) => (
-  <span className='flex items-center'>
-    {label}
-    {isLoading && <Spinner size='sm' className='ml-2' classNames={{ circle1: 'w-3 h-3', circle2: 'w-3 h-3', wrapper: 'w-3 h-3' }} />}
-  </span>
-);
+const LoadingBreadcrumbItem: React.FC<LoadingBreadcrumbItemProps> = ({ label, isLoading = false }) => {
+  const displayLabel = truncateBreadcrumbLabel(label);
+
+  return (
+    <span className='flex items-center' title={label.length > BREADCRUMB_MAX_LENGTH ? label : undefined}>
+      {displayLabel}
+      {isLoading && <Spinner size='sm' className='ml-2' classNames={{ circle1: 'w-3 h-3', circle2: 'w-3 h-3', wrapper: 'w-3 h-3' }} />}
+    </span>
+  );
+};
 
 interface BreadcrumbConfig {
   label: string;

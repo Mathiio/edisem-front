@@ -1,7 +1,7 @@
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { motion, Variants } from 'framer-motion';
-import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared/corpus/ResourceCard';
+import { ResourceCard } from '@/components/features/shared/corpus/ResourceCard';
 import * as Items from '@/services/Items';
 import { Keyword } from '@/types/ui';
 
@@ -18,35 +18,37 @@ const fadeIn: Variants = {
 export const KeywordHighlight: React.FC = () => {
   const [selectedKeyword, setSelectedKeyword] = useState<Keyword | null>(null);
   const [filteredResources, setFilteredResources] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchAndProcessData = async () => {
       try {
         const keywords = await Items.getKeywords();
+        if (!Array.isArray(keywords) || keywords.length === 0) return;
 
-        // Filter keywords by popularity directly from the API response
-        const filteredKeywords = keywords.filter((k: any) => (k.popularity && k.popularity > 20) || (k.linkCount && k.linkCount > 20));
-        
-        if (filteredKeywords.length > 0) {
-          const randomKeyword = filteredKeywords[Math.floor(Math.random() * filteredKeywords.length)];
-          setSelectedKeyword(randomKeyword);
+        const popularKeywords = keywords.filter(
+          (k: any) => (k.popularity && k.popularity > 20) || (k.linkCount && k.linkCount > 20),
+        );
+        const candidates = (popularKeywords.length > 0 ? popularKeywords : keywords)
+          .slice()
+          .sort(() => Math.random() - 0.5);
 
-          // Use new backend endpoint to get diverse resource types
-          const resources = await Items.getResourceCardsByKeyword(randomKeyword.id, 12);
-          setFilteredResources(resources);
+        for (const keyword of candidates.slice(0, 15)) {
+          const resources = await Items.getResourceCardsByKeyword(keyword.id, 12);
+          if (Array.isArray(resources) && resources.length > 0) {
+            setSelectedKeyword(keyword);
+            setFilteredResources(resources);
+            break;
+          }
         }
       } catch (error) {
         console.error('Erreur lors de la récupération des données:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchAndProcessData();
   }, []);
 
-  if (!selectedKeyword) return null;
+  if (!selectedKeyword || filteredResources.length === 0) return null;
 
   return (
     <div data-testid="keyword-section" className='w-full justify-center flex items-center flex-col gap-6 overflow-visible'>
@@ -59,13 +61,11 @@ export const KeywordHighlight: React.FC = () => {
         </h2>
       </div>
       <div className='grid grid-cols-4 w-full gap-6'>
-        {loading
-          ? Array.from({ length: 12 }).map((_, index) => <ResourceCardSkeleton key={index} />)
-          : filteredResources.map((resource, index) => (
-              <motion.div key={resource.id} data-testid="keyword-resource-card" initial='hidden' animate='visible' variants={fadeIn} custom={index}>
-                <ResourceCard item={resource} />
-              </motion.div>
-            ))}
+        {filteredResources.map((resource, index) => (
+          <motion.div key={resource.id} data-testid="keyword-resource-card" initial='hidden' animate='visible' variants={fadeIn} custom={index}>
+            <ResourceCard item={resource} />
+          </motion.div>
+        ))}
       </div>
     </div>
   );
