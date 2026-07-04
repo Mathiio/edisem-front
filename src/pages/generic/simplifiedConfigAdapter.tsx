@@ -673,6 +673,106 @@ const collectAllLinkedResourceIds = (data: any): number[] => {
   return Array.from(ids);
 };
 
+const usesAssociatedMediaAsReferenceView = (config: SimplifiedDetailConfig): boolean =>
+  config.views?.some(
+    (view) => view.renderType === 'references' && view.property === 'schema:associatedMedia',
+  ) ?? false;
+
+/** Charge d'abord les refs des vues (biblio / médiagraphie), puis contributeurs, puis le reste. */
+const collectPrioritizedLinkedResourceIds = (data: any, config: SimplifiedDetailConfig): number[] => {
+  const ids: number[] = [];
+  const seen = new Set<number>();
+  const add = (id: number) => {
+    if (!seen.has(id)) {
+      seen.add(id);
+      ids.push(id);
+    }
+  };
+
+  config.views?.forEach((view) => {
+    if (view.renderType === 'references' && view.property) {
+      getResourceIds(data, view.property).forEach(add);
+    }
+  });
+
+  const contributorProperties = [
+    'schema:agent',
+    'jdc:hasActant',
+    'dcterms:contributor',
+    'schema:contributor',
+    'cito:credits',
+    'dcterms:creator',
+    ...(config.contributorButtons?.map((btn) => btn.property) ?? []),
+  ];
+  [...new Set(contributorProperties)].forEach((prop) => {
+    getResourceIds(data, prop).forEach(add);
+  });
+
+  collectAllLinkedResourceIds(data).forEach(add);
+
+  return ids.slice(0, MAX_LINKED_RESOURCES);
+};
+
+async function loadLinkedAssociatedMediaEntries(data: any): Promise<AssociatedMediaEntry[]> {
+  const linkedMediaIds = getResourceIds(data, 'schema:associatedMedia').slice(0, 10);
+  const linkedMediaPromises = linkedMediaIds.map(async (itemId) => {
+    try {
+      const res = await fetchWithRetry(`${API_BASE}items/${itemId}`, 1, 300);
+      if (!res || !res.ok) return null;
+      const itemData = await res.json();
+      const biboUri = itemData['bibo:uri']?.[0]?.['@id'];
+      if (biboUri && (biboUri.includes('youtube.com') || biboUri.includes('youtu.be'))) {
+        return biboUri;
+      }
+      if (itemData['o:media'] && Array.isArray(itemData['o:media'])) {
+        for (const mediaRef of itemData['o:media']) {
+          const mediaId = mediaRef['o:id'];
+          if (mediaId) {
+            const linkedUrl = await fetchOmekaMediaUrl(mediaId);
+            if (linkedUrl) return linkedUrl;
+          }
+        }
+      }
+      const linkedUrl = itemData['schema:url']?.[0]?.['@id'] || biboUri;
+      if (linkedUrl) return linkedUrl;
+    } catch (err) {
+      console.error(`Erreur chargement item média ${itemId}:`, err);
+    }
+    return null;
+  });
+
+  const linkedMediaUrls = await Promise.all(linkedMediaPromises);
+  return linkedMediaUrls.filter(Boolean).map((url) => ({ url: url as string }));
+}
+
+async function loadOverviewMediaEntries(
+  data: any,
+  config: SimplifiedDetailConfig,
+): Promise<AssociatedMediaEntry[]> {
+  const directVideoUrl = data['schema:url']?.[0]?.['@id'];
+
+  // Conférences : vidéo via schema:url uniquement (médiagraphies → colonne de droite)
+  if (config.templateId === 71 && directVideoUrl) {
+    return [{ url: directVideoUrl }];
+  }
+
+  const mediaEntries: AssociatedMediaEntry[] = [];
+
+  if (data['o:media'] && Array.isArray(data['o:media'])) {
+    mediaEntries.push(...(await loadDirectOmekaMediaEntries(data['o:media'])));
+  }
+
+  if (data['schema:associatedMedia'] && !usesAssociatedMediaAsReferenceView(config)) {
+    mediaEntries.push(...(await loadLinkedAssociatedMediaEntries(data)));
+  }
+
+  if (mediaEntries.length === 0 && directVideoUrl) {
+    mediaEntries.push({ url: directVideoUrl });
+  }
+
+  return mediaEntries;
+}
+
 const resolveResourceThumbnailUrl = async (resourceData: any): Promise<string | undefined> => {
   if (resourceData['thumbnail_display_urls']?.square) {
     return resourceData['thumbnail_display_urls'].square;
@@ -858,65 +958,13 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
       const enrichedData: any = { ...data };
       await enrichItemWithResourceOwner(enrichedData);
 
-      // ÉTAPE 2 : Charger les médias
-      const mediaEntries: AssociatedMediaEntry[] = [];
-      // 2a: Médias directs via o:media
-      if (data['o:media'] && Array.isArray(data['o:media'])) {
-        mediaEntries.push(...(await loadDirectOmekaMediaEntries(data['o:media'])));
-      }
-
-      // 2b: Médias liés via schema:associatedMedia (prop 438) — utilisé par les récits
-      // Ces items Omeka contiennent eux-mêmes des médias (YouTube, images, etc.)
-      if (data['schema:associatedMedia']) {
-        const linkedMediaIds = getResourceIds(data, 'schema:associatedMedia').slice(0, 10);
-        const linkedMediaPromises = linkedMediaIds.map(async (itemId) => {
-          try {
-            const res = await fetchWithRetry(`${API_BASE}items/${itemId}`, 1, 300);
-            if (!res || !res.ok) return null;
-            const itemData = await res.json();
-            // Priorité: URL YouTube via bibo:uri (certains items liés stockent la vidéo ici)
-            const biboUri = itemData['bibo:uri']?.[0]?.['@id'];
-            if (biboUri && (biboUri.includes('youtube.com') || biboUri.includes('youtu.be'))) {
-              return biboUri;
-            }
-            // Chercher les médias de cet item lié
-            if (itemData['o:media'] && Array.isArray(itemData['o:media'])) {
-              for (const mediaRef of itemData['o:media']) {
-                const mediaId = mediaRef['o:id'];
-                if (mediaId) {
-                  const linkedUrl = await fetchOmekaMediaUrl(mediaId);
-                  if (linkedUrl) return linkedUrl;
-                }
-              }
-            }
-            // Fallback: chercher une URL dans schema:url ou bibo:uri de l'item lié
-            const linkedUrl = itemData['schema:url']?.[0]?.['@id'] || biboUri;
-            if (linkedUrl) return linkedUrl;
-          } catch (err) {
-            console.error(`Erreur chargement item média ${itemId}:`, err);
-          }
-          return null;
-        });
-
-        const linkedMediaUrls = await Promise.all(linkedMediaPromises);
-        linkedMediaUrls.filter(Boolean).forEach((url) => {
-          if (url) mediaEntries.push({ url });
-        });
-      }
-
-      // 2c: Fallback final — URL vidéo directe (schema:url sur l'item principal)
-      if (mediaEntries.length === 0) {
-        const videoUrl = data['schema:url']?.[0]?.['@id'];
-        if (videoUrl) {
-          mediaEntries.push({ url: videoUrl });
-        }
-      }
-
+      // ÉTAPE 2 : Charger les médias (aperçu colonne gauche)
+      const mediaEntries = await loadOverviewMediaEntries(data, config);
       applyAssociatedMediaToItem(enrichedData, mediaEntries);
 
       applyCombinedFieldProperties(enrichedData, data, fieldSourceProperties);
 
-      const resourceIds = collectAllLinkedResourceIds(data).slice(0, MAX_LINKED_RESOURCES);
+      const resourceIds = collectPrioritizedLinkedResourceIds(data, config);
       const resourceCache: Record<number, any> = {};
 
       const hasMicroresumesView = config.views?.some((v) => v.renderType === 'microresumes');
@@ -975,62 +1023,13 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
       const enrichedData: any = { ...data };
       await enrichItemWithResourceOwner(enrichedData);
 
-      // Charger les médias
-      const mediaEntries: AssociatedMediaEntry[] = [];
-      // Médias directs via o:media
-      if (data['o:media'] && Array.isArray(data['o:media'])) {
-        mediaEntries.push(...(await loadDirectOmekaMediaEntries(data['o:media'])));
-      }
-
-      // Médias liés via schema:associatedMedia (utilisé par les récits)
-      if (data['schema:associatedMedia']) {
-        const linkedMediaIds = getResourceIds(data, 'schema:associatedMedia').slice(0, 10);
-        const linkedMediaPromises = linkedMediaIds.map(async (itemId) => {
-          try {
-            const res = await fetchWithRetry(`${API_BASE}items/${itemId}`, 1, 300);
-            if (!res || !res.ok) return null;
-            const itemData = await res.json();
-            // Priorité: URL YouTube via bibo:uri
-            const biboUri = itemData['bibo:uri']?.[0]?.['@id'];
-            if (biboUri && (biboUri.includes('youtube.com') || biboUri.includes('youtu.be'))) {
-              return biboUri;
-            }
-            if (itemData['o:media'] && Array.isArray(itemData['o:media'])) {
-              for (const mediaRef of itemData['o:media']) {
-                const mediaId = mediaRef['o:id'];
-                if (mediaId) {
-                  const linkedUrl = await fetchOmekaMediaUrl(mediaId);
-                  if (linkedUrl) return linkedUrl;
-                }
-              }
-            }
-            const linkedUrl = itemData['schema:url']?.[0]?.['@id'] || biboUri;
-            if (linkedUrl) return linkedUrl;
-          } catch (err) {
-            console.error(`Erreur chargement item média ${itemId}:`, err);
-          }
-          return null;
-        });
-
-        const linkedMediaUrls = await Promise.all(linkedMediaPromises);
-        linkedMediaUrls.filter(Boolean).forEach((url) => {
-          if (url) mediaEntries.push({ url });
-        });
-      }
-
-      // Fallback: URL vidéo directe (schema:url)
-      if (mediaEntries.length === 0) {
-        const videoUrl = data['schema:url']?.[0]?.['@id'];
-        if (videoUrl) {
-          mediaEntries.push({ url: videoUrl });
-        }
-      }
-
+      // Charger les médias (aperçu colonne gauche)
+      const mediaEntries = await loadOverviewMediaEntries(data, config);
       applyAssociatedMediaToItem(enrichedData, mediaEntries);
 
       applyCombinedFieldProperties(enrichedData, data, fieldSourceProperties);
 
-      const resourceIds = collectAllLinkedResourceIds(data).slice(0, MAX_LINKED_RESOURCES);
+      const resourceIds = collectPrioritizedLinkedResourceIds(data, config);
       const resourceCache: Record<number, any> = {};
 
       const hasMicroresumesView = config.views?.some((v) => v.renderType === 'microresumes');
