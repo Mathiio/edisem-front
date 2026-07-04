@@ -309,8 +309,8 @@ export const Mediagraphies: React.FC<{ items: Mediagraphy[]; notitle?: boolean }
   const sortedComplementaryMediagraphies = complementaryMediagraphies.sort(sortByLastName);
 
   return (
-    <div className='w-full h-full overflow-hidden flex flex-col gap-5'>
-      <div className='flex flex-col gap-5 overflow-y-auto scroll-container'>
+    <div className='w-full flex flex-col gap-5'>
+      <div className='flex flex-col gap-5'>
         {sortedConferenceMediagraphies.length > 0 && (
           <>
             {!notitle && <h2 className='text-base text-c5 font-medium'>Médiagraphies de Conférence</h2>}

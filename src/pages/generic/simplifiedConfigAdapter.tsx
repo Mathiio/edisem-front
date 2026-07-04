@@ -29,48 +29,6 @@ import { Mediagraphies } from '@/components/features/resource-links/MediagraphyC
 import { Citations } from '@/components/features/resource-links/CitationsCards';
 import { Microresumes } from '@/components/features/resource-links/MicroresumesCards';
 import { getResourceDetails } from '@/services/resourceDetails';
-
-// ========================================
-// Self-fetching wrappers for citations & microresumes
-// ========================================
-
-const CitationsView: React.FC<{ itemId: string | number; onTimeChange?: (time: number) => void }> = ({ itemId, onTimeChange }) => {
-  const [citations, setCitations] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    getResourceDetails(itemId)
-      .then((details) => {
-        if (!cancelled) setCitations(details?.citations || []);
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [itemId]);
-
-  if (!loading && citations.length === 0) return null;
-  return <Citations citations={citations} loading={loading} onTimeChange={onTimeChange ?? (() => {})} />;
-};
-
-const MicroresumesView: React.FC<{ itemId: string | number; onTimeChange?: (time: number) => void }> = ({ itemId, onTimeChange }) => {
-  const [microresumes, setMicroresumes] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    getResourceDetails(itemId)
-      .then((details) => {
-        if (!cancelled) setMicroresumes(details?.microResumes || []);
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [itemId]);
-
-  if (!loading && microresumes.length === 0) return null;
-  return <Microresumes microresumes={microresumes} loading={loading} onTimeChange={onTimeChange ?? (() => {})} />;
-};
 import { ReferenceAddButtons } from '@/components/features/forms/edit/AddResourceCard';
 import { outlineButtonClass } from '@/theme/components/button';
 import { GenericDetailPage } from './GenericDetailPage';
@@ -117,6 +75,44 @@ const mapReferenceToToolItem = (
     ownerId: getResourceOwnerId(ref),
   };
 };
+
+const getReferenceResourceId = (ref: any): number | undefined => {
+  const raw = ref?.value_resource_id ?? ref?.id ?? ref?.['o:id'];
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  const id = Number(raw);
+  return Number.isFinite(id) ? id : undefined;
+};
+
+const isReferenceEnriched = (ref: any): boolean =>
+  !!(
+    ref?.title ||
+    ref?.['o:title'] ||
+    ref?.class ||
+    ref?.template ||
+    ref?.resource_template_id ||
+    ref?.mediagraphyType ||
+    ref?.type === 'mediagraphie' ||
+    ref?.type === 'bibliographie'
+  );
+
+const resolveReferenceFromCache = (ref: any, resourceCache?: Record<number, any>): any | null => {
+  if (!ref) return null;
+  if (isReferenceEnriched(ref)) return ref;
+
+  const id = getReferenceResourceId(ref);
+  if (id === undefined) return ref;
+
+  const cached = resourceCache?.[id];
+  return cached || null;
+};
+
+const ReferenceLoadingSkeleton: React.FC<{ count?: number }> = ({ count = 1 }) => (
+  <>
+    {Array.from({ length: count }).map((_, i) => (
+      <div key={i} className='w-full h-28 bg-c3 rounded-xl animate-pulse' />
+    ))}
+  </>
+);
 
 // ========================================
 // Inline form: Ajouter des citations
@@ -653,6 +649,196 @@ const collectSourceProperties = (fields: InternalFieldConfig[]): Record<string, 
   return result;
 };
 
+const MAX_LINKED_RESOURCES = 30;
+
+const getContributorDisplayType = (templateId: number | undefined): string | undefined => {
+  if (templateId === 72) return 'actant';
+  if (templateId === 96) return 'student';
+  if (templateId === 104) return 'organisation';
+  if (templateId === 33) return 'personne';
+  return undefined;
+};
+
+const collectAllLinkedResourceIds = (data: any): number[] => {
+  const ids = new Set<number>();
+  Object.entries(data).forEach(([, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach((v: any) => {
+        if (v.value_resource_id !== undefined) {
+          ids.add(v.value_resource_id);
+        }
+      });
+    }
+  });
+  return Array.from(ids);
+};
+
+const resolveResourceThumbnailUrl = async (resourceData: any): Promise<string | undefined> => {
+  if (resourceData['thumbnail_display_urls']?.square) {
+    return resourceData['thumbnail_display_urls'].square;
+  }
+
+  if (resourceData['o:thumbnail']?.['o:id']) {
+    try {
+      const thumbRes = await fetchWithRetry(`${API_BASE}media/${resourceData['o:thumbnail']['o:id']}`, 1, 300);
+      if (thumbRes && thumbRes.ok) {
+        const thumbData = await thumbRes.json();
+        return thumbData['o:thumbnail_urls']?.square || thumbData['o:original_url'];
+      }
+    } catch (e) {
+      console.error('Erreur chargement thumbnail:', e);
+    }
+  }
+
+  if (resourceData['o:media']?.[0]?.['o:id']) {
+    try {
+      const mediaRes = await fetchWithRetry(`${API_BASE}media/${resourceData['o:media'][0]['o:id']}`, 1, 300);
+      if (mediaRes && mediaRes.ok) {
+        const mediaData = await mediaRes.json();
+        return mediaData['o:thumbnail_urls']?.square || mediaData['o:original_url'];
+      }
+    } catch (e) {
+      console.error('Erreur chargement média:', e);
+    }
+  }
+
+  return undefined;
+};
+
+const cacheLinkedOmekaResource = async (
+  resourceId: number,
+  resourceCache: Record<number, any>,
+): Promise<void> => {
+  if (resourceCache[resourceId]) return;
+
+  try {
+    const res = await fetchWithRetry(omekaApiUrl(`${API_BASE}items/${resourceId}`), 1, 300);
+    if (!res || !res.ok) return;
+
+    const resourceData = await res.json();
+    const thumbnailUrl = await resolveResourceThumbnailUrl(resourceData);
+    const templateId = resourceData['o:resource_template']?.['o:id'];
+    const contributorType = getContributorDisplayType(templateId);
+    const resourceType = contributorType || getResourceTypeFromTemplate(templateId, resourceData);
+    const firstname =
+      resourceData['foaf:firstName']?.[0]?.['@value'] || resourceData['schema:givenName']?.[0]?.['@value'] || '';
+    const lastname =
+      resourceData['foaf:familyName']?.[0]?.['@value'] || resourceData['schema:familyName']?.[0]?.['@value'] || '';
+    const displayTitle =
+      resourceData['o:title'] || `${firstname} ${lastname}`.trim() || getResourceFallbackTitle(resourceId, templateId);
+
+    resourceCache[resourceId] = {
+      id: resourceId,
+      title: displayTitle,
+      name: displayTitle,
+      firstname,
+      lastname,
+      picture: thumbnailUrl,
+      thumbnail: thumbnailUrl,
+      thumbnailUrl,
+      class: templateId,
+      template: templateId,
+      resource_template_id: templateId,
+      type: resourceType,
+      creator: extractCreators(resourceData),
+      date: resourceData['dcterms:date']?.[0]?.['@value'] || null,
+      publisher: resourceData['dcterms:publisher']?.[0]?.['@value'] || null,
+      editor: resourceData['bibo:editor']?.[0]?.['@value'] || null,
+      source: resourceData['dcterms:source']?.[0]?.['@value'] || null,
+      pages: resourceData['bibo:pages']?.[0]?.['@value'] || null,
+      ispartof: resourceData['dcterms:isPartOf']?.[0]?.['@value'] || null,
+      volume: resourceData['bibo:volume']?.[0]?.['@value'] || null,
+      issue: resourceData['bibo:issue']?.[0]?.['@value'] || null,
+      number: resourceData['bibo:number']?.[0]?.['@value'] || null,
+      mediagraphyType: resourceData['edisem:typeMediagraphie']?.[0]?.['@value'] || null,
+      url: buildCachedResourceUrl(resourceType, resourceId, resourceData),
+      ownerId: resourceData['o:owner']?.['o:id'],
+    };
+  } catch (err) {
+    console.error(`Erreur chargement ressource ${resourceId}:`, err);
+  }
+};
+
+const applyEnrichedLinkedProperties = (enrichedData: any, data: any, resourceCache: Record<number, any>) => {
+  if (data['dcterms:bibliographicCitation']) {
+    const citationIds = getResourceIds(data, 'dcterms:bibliographicCitation');
+    enrichedData.bibliographicCitations = citationIds.map((id) => resourceCache[id]).filter(Boolean);
+  }
+
+  if (data['dcterms:references']) {
+    const referenceIds = getResourceIds(data, 'dcterms:references');
+    enrichedData.references = referenceIds.map((id) => resourceCache[id]).filter(Boolean);
+  }
+
+  if (data['dcterms:source']) {
+    const sourceIds = getResourceIds(data, 'dcterms:source');
+    enrichedData.sources = sourceIds.map((id) => resourceCache[id]).filter(Boolean);
+  }
+
+  if (data['schema:review']) {
+    const reviewIds = getResourceIds(data, 'schema:review');
+    enrichedData.reviews = reviewIds.map((id) => resourceCache[id]).filter(Boolean);
+  }
+
+  if (data['schema:documentation']) {
+    const docIds = getResourceIds(data, 'schema:documentation');
+    enrichedData.documentations = docIds.map((id) => resourceCache[id]).filter(Boolean);
+  }
+
+  if (data['schema:associatedMedia']) {
+    const mediaIds = getResourceIds(data, 'schema:associatedMedia');
+    enrichedData.associatedMediaRefs = mediaIds.map((id) => resourceCache[id]).filter(Boolean);
+  }
+};
+
+const loadKeywordsFromData = async (data: any, config: SimplifiedDetailConfig): Promise<any[]> => {
+  if (!config.showKeywords || !data['jdc:hasConcept']) return [];
+
+  const ids = getResourceIds(data, 'jdc:hasConcept').slice(0, 15);
+  const keywordPromises = ids.map(async (kidId) => {
+    try {
+      const res = await fetchWithRetry(`${API_BASE}items/${kidId}`, 1, 300);
+      if (res && res.ok) {
+        const kw = await res.json();
+        return {
+          id: kw['o:id'],
+          title: kw['o:title'],
+          short_resume: kw['dcterms:description']?.[0]?.['@value'] || '',
+        };
+      }
+    } catch (err) {
+      console.error(`Erreur chargement keyword ${kidId}:`, err);
+    }
+    return null;
+  });
+
+  return (await Promise.all(keywordPromises)).filter(Boolean);
+};
+
+const applyCombinedFieldProperties = (
+  enrichedData: any,
+  data: any,
+  fieldSourceProperties: Record<string, string[]>,
+) => {
+  Object.entries(fieldSourceProperties).forEach(([, sourceProperties]) => {
+    const allResourceIds: number[] = [];
+    sourceProperties.forEach((prop: string) => {
+      const ids = getResourceIds(data, prop);
+      allResourceIds.push(...ids);
+    });
+
+    const uniqueIds = [...new Set(allResourceIds)];
+    if (uniqueIds.length > 0) {
+      const combinedValues = uniqueIds.map((id) => ({
+        type: 'resource',
+        value_resource_id: id,
+      }));
+      const mainProperty = sourceProperties[0];
+      enrichedData[mainProperty] = combinedValues;
+    }
+  });
+};
+
 // ========================================
 // Data Fetcher générique pour Omeka S (PROGRESSIF)
 // ========================================
@@ -728,282 +914,35 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
 
       applyAssociatedMediaToItem(enrichedData, mediaEntries);
 
-      // ÉTAPE 2b : Charger les contributeurs EN PRIORITÉ (avant l'affichage)
-      const contributorProperties = [
-        'schema:agent',
-        'jdc:hasActant',
-        'dcterms:contributor',
-        'schema:contributor',
-        'cito:credits',
-        'dcterms:creator',
-        ...(config.contributorButtons?.map((btn) => btn.property) ?? []),
-      ];
-      const contributorIds = new Set<number>();
-      [...new Set(contributorProperties)].forEach((prop) => {
-        const ids = getResourceIds(data, prop);
-        ids.forEach((id) => contributorIds.add(id));
-      });
+      applyCombinedFieldProperties(enrichedData, data, fieldSourceProperties);
 
-      const resourceCache: { [id: number]: any } = {};
+      const resourceIds = collectAllLinkedResourceIds(data).slice(0, MAX_LINKED_RESOURCES);
+      const resourceCache: Record<number, any> = {};
 
-      // Charger tous les contributeurs en parallèle
-      if (contributorIds.size > 0) {
-        const contributorPromises = Array.from(contributorIds).map(async (resourceId) => {
-          try {
-            const res = await fetchWithRetry(`${API_BASE}items/${resourceId}`, 1, 300);
-            if (!res || !res.ok) return;
+      const hasMicroresumesView = config.views?.some((v) => v.renderType === 'microresumes');
+      const hasCitationsView = config.views?.some((v) => v.renderType === 'citations');
+      const detailsPromise =
+        hasMicroresumesView || hasCitationsView
+          ? getResourceDetails(id).catch(() => null)
+          : Promise.resolve(null);
 
-            const resourceData = await res.json();
+      const [keywords, , details] = await Promise.all([
+        loadKeywordsFromData(data, config),
+        Promise.all(resourceIds.map((resourceId) => cacheLinkedOmekaResource(resourceId, resourceCache))),
+        detailsPromise,
+      ]);
 
-            let thumbnailUrl: string | undefined;
-            // Essayer d'abord thumbnail_display_urls
-            if (resourceData['thumbnail_display_urls']?.square) {
-              thumbnailUrl = resourceData['thumbnail_display_urls'].square;
-            }
-            // Sinon essayer o:thumbnail
-            else if (resourceData['o:thumbnail']?.['o:id']) {
-              try {
-                const thumbRes = await fetchWithRetry(`${API_BASE}media/${resourceData['o:thumbnail']['o:id']}`, 1, 300);
-                if (thumbRes && thumbRes.ok) {
-                  const thumbData = await thumbRes.json();
-                  thumbnailUrl = thumbData['o:thumbnail_urls']?.square || thumbData['o:original_url'];
-                }
-              } catch (e) {
-                console.error('Erreur chargement thumbnail:', e);
-              }
-            }
-            // Sinon essayer le premier média
-            else if (resourceData['o:media']?.[0]?.['o:id']) {
-              try {
-                const mediaRes = await fetchWithRetry(`${API_BASE}media/${resourceData['o:media'][0]['o:id']}`, 1, 300);
-                if (mediaRes && mediaRes.ok) {
-                  const mediaData = await mediaRes.json();
-                  thumbnailUrl = mediaData['o:thumbnail_urls']?.square || mediaData['o:original_url'];
-                }
-              } catch (e) {
-                console.error('Erreur chargement média:', e);
-              }
-            }
-
-            const templateId = resourceData['o:resource_template']?.['o:id'];
-
-            // Extraire prénom/nom pour les actants
-            const firstname = resourceData['foaf:firstName']?.[0]?.['@value'] || resourceData['schema:givenName']?.[0]?.['@value'] || '';
-            const lastname = resourceData['foaf:familyName']?.[0]?.['@value'] || resourceData['schema:familyName']?.[0]?.['@value'] || '';
-
-            resourceCache[resourceId] = {
-              id: resourceId,
-              title: resourceData['o:title'] || `${firstname} ${lastname}`.trim() || getResourceFallbackTitle(resourceId, templateId),
-              name: resourceData['o:title'] || `${firstname} ${lastname}`.trim(),
-              firstname,
-              lastname,
-              picture: thumbnailUrl,
-              thumbnail: thumbnailUrl,
-              thumbnailUrl,
-              type:
-                templateId === 72
-                  ? 'actant'
-                  : templateId === 96
-                    ? 'student'
-                    : templateId === 104
-                      ? 'organisation'
-                      : templateId === 33
-                        ? 'personne'
-                        : 'personne',
-              template: templateId,
-              resource_template_id: templateId,
-              ownerId: resourceData['o:owner']?.['o:id'],
-              url: buildCachedResourceUrl(
-                templateId === 72
-                  ? 'actant'
-                  : templateId === 96
-                    ? 'student'
-                    : templateId === 104
-                      ? 'organisation'
-                      : 'personne',
-                resourceId,
-                resourceData,
-              ),
-            };
-          } catch (err) {
-            console.error(`Erreur chargement contributeur ${resourceId}:`, err);
-          }
-        });
-
-        await Promise.all(contributorPromises);
-      }
-
+      applyEnrichedLinkedProperties(enrichedData, data, resourceCache);
       enrichedData.resourceCache = resourceCache;
 
-      // AFFICHAGE IMMÉDIAT (avec les contributeurs déjà chargés)
+      if (hasMicroresumesView && details?.microResumes) enrichedData.microResumes = details.microResumes;
+      if (hasCitationsView && details?.citations) enrichedData.citations = details.citations;
+
       onProgress({
         itemDetails: enrichedData,
         viewData: { rawData: data, resourceCache },
+        keywords,
       });
-
-      // ÉTAPE 3 : Charger les keywords
-      let keywords: any[] = [];
-      if (config.showKeywords && data['jdc:hasConcept']) {
-        const ids = getResourceIds(data, 'jdc:hasConcept').slice(0, 15);
-        const keywordPromises = ids.map(async (kidId) => {
-          try {
-            const res = await fetchWithRetry(`${API_BASE}items/${kidId}`, 1, 300);
-            if (res && res.ok) {
-              const kw = await res.json();
-              return {
-                id: kw['o:id'],
-                title: kw['o:title'],
-                short_resume: kw['dcterms:description']?.[0]?.['@value'] || '',
-              };
-            }
-          } catch (err) {
-            console.error(`Erreur chargement keyword ${kidId}:`, err);
-          }
-          return null;
-        });
-
-        keywords = (await Promise.all(keywordPromises)).filter(Boolean);
-        onProgress({ keywords });
-      } else {
-        onProgress({ keywords: [] });
-      }
-
-      // ÉTAPE 4 : Combiner les propriétés
-      Object.entries(fieldSourceProperties).forEach(([, sourceProperties]) => {
-        const allResourceIds: number[] = [];
-        sourceProperties.forEach((prop: string) => {
-          const ids = getResourceIds(data, prop);
-          allResourceIds.push(...ids);
-        });
-
-        const uniqueIds = [...new Set(allResourceIds)];
-        if (uniqueIds.length > 0) {
-          const combinedValues = uniqueIds.map((id) => ({
-            type: 'resource',
-            value_resource_id: id,
-          }));
-          const mainProperty = sourceProperties[0];
-          enrichedData[mainProperty] = combinedValues;
-        }
-      });
-
-      // ÉTAPE 5 : Charger les autres ressources liées par batches (sauf contributeurs déjà chargés)
-      const allResourceIds = new Set<number>();
-      Object.entries(data).forEach(([, value]) => {
-        if (Array.isArray(value)) {
-          value.forEach((v: any) => {
-            if (v.value_resource_id !== undefined) {
-              allResourceIds.add(v.value_resource_id);
-            }
-          });
-        }
-      });
-
-      // Filtrer les IDs déjà chargés (contributeurs)
-      const resourceIds = Array.from(allResourceIds)
-        .filter((id) => !resourceCache[id])
-        .slice(0, 30);
-      const batchSize = 5;
-
-      for (let i = 0; i < resourceIds.length; i += batchSize) {
-        const batch = resourceIds.slice(i, i + batchSize);
-        await Promise.all(
-          batch.map(async (resourceId) => {
-            try {
-              // Use omekaApiUrl so private (draft) resources are also accessible
-              const res = await fetchWithRetry(omekaApiUrl(`${API_BASE}items/${resourceId}`), 1, 300);
-              if (!res || !res.ok) return;
-
-              const resourceData = await res.json();
-
-              let thumbnailUrl: string | undefined;
-              if (resourceData['thumbnail_display_urls']?.square) {
-                thumbnailUrl = resourceData['thumbnail_display_urls'].square;
-              }
-
-              const templateId = resourceData['o:resource_template']?.['o:id'];
-              const resourceType = getResourceTypeFromTemplate(templateId, resourceData);
-
-              resourceCache[resourceId] = {
-                id: resourceId,
-                title: resourceData['o:title'] || getResourceFallbackTitle(resourceId, templateId),
-                thumbnail: thumbnailUrl,
-                thumbnailUrl,
-                class: templateId,
-                template: templateId,
-                resource_template_id: templateId,
-                type: resourceType,
-                creator: extractCreators(resourceData),
-                date: resourceData['dcterms:date']?.[0]?.['@value'] || null,
-                publisher: resourceData['dcterms:publisher']?.[0]?.['@value'] || null,
-                editor: resourceData['bibo:editor']?.[0]?.['@value'] || null,
-                source: resourceData['dcterms:source']?.[0]?.['@value'] || null,
-                pages: resourceData['bibo:pages']?.[0]?.['@value'] || null,
-                ispartof: resourceData['dcterms:isPartOf']?.[0]?.['@value'] || null,
-                volume: resourceData['bibo:volume']?.[0]?.['@value'] || null,
-                issue: resourceData['bibo:issue']?.[0]?.['@value'] || null,
-                number: resourceData['bibo:number']?.[0]?.['@value'] || null,
-                mediagraphyType: resourceData['edisem:typeMediagraphie']?.[0]?.['@value'] || null,
-                url: buildCachedResourceUrl(resourceType, resourceId, resourceData),
-                ownerId: resourceData['o:owner']?.['o:id'],
-              };
-            } catch (err) {
-              console.error(`Erreur chargement ressource ${resourceId}:`, err);
-            }
-          }),
-        );
-
-        enrichedData.resourceCache = resourceCache;
-
-        if (data['dcterms:bibliographicCitation']) {
-          const citationIds = getResourceIds(data, 'dcterms:bibliographicCitation');
-          enrichedData.bibliographicCitations = citationIds.map((id) => resourceCache[id]).filter(Boolean);
-        }
-
-        if (data['dcterms:references']) {
-          const referenceIds = getResourceIds(data, 'dcterms:references');
-          enrichedData.references = referenceIds.map((id) => resourceCache[id]).filter(Boolean);
-        }
-
-        if (data['dcterms:source']) {
-          const sourceIds = getResourceIds(data, 'dcterms:source');
-          enrichedData.sources = sourceIds.map((id) => resourceCache[id]).filter(Boolean);
-        }
-
-        if (data['schema:review']) {
-          const reviewIds = getResourceIds(data, 'schema:review');
-          enrichedData.reviews = reviewIds.map((id) => resourceCache[id]).filter(Boolean);
-        }
-
-        if (data['schema:documentation']) {
-          const docIds = getResourceIds(data, 'schema:documentation');
-          enrichedData.documentations = docIds.map((id) => resourceCache[id]).filter(Boolean);
-        }
-
-        if (data['schema:associatedMedia']) {
-          const mediaIds = getResourceIds(data, 'schema:associatedMedia');
-          enrichedData.associatedMediaRefs = mediaIds.map((id) => resourceCache[id]).filter(Boolean);
-        }
-
-        onProgress({
-          itemDetails: enrichedData,
-          viewData: { rawData: data, resourceCache },
-        });
-      }
-
-      // Fetch microresumes & citations si la config en a (getResourceDetails est déjà appelé
-      // par les composants de vue, le cache HTTP évite un double appel réseau)
-      const hasMicroresumesView = config.views?.some((v) => v.renderType === 'microresumes');
-      const hasCitationsView = config.views?.some((v) => v.renderType === 'citations');
-      if (hasMicroresumesView || hasCitationsView) {
-        try {
-          const details = await getResourceDetails(id);
-          if (hasMicroresumesView && details?.microResumes) enrichedData.microResumes = details.microResumes;
-          if (hasCitationsView && details?.citations) enrichedData.citations = details.citations;
-        } catch (_) {
-          // Non-bloquant
-        }
-      }
 
       return {
         itemDetails: enrichedData,
@@ -1089,145 +1028,29 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
 
       applyAssociatedMediaToItem(enrichedData, mediaEntries);
 
-      // Charger les keywords
-      let keywords: any[] = [];
-      if (config.showKeywords && data['jdc:hasConcept']) {
-        const ids = getResourceIds(data, 'jdc:hasConcept').slice(0, 15);
-        const keywordPromises = ids.map(async (kidId) => {
-          try {
-            const res = await fetchWithRetry(`${API_BASE}items/${kidId}`, 1, 300);
-            if (res && res.ok) {
-              const kw = await res.json();
-              return {
-                id: kw['o:id'],
-                title: kw['o:title'],
-                short_resume: kw['dcterms:description']?.[0]?.['@value'] || '',
-              };
-            }
-          } catch (err) {
-            console.error(`Erreur chargement keyword ${kidId}:`, err);
-          }
-          return null;
-        });
+      applyCombinedFieldProperties(enrichedData, data, fieldSourceProperties);
 
-        keywords = (await Promise.all(keywordPromises)).filter(Boolean);
-      }
+      const resourceIds = collectAllLinkedResourceIds(data).slice(0, MAX_LINKED_RESOURCES);
+      const resourceCache: Record<number, any> = {};
 
-      // Combiner les propriétés
-      Object.entries(fieldSourceProperties).forEach(([, sourceProperties]) => {
-        const allResourceIds: number[] = [];
-        sourceProperties.forEach((prop: string) => {
-          const ids = getResourceIds(data, prop);
-          allResourceIds.push(...ids);
-        });
+      const hasMicroresumesView = config.views?.some((v) => v.renderType === 'microresumes');
+      const hasCitationsView = config.views?.some((v) => v.renderType === 'citations');
+      const detailsPromise =
+        hasMicroresumesView || hasCitationsView
+          ? getResourceDetails(id).catch(() => null)
+          : Promise.resolve(null);
 
-        const uniqueIds = [...new Set(allResourceIds)];
-        if (uniqueIds.length > 0) {
-          const combinedValues = uniqueIds.map((id) => ({
-            type: 'resource',
-            value_resource_id: id,
-          }));
-          const mainProperty = sourceProperties[0];
-          enrichedData[mainProperty] = combinedValues;
-        }
-      });
+      const [keywords, , details] = await Promise.all([
+        loadKeywordsFromData(data, config),
+        Promise.all(resourceIds.map((resourceId) => cacheLinkedOmekaResource(resourceId, resourceCache))),
+        detailsPromise,
+      ]);
 
-      // Charger les ressources liées
-      const allResourceIds = new Set<number>();
-      Object.entries(data).forEach(([, value]) => {
-        if (Array.isArray(value)) {
-          value.forEach((v: any) => {
-            if (v.value_resource_id !== undefined) {
-              allResourceIds.add(v.value_resource_id);
-            }
-          });
-        }
-      });
-
-      const resourceIds = Array.from(allResourceIds).slice(0, 30);
-      const resourceCache: { [id: number]: any } = {};
-      const batchSize = 5;
-
-      for (let i = 0; i < resourceIds.length; i += batchSize) {
-        const batch = resourceIds.slice(i, i + batchSize);
-        await Promise.all(
-          batch.map(async (resourceId) => {
-            try {
-              // Use omekaApiUrl so private (draft) resources are also accessible
-              const res = await fetchWithRetry(omekaApiUrl(`${API_BASE}items/${resourceId}`), 1, 300);
-              if (!res || !res.ok) return;
-
-              const resourceData = await res.json();
-
-              let thumbnailUrl: string | undefined;
-              if (resourceData['thumbnail_display_urls']?.square) {
-                thumbnailUrl = resourceData['thumbnail_display_urls'].square;
-              }
-
-              const templateId = resourceData['o:resource_template']?.['o:id'];
-              const resourceType = getResourceTypeFromTemplate(templateId, resourceData);
-
-              resourceCache[resourceId] = {
-                id: resourceId,
-                title: resourceData['o:title'] || getResourceFallbackTitle(resourceId, templateId),
-                thumbnail: thumbnailUrl,
-                thumbnailUrl,
-                class: templateId,
-                template: templateId,
-                resource_template_id: templateId,
-                type: resourceType,
-                creator: extractCreators(resourceData),
-                date: resourceData['dcterms:date']?.[0]?.['@value'] || null,
-                publisher: resourceData['dcterms:publisher']?.[0]?.['@value'] || null,
-                editor: resourceData['bibo:editor']?.[0]?.['@value'] || null,
-                source: resourceData['dcterms:source']?.[0]?.['@value'] || null,
-                pages: resourceData['bibo:pages']?.[0]?.['@value'] || null,
-                ispartof: resourceData['dcterms:isPartOf']?.[0]?.['@value'] || null,
-                volume: resourceData['bibo:volume']?.[0]?.['@value'] || null,
-                issue: resourceData['bibo:issue']?.[0]?.['@value'] || null,
-                number: resourceData['bibo:number']?.[0]?.['@value'] || null,
-                mediagraphyType: resourceData['edisem:typeMediagraphie']?.[0]?.['@value'] || null,
-                url: buildCachedResourceUrl(resourceType, resourceId, resourceData),
-                ownerId: resourceData['o:owner']?.['o:id'],
-              };
-            } catch (err) {
-              console.error(`Erreur chargement ressource ${resourceId}:`, err);
-            }
-          }),
-        );
-      }
-
+      applyEnrichedLinkedProperties(enrichedData, data, resourceCache);
       enrichedData.resourceCache = resourceCache;
 
-      if (data['dcterms:bibliographicCitation']) {
-        const citationIds = getResourceIds(data, 'dcterms:bibliographicCitation');
-        enrichedData.bibliographicCitations = citationIds.map((id) => resourceCache[id]).filter(Boolean);
-      }
-
-      if (data['dcterms:references']) {
-        const referenceIds = getResourceIds(data, 'dcterms:references');
-        enrichedData.references = referenceIds.map((id) => resourceCache[id]).filter(Boolean);
-      }
-
-      if (data['dcterms:source']) {
-        const sourceIds = getResourceIds(data, 'dcterms:source');
-        enrichedData.sources = sourceIds.map((id) => resourceCache[id]).filter(Boolean);
-      }
-
-      if (data['schema:review']) {
-        const reviewIds = getResourceIds(data, 'schema:review');
-        enrichedData.reviews = reviewIds.map((id) => resourceCache[id]).filter(Boolean);
-      }
-
-      if (data['schema:documentation']) {
-        const docIds = getResourceIds(data, 'schema:documentation');
-        enrichedData.documentations = docIds.map((id) => resourceCache[id]).filter(Boolean);
-      }
-
-      if (data['schema:associatedMedia']) {
-        const mediaIds = getResourceIds(data, 'schema:associatedMedia');
-        enrichedData.associatedMediaRefs = mediaIds.map((id) => resourceCache[id]).filter(Boolean);
-      }
+      if (hasMicroresumesView && details?.microResumes) enrichedData.microResumes = details.microResumes;
+      if (hasCitationsView && details?.citations) enrichedData.citations = details.citations;
 
       return {
         itemDetails: enrichedData,
@@ -1506,11 +1329,16 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
           };
 
           const enrichedProperty = enrichedPropertyMap[view.property || ''];
+          const resourceCache = itemDetails?.resourceCache || {};
+          const expectedRefCount = getResourceIds(itemDetails, view.property || '').length;
 
           // Données enrichies pour l'affichage (avec titre, auteur, etc.)
           let enrichedRefs = enrichedProperty ? itemDetails?.[enrichedProperty] : null;
           if (!enrichedRefs || enrichedRefs.length === 0) {
-            enrichedRefs = itemDetails?.[view.property || ''] || [];
+            const rawRefs = itemDetails?.[view.property || ''] || [];
+            enrichedRefs = rawRefs
+              .map((ref: any) => resolveReferenceFromCache(ref, resourceCache))
+              .filter(Boolean);
           }
 
           let refs: any[];
@@ -1521,26 +1349,31 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
             const kept = enrichedRefs.filter((r: any) => formIds.has(String(r.id || r['o:id'])));
             // Ajouter les nouveaux items de formData qui ne sont pas dans les enrichis
             const enrichedIds = new Set(enrichedRefs.map((r: any) => String(r.id || r['o:id'])));
-            const added = formData[view.key].filter((item: any) => {
-              const itemId = String(item.id || item['o:id'] || item.value_resource_id);
-              return !enrichedIds.has(itemId);
-            });
+            const added = formData[view.key]
+              .filter((item: any) => {
+                const itemId = String(item.id || item['o:id'] || item.value_resource_id);
+                return !enrichedIds.has(itemId);
+              })
+              .map((item: any) => resolveReferenceFromCache(item, resourceCache) || item);
             refs = [...kept, ...added];
           } else {
-            refs = enrichedRefs;
+            refs = enrichedRefs
+              .map((ref: any) => resolveReferenceFromCache(ref, resourceCache))
+              .filter(Boolean);
           }
+
+          const pendingRefCount = Math.max(0, expectedRefCount - refs.length);
+          const isLoadingRefs = pendingRefCount > 0;
 
           const mediagraphies = refs.filter((ref: any) => ref?.type === 'mediagraphie' || ref?.mediagraphyType);
           const bibliographies = refs.filter((ref: any) => {
             if (mediagraphies.includes(ref)) return false;
             if (ref?.type === 'bibliographie' || ref?.template || ref?.class || ref?.resource_template_id) return true;
             if ((ref?.['o:id'] || ref?.id) && (ref?.['o:title'] || ref?.title)) return true;
-            // Format brut API (fallback quand l'enrichissement échoue) : { type: 'resource', value_resource_id: X }
-            if (ref?.value_resource_id !== undefined) return true;
             return false;
           });
 
-          const hasContent = mediagraphies.length > 0 || bibliographies.length > 0;
+          const hasContent = mediagraphies.length > 0 || bibliographies.length > 0 || isLoadingRefs;
           const canEdit = isEditing && view.editable !== false;
 
           if (!hasContent && !canEdit) {
@@ -1551,6 +1384,9 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
 
           return (
             <div className='space-y-6'>
+              {isLoadingRefs && !canEdit && (
+                <ReferenceLoadingSkeleton count={pendingRefCount} />
+              )}
               {mediagraphies.length > 0 && (
                 <div>
                   <h3 className='text-lg text-c5 font-semibold mb-4'>Médias</h3>
@@ -1744,12 +1580,16 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
         }
 
         case 'citations': {
-          const itemId = itemDetails?.['o:id'] || itemDetails?.id;
+          const citations = itemDetails?.citations || [];
           const canEditCitations = isEditing && view.editable !== false;
           const newCitations = (formData?.[view.key] as any[]) || [];
           return (
-            <div className='flex flex-col gap-4'>
-              {itemId && <CitationsView itemId={itemId} onTimeChange={onTimeChange} />}
+            <div className='flex flex-col gap-4 h-full min-h-0'>
+              <Citations
+                citations={citations}
+                loading={false}
+                onTimeChange={onTimeChange ?? (() => {})}
+              />
               {canEditCitations && onItemsChange && (
                 <InlineCitationForm items={newCitations} onChange={(items) => onItemsChange(view.key, items)} />
               )}
@@ -1758,12 +1598,16 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
         }
 
         case 'microresumes': {
-          const itemId = itemDetails?.['o:id'] || itemDetails?.id;
+          const microresumes = itemDetails?.microResumes || [];
           const canEditMicroresumes = isEditing && view.editable !== false;
           const newMicroresumes = (formData?.[view.key] as any[]) || [];
           return (
-            <div className='flex flex-col gap-4'>
-              {itemId && <MicroresumesView itemId={itemId} onTimeChange={onTimeChange} />}
+            <div className='flex flex-col gap-4 h-full min-h-0'>
+              <Microresumes
+                microresumes={microresumes}
+                loading={false}
+                onTimeChange={onTimeChange ?? (() => {})}
+              />
               {canEditMicroresumes && onItemsChange && (
                 <InlineMicroresumeForm items={newMicroresumes} onChange={(items) => onItemsChange(view.key, items)} />
               )}

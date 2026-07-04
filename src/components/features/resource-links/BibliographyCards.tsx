@@ -200,7 +200,7 @@ export const BibliographyCard: React.FC<Bibliography & { uniqueKey?: number; onE
 
   return (
     <div
-      className={`w-full flex flex-row justify-between border-2 rounded-xl items-center gap-6  transition-transform-colors-opacity ${isHovered ? 'border-c6' : 'border-c3'}`}
+      className={`w-full flex flex-row justify-between border-2 rounded-xl items-center gap-6 transition-transform-colors-opacity ${isHovered ? 'border-c6' : 'border-c3'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
       {onEdit ? (
@@ -268,8 +268,8 @@ export const Bibliographies: React.FC<BibliographiesProps> = ({ sections = [], b
   }
 
   return (
-    <div className='w-full h-full overflow-hidden flex flex-col gap-5'>
-      <div className='flex flex-col gap-5 overflow-y-auto scroll-container'>
+    <div className='w-full flex flex-col gap-5'>
+      <div className='flex flex-col gap-5'>
         {finalSections.map(
           (section, sectionIndex) =>
             section.bibliographies.length > 0 && (

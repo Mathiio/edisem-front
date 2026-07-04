@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@heroui/react';
 import { EmptyStateCard } from '@/components/ui/EmptyStateCard';
-import { motion, Variants } from 'framer-motion';
-
-const fadeIn: Variants = {
-  hidden: { opacity: 0, y: 6 },
-  visible: (index: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, delay: index * 0.15 },
-  }),
-};
 
 interface CitationCardProps {
   startTime: number;
@@ -49,11 +39,11 @@ export const CitationCard: React.FC<CitationCardProps> = ({ id: _id, startTime, 
   const displayText = expanded ? citation : citation.slice(0, CHARACTER_LIMIT);
 
   return (
-    <div className='w-full flex flex-row justify-start border-2 p-6 border-c3 rounded-xl items-start gap-2.5 transition-transform-colors-opacity overflow-hidden'>
+    <div className='w-full flex flex-row justify-start border-2 p-4 border-c3 rounded-xl items-start gap-2.5 transition-transform-colors-opacity overflow-hidden'>
       <div className='flex flex-col gap-6 min-w-0 w-full'>
         <div className='w-full flex justify-between items-center gap-2.5'>
-          <div className='flex items-center gap-2.5'>
-            <Button onClick={handleClick} className='px-2.5 py-1.5 h-auto text-sm rounded-md text-c6 hover:text-c6 bg-c2 hover:bg-c3 transition-all ease-in-out duration-200'>
+          <div className='flex items-center gap-2'>
+            <Button onClick={handleClick} className='px-2 py-1.5 text-sm rounded-lg text-c6 hover:text-c6 bg-c2 border-2 border-c3 hover:bg-c3 transition-all ease-in-out duration-200'>
               {formatTime(startTime) + ' - ' + formatTime(endTime)}
             </Button>
             <h3 className='text-c6 text-base font-medium'>{actant}</h3>
@@ -86,23 +76,21 @@ export const Citations: React.FC<CitationsProps> = ({ citations, loading, onTime
   if (loading) return null;
 
   return (
-    <div className='w-full h-max flex flex-col gap-5'>
-      <div className='flex flex-col gap-5 h-full overflow-y-auto scroll-container'>
+    <div className='w-full flex flex-col gap-5'>
+      <div className='flex flex-col gap-5'>
         {citations.length === 0 ? (
           <EmptyStateCard message="Aucune citation n'est liée au contenu de cette conférence." />
         ) : (
-          citations.map((citation, index) => (
-            <motion.div key={citation.id} initial='hidden' animate='visible' variants={fadeIn} custom={index}>
-              <CitationCard
-                key={index}
-                id={citation.id}
-                startTime={citation.startTime}
-                endTime={citation.endTime}
-                actant={citation.actant.firstname + ' ' + citation.actant.lastname}
-                citation={citation.citation}
-                onTimeChange={onTimeChange}
-              />
-            </motion.div>
+          citations.map((citation) => (
+            <CitationCard
+              key={citation.id}
+              id={citation.id}
+              startTime={citation.startTime}
+              endTime={citation.endTime}
+              actant={citation.actant.firstname + ' ' + citation.actant.lastname}
+              citation={citation.citation}
+              onTimeChange={onTimeChange}
+            />
           ))
         )}
       </div>

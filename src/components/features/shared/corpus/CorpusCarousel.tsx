@@ -92,7 +92,9 @@ export const CorpusCarousel = ({ editions, loading = false, title, basePath = '/
      )
   }
 
-  if (!editions || editions.length === 0) return null;
+  if (!editions || editions.length === 0) {
+    return <div data-testid="edition-card-empty" />;
+  }
 
   return (
     <div className="w-full max-w-full">

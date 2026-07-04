@@ -51,22 +51,22 @@ export const ReferenceAddButtons: React.FC<ReferenceAddButtonsProps> = ({
   return (
     <div className={`flex flex-wrap gap-3 ${className}`}>
       <AddResourceCard
-        resourceLabel='une médiagraphie'
-        fullWidth={false}
-        onAdd={() =>
-          onLinkExisting(viewKey, {
-            resourceTemplateIds: mediagraphies,
-            pickerTitle: 'Sélectionner une médiagraphie',
-          })
-        }
-      />
-      <AddResourceCard
         resourceLabel='une bibliographie'
         fullWidth={false}
         onAdd={() =>
           onLinkExisting(viewKey, {
             resourceTemplateIds: bibliographies,
             pickerTitle: 'Sélectionner une bibliographie',
+          })
+        }
+      />
+      <AddResourceCard
+        resourceLabel='une médiagraphie'
+        fullWidth={false}
+        onAdd={() =>
+          onLinkExisting(viewKey, {
+            resourceTemplateIds: mediagraphies,
+            pickerTitle: 'Sélectionner une médiagraphie',
           })
         }
       />

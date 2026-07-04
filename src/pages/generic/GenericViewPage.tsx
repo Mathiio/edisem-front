@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, Variants } from 'framer-motion';
 import { Layouts } from '@/components/layout/Layouts';
@@ -63,12 +63,12 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
   const [loadingViews, setLoadingViews] = useState(true);
   const [loadingRecommendations, setLoadingRecommendations] = useState(true);
   const [selected, setSelected] = useState(config.defaultView || config.viewOptions[0]?.key || '');
-  const [equalHeight, setEqualHeight] = useState<number | null>(null);
+  const [matchedHeight, setMatchedHeight] = useState<number | null>(null);
   const [isExitingRightColumn, setIsExitingRightColumn] = useState(false);
   const [videoSeek, setVideoSeek] = useState<{ time: number; id: number } | null>(null);
   const currentVideoTime = videoSeek?.time ?? 0;
 
-  const firstDivRef = useRef<HTMLDivElement>(null);
+  const leftColumnRef = useRef<HTMLDivElement>(null);
   const searchModalRef = useRef<SearchModalRef>(null);
 
   // ================================
@@ -182,12 +182,40 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Sync height for equal columns
-  useEffect(() => {
-    if (!loading && firstDivRef.current) {
-      setEqualHeight(firstDivRef.current.clientHeight);
+  // Colonne droite calée sur la hauteur réelle de la colonne gauche (desktop uniquement)
+  useLayoutEffect(() => {
+    if (loading) {
+      setMatchedHeight(null);
+      return;
     }
-  }, [loading]);
+
+    const desktopQuery = window.matchMedia('(min-width: 1024px)');
+
+    const syncHeight = () => {
+      if (!desktopQuery.matches) {
+        setMatchedHeight(null);
+        return;
+      }
+
+      const node = leftColumnRef.current;
+      if (!node) return;
+
+      setMatchedHeight(Math.round(node.getBoundingClientRect().height));
+    };
+
+    syncHeight();
+
+    const node = leftColumnRef.current;
+    const observer = node ? new ResizeObserver(syncHeight) : null;
+    if (node && observer) observer.observe(node);
+
+    desktopQuery.addEventListener('change', syncHeight);
+
+    return () => {
+      observer?.disconnect();
+      desktopQuery.removeEventListener('change', syncHeight);
+    };
+  }, [loading, itemDetails, loadingKeywords, loadingMedia, loadingViews]);
 
   // ================================
   // View helpers
@@ -385,6 +413,12 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
       .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
   }, [keywords]);
 
+  const hasKeywordsRow =
+    shouldShowRightColumn &&
+    config.showKeywords &&
+    (loadingKeywords || sortedKeywords.length > 0);
+  const mainContentRowClass = hasKeywordsRow ? 'lg:row-start-2' : 'lg:row-start-1';
+
   // ================================
   // Resource owner
   // ================================
@@ -400,63 +434,102 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
   const DetailsSkeleton = config.detailsSkeleton;
 
   // ================================
-  // renderViewsPanel
+  // Views panel (header + contenu)
   // ================================
-  const renderViewsPanel = () => (
-    <div className='flex w-full flex-col gap-5 flex-grow min-h-0 overflow-hidden'>
-      <div className='flex items-center justify-between gap-3 w-full min-w-0'>
-        <h2 className='text-2xl font-medium text-c6 truncate flex-1 min-w-0'>{selectedOption?.title}</h2>
-        <Dropdown classNames={dropdownContentClassNames}>
-          <DropdownTrigger className='shrink-0 p-0 bg-transparent border-0 data-[hover=true]:bg-transparent'>
-            <div className={dropdownTriggerButtonClass}>
-              <span className='text-base font-normal text-c6 whitespace-nowrap'>Autres choix</span>
-              <ArrowIcon size={12} className='rotate-90 text-c6 shrink-0' />
-            </div>
-          </DropdownTrigger>
-          <DropdownMenu aria-label='View options' className='p-2' classNames={dropdownMenuClassNames}>
-            {(availableViews.length > 0 ? availableViews : config.viewOptions).map((option) => {
-              const isAvailable = availableViews.some((v) => v.key === option.key);
-              const isLoading = loadingViews && !isAvailable;
-              return (
-                <DropdownItem
-                  key={option.key}
-                  className={dropdownMenuItemClass}
-                  onPress={() => handleOptionSelect(option.key)}
-                  isDisabled={isLoading}>
-                  <div className={`flex items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 ${
-                    isLoading ? 'text-c4 cursor-not-allowed' :
-                    selected === option.key ? 'bg-c3 text-c6 font-medium' : 'text-c6 hover:bg-c3'
-                  }`}>
-                    {isLoading && <HeroSpinner size='sm' className='mr-2 text-c6' />}
-                    <span className='text-base font-normal'>{option.title}</span>
-                  </div>
-                </DropdownItem>
-              );
-            })}
-          </DropdownMenu>
-        </Dropdown>
-      </div>
-
-      <div className='flex-grow min-h-0 overflow-auto'>
-        {viewHasRenderableContent(selectedOption) ? (
-          renderedContent
-        ) : (
-          <div className='flex flex-col items-center justify-center w-full h-full py-5 text-center gap-4'>
-            <ThumbnailIcon size={32} className='text-c4' />
-            <p className='text-c5 text-base w-50'>
-              Aucun contenu renseigné pour {selectedOption?.title?.toLowerCase() || 'cette section'}.
-            </p>
+  const viewsPanelHeader = (
+    <div className='flex items-center justify-between gap-3 w-full min-w-0'>
+      <h2 className='text-2xl font-medium text-c6 truncate flex-1 min-w-0'>{selectedOption?.title}</h2>
+      <Dropdown classNames={dropdownContentClassNames}>
+        <DropdownTrigger className='shrink-0 p-0 bg-transparent border-0 data-[hover=true]:bg-transparent'>
+          <div className={dropdownTriggerButtonClass}>
+            <span className='text-base font-normal text-c6 whitespace-nowrap'>Autres choix</span>
+            <ArrowIcon size={12} className='rotate-90 text-c6 shrink-0' />
           </div>
-        )}
-      </div>
+        </DropdownTrigger>
+        <DropdownMenu aria-label='View options' className='p-2' classNames={dropdownMenuClassNames}>
+          {(availableViews.length > 0 ? availableViews : config.viewOptions).map((option) => {
+            const isAvailable = availableViews.some((v) => v.key === option.key);
+            const isLoading = loadingViews && !isAvailable;
+            return (
+              <DropdownItem
+                key={option.key}
+                className={dropdownMenuItemClass}
+                onPress={() => handleOptionSelect(option.key)}
+                isDisabled={isLoading}>
+                <div className={`flex items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 ${
+                  isLoading ? 'text-c4 cursor-not-allowed' :
+                  selected === option.key ? 'bg-c3 text-c6 font-medium' : 'text-c6 hover:bg-c3'
+                }`}>
+                  {isLoading && <HeroSpinner size='sm' className='mr-2 text-c6' />}
+                  <span className='text-base font-normal'>{option.title}</span>
+                </div>
+              </DropdownItem>
+            );
+          })}
+        </DropdownMenu>
+      </Dropdown>
     </div>
   );
+
+  const viewsPanelContent = (
+    <div className='flex-1 min-h-0 overflow-y-auto'>
+      {viewHasRenderableContent(selectedOption) ? (
+        renderedContent
+      ) : (
+        <div className='flex flex-col items-center justify-center w-full h-full py-5 text-center gap-4'>
+          <ThumbnailIcon size={32} className='text-c4' />
+          <p className='text-c5 text-base w-50'>
+            Aucun contenu renseigné pour {selectedOption?.title?.toLowerCase() || 'cette section'}.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderViewsPanel = () => (
+    <div className='flex w-full flex-col gap-5 flex-1 min-h-0 overflow-hidden'>
+      {viewsPanelHeader}
+      {viewsPanelContent}
+    </div>
+  );
+
+  const renderViewsPanelHeaderLoading = () => (
+    <div className='flex items-center justify-between w-full'>
+      <div className='w-2/5 h-12 bg-c3 rounded-lg animate-pulse' />
+      <div className='w-1/5 h-12 bg-c3 rounded-lg animate-pulse' />
+    </div>
+  );
+
+  const renderViewsPanelBodyLoading = () => (
+    <div className='flex flex-col gap-4 flex-1 min-h-0'>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className='w-full h-28 bg-c3 rounded-xl animate-pulse' />
+      ))}
+    </div>
+  );
+
+  const renderViewsPanelLoading = () => (
+    <>
+      {renderViewsPanelHeaderLoading()}
+      {renderViewsPanelBodyLoading()}
+    </>
+  );
+
+  const rightColumnBodyStyle =
+    matchedHeight != null ? { height: matchedHeight, maxHeight: matchedHeight } : undefined;
+
+  const rightColumnMotionProps = {
+    initial: { opacity: 0, x: 30 } as const,
+    animate: isExitingRightColumn
+      ? { opacity: 0, x: 60, transition: { duration: 0.35, ease: 'easeIn' } }
+      : { opacity: 1, x: 0, transition: { duration: 0.4, ease: 'easeOut' } },
+  };
 
   // ================================
   // Main render (view mode — les skeletons gèrent l'état loading en interne)
   // ================================
   return (
-    <Layouts className='grid grid-cols-10 col-span-10 gap-6 overflow-visible z-0'>
+    <Layouts className='grid grid-cols-10 col-span-10 gap-6 overflow-visible z-0 items-start'>
       {/* Breadcrumbs */}
       <div className='col-span-10 w-full'>
         <DynamicBreadcrumbs
@@ -466,76 +539,119 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
         />
       </div>
 
-      {/* Left column */}
-      <motion.div ref={firstDivRef} className={leftColumnOuterClassName} variants={fadeIn} initial='hidden' animate='visible'>
-        <div className={leftColumnInnerClassName}>
-          {/* Keywords carousel */}
+      {shouldShowRightColumn ? (
+        <div className='col-span-10 grid grid-cols-10 gap-6 items-start'>
           {config.showKeywords && (
-            loadingKeywords ? (
-              <KeywordsCarouselSkeleton />
-            ) : (
-              itemDetails && sortedKeywords?.length > 0 && (
-                <LongCarrousel
-                  perPage={3}
-                  perMove={1}
-                  autowidth={true}
-                  data={sortedKeywords}
-                  renderSlide={(item) => (
-                    <KeywordsCard key={item.id || item.title} onSearchClick={handleKeywordClick} word={item.title} />
-                  )}
-                />
-              )
-            )
-          )}
-
-          {/* Overview */}
-          {loading ? (
-            OverviewSkeleton ? <OverviewSkeleton /> : <div>Loading...</div>
-          ) : itemDetails ? (
-            <OverviewComponent
-              {...config.mapOverviewProps(itemDetails, currentVideoTime)}
-              videoSeek={videoSeek}
-              type={config.type}
-              isEditing={false}
-              loadingMedia={loadingMedia}
-            />
-          ) : null}
-
-          {/* Details */}
-          {loading ? (
-            DetailsSkeleton ? <DetailsSkeleton /> : <div>Loading...</div>
-          ) : itemDetails ? (
-            <DetailsComponent {...config.mapDetailsProps(itemDetails)} isEditing={false} type={config.type} />
-          ) : null}
-        </div>
-      </motion.div>
-
-      {/* Right column */}
-      {shouldShowRightColumn && (
-        <motion.div
-          style={{ height: equalHeight || 'auto' }}
-          className='col-span-10 lg:col-span-4 flex flex-col gap-12 overflow-hidden'
-          initial={{ opacity: 0, x: 30 }}
-          animate={
-            isExitingRightColumn
-              ? { opacity: 0, x: 60, transition: { duration: 0.35, ease: 'easeIn' } }
-              : { opacity: 1, x: 0, transition: { duration: 0.4, ease: 'easeOut' } }
-          }>
-          {loadingViews ? (
-            <div className='flex w-full flex-col gap-5 flex-grow'>
-              <div className='flex items-center justify-between w-full'>
-                <div className='w-2/5 h-12 bg-c3 rounded-lg animate-pulse' />
-                <div className='w-1/5 h-12 bg-c3 rounded-lg animate-pulse' />
-              </div>
-              <div className='flex flex-col gap-4'>
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className='w-full h-28 bg-c3 rounded-xl animate-pulse' />
-                ))}
-              </div>
+            <div className='col-span-10 lg:col-span-6 lg:row-start-1'>
+              {loadingKeywords ? (
+                <KeywordsCarouselSkeleton />
+              ) : (
+                itemDetails &&
+                sortedKeywords?.length > 0 && (
+                  <LongCarrousel
+                    perPage={3}
+                    perMove={1}
+                    autowidth={true}
+                    data={sortedKeywords}
+                    renderSlide={(item) => (
+                      <KeywordsCard key={item.id || item.title} onSearchClick={handleKeywordClick} word={item.title} />
+                    )}
+                  />
+                )
+              )}
             </div>
-          ) : (
-            renderViewsPanel()
           )}
+
+          <motion.div className={`col-span-10 lg:col-span-6 lg:self-start ${mainContentRowClass}`} variants={fadeIn} initial='hidden' animate='visible'>
+            <div ref={leftColumnRef} className='flex flex-col gap-5'>
+              {loading ? (
+                OverviewSkeleton ? <OverviewSkeleton /> : <div>Loading...</div>
+              ) : itemDetails ? (
+                <OverviewComponent
+                  {...config.mapOverviewProps(itemDetails, currentVideoTime)}
+                  videoSeek={videoSeek}
+                  type={config.type}
+                  isEditing={false}
+                  loadingMedia={loadingMedia}
+                />
+              ) : null}
+
+              {loading ? (
+                DetailsSkeleton ? <DetailsSkeleton /> : <div>Loading...</div>
+              ) : itemDetails ? (
+                <DetailsComponent {...config.mapDetailsProps(itemDetails)} isEditing={false} type={config.type} />
+              ) : null}
+            </div>
+          </motion.div>
+
+          {hasKeywordsRow ? (
+            <>
+              <motion.div
+                {...rightColumnMotionProps}
+                className='col-span-10 lg:col-span-4 lg:col-start-7 lg:row-start-1 lg:self-start w-full'>
+                {loadingViews ? renderViewsPanelHeaderLoading() : viewsPanelHeader}
+              </motion.div>
+
+              <motion.div
+                {...rightColumnMotionProps}
+                style={rightColumnBodyStyle}
+                className='col-span-10 lg:col-span-4 lg:col-start-7 lg:row-start-2 lg:self-start flex flex-col min-h-0 overflow-hidden w-full'>
+                {loadingViews ? renderViewsPanelBodyLoading() : viewsPanelContent}
+              </motion.div>
+            </>
+          ) : (
+            <motion.div
+              {...rightColumnMotionProps}
+              style={rightColumnBodyStyle}
+              className={`col-span-10 lg:col-span-4 lg:col-start-7 lg:self-start flex flex-col gap-5 min-h-0 overflow-hidden w-full ${mainContentRowClass}`}>
+              {loadingViews ? (
+                <div className='flex w-full flex-col gap-5 flex-1 min-h-0'>{renderViewsPanelLoading()}</div>
+              ) : (
+                renderViewsPanel()
+              )}
+            </motion.div>
+          )}
+        </div>
+      ) : (
+        <motion.div className={leftColumnOuterClassName} variants={fadeIn} initial='hidden' animate='visible'>
+          <div className={leftColumnInnerClassName}>
+            {config.showKeywords && (
+              loadingKeywords ? (
+                <KeywordsCarouselSkeleton />
+              ) : (
+                itemDetails &&
+                sortedKeywords?.length > 0 && (
+                  <LongCarrousel
+                    perPage={3}
+                    perMove={1}
+                    autowidth={true}
+                    data={sortedKeywords}
+                    renderSlide={(item) => (
+                      <KeywordsCard key={item.id || item.title} onSearchClick={handleKeywordClick} word={item.title} />
+                    )}
+                  />
+                )
+              )
+            )}
+
+            {loading ? (
+              OverviewSkeleton ? <OverviewSkeleton /> : <div>Loading...</div>
+            ) : itemDetails ? (
+              <OverviewComponent
+                {...config.mapOverviewProps(itemDetails, currentVideoTime)}
+                videoSeek={videoSeek}
+                type={config.type}
+                isEditing={false}
+                loadingMedia={loadingMedia}
+              />
+            ) : null}
+
+            {loading ? (
+              DetailsSkeleton ? <DetailsSkeleton /> : <div>Loading...</div>
+            ) : itemDetails ? (
+              <DetailsComponent {...config.mapDetailsProps(itemDetails)} isEditing={false} type={config.type} />
+            ) : null}
+          </div>
         </motion.div>
       )}
 

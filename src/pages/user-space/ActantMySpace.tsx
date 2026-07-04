@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { addToast } from '@/theme/components';
 import { Input, Select, SelectItem, Pagination } from '@/theme/components';
 import { CreateResourceAction } from '@/components/features/shared/my-space/CreateResourceAction';
+import { ExportLinkingCatalogButton } from '@/components/features/shared/my-space/ExportLinkingCatalogButton';
 import {
   MySpaceResourceRow,
   MySpaceResourceRowSkeleton,
@@ -381,14 +382,17 @@ export const ActantMySpace: React.FC = () => {
             </div>
           </div>
 
-          {filteredCreateableConfigs.length > 0 && (
-            <CreateResourceAction
-              configs={filteredCreateableConfigs}
-              onCreate={handleCreateResource}
-              triggerLabel='Créer une ressource'
-              menuLabel='Créer une ressource'
-            />
-          )}
+          <div className='flex items-center gap-3 shrink-0 flex-wrap'>
+            <ExportLinkingCatalogButton />
+            {filteredCreateableConfigs.length > 0 && (
+              <CreateResourceAction
+                configs={filteredCreateableConfigs}
+                onCreate={handleCreateResource}
+                triggerLabel='Créer Ressource'
+                menuLabel='Créer Ressource'
+              />
+            )}
+          </div>
         </div>
       </div>
 

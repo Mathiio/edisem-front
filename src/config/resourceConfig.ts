@@ -396,6 +396,16 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
  * Source: /omk/api/properties?term=<term>
  */
 export const OMEKA_PROPERTY_IDS: Record<string, number> = {
+  'dcterms:title': 1,
+  'dcterms:abstract': 19,
+  'dcterms:description': 4,
+  'dcterms:date': 7,
+  'dcterms:source': 11,
+  'foaf:name': 138,
+  'foaf:firstName': 139,
+  'foaf:lastName': 140,
+  'foaf:birthday': 182,
+  'schema:jobTitle': 961,
   'dcterms:references': 36,
   'dcterms:bibliographicCitation': 48,
   'dcterms:type': 8,

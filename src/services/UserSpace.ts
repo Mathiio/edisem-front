@@ -1546,3 +1546,36 @@ export async function getWatchlistCards(): Promise<{ items: WatchlistCard[] }> {
 export async function toggleWatchlistItem(resourceId: number): Promise<{ saved: boolean; ids: number[] }> {
   return watchlistFetch<{ saved: boolean; ids: number[] }>('toggleWatchlistItem', { resourceId });
 }
+
+export interface LinkingExportRow {
+  id: number;
+  title: string;
+  type: string;
+  keywords: string[];
+}
+
+/** Catalogue site (conférences, expérimentations, récits) pour export Excel / aide IA */
+export async function fetchLinkingExportCatalog(): Promise<LinkingExportRow[]> {
+  const params = new URLSearchParams({
+    action: 'getLinkingExportCatalog',
+    json: '1',
+  });
+  const response = await fetch(`${API_BASE}&${params.toString()}`, { credentials: 'include' });
+  if (!response.ok) {
+    throw new Error('Erreur lors de la récupération du catalogue');
+  }
+  const data = await response.json();
+  if (data?.code === 401) {
+    throw new Error('Connectez-vous pour exporter le catalogue');
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+  const items = Array.isArray(data?.items) ? data.items : [];
+  return items.map((item: Record<string, unknown>) => ({
+    id: Number(item.id),
+    title: String(item.title ?? 'Sans titre'),
+    type: String(item.type ?? ''),
+    keywords: Array.isArray(item.keywords) ? item.keywords.map(String) : [],
+  }));
+}

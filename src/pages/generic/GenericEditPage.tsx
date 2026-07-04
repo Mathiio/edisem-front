@@ -1142,11 +1142,15 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       }
     }
 
-    // Title
-    const titlePropertyId = propMap['dcterms:title'] ?? 1;
-    const titleValue = data.title || data['dcterms:title']?.[0]?.['@value'] || '';
-    if (titleValue) {
-      itemData['dcterms:title'] = [{ type: 'literal', property_id: titlePropertyId, '@value': titleValue, is_public: true }];
+    // Title — use the configured title property (foaf:name for Personne, dcterms:title for most others)
+    const titleFieldConfig = config.formFields?.find((f) => f.key === 'title');
+    const titleOmekaKey = titleFieldConfig?.dataPath?.split('.')[0] ?? 'dcterms:title';
+    const titleValue = data.title || data[titleOmekaKey]?.[0]?.['@value'] || '';
+    if (titleValue.trim()) {
+      const titlePropertyId = await resolveOmekaPropertyId(titleOmekaKey, propMap, itemData);
+      if (titlePropertyId) {
+        itemData[titleOmekaKey] = [{ type: 'literal', property_id: titlePropertyId, '@value': titleValue.trim(), is_public: true }];
+      }
     }
 
     // Other fields
@@ -1156,7 +1160,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       if (raw === undefined || raw === null) continue;
       const omekaPropertyKey = field.dataPath?.split('.')[0];
       if (!omekaPropertyKey) continue;
-      const propertyId = propMap[omekaPropertyKey] ?? OMEKA_PROPERTY_IDS[omekaPropertyKey];
+      const propertyId = await resolveOmekaPropertyId(omekaPropertyKey, propMap, itemData);
       if (!propertyId) continue;
 
       if (field.type === 'multiselection' || field.type === 'selection') {
@@ -1189,7 +1193,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       for (const [viewKey, omekaProperty] of Object.entries(config.viewKeyToProperty)) {
         const value = data[viewKey];
         if (!value || (Array.isArray(value) && value.length === 0)) continue;
-        const propertyId = propMap[omekaProperty] ?? OMEKA_PROPERTY_IDS[omekaProperty];
+        const propertyId = await resolveOmekaPropertyId(omekaProperty, propMap, itemData);
         if (!propertyId) continue;
         if (Array.isArray(value)) {
           itemData[omekaProperty] = value
@@ -1968,10 +1972,10 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
               {/* Unified form section */}
               <div className={`${useSingleColumnEdit ? 'border-t border-c3 pt-6' : 'rounded-xl p-6 border-2 border-c3'} flex flex-col gap-8 items-start w-full`}>
                 <FormTextInput
-                  label='Titre'
+                  label={config.formFields?.find((f) => f.key === 'title')?.label || 'Titre'}
                   value={formData.title || ''}
                   onChange={(value) => setValue('title', value)}
-                  placeholder='Titre de la ressource'
+                  placeholder={config.formFields?.find((f) => f.key === 'title')?.placeholder || 'Titre de la ressource'}
                 />
 
                 {config.formFields?.filter((f) => f.key === 'description').map((field) => (
