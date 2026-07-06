@@ -13,7 +13,7 @@ export const carouselArrowButtonClass =
   '[&>svg]:!w-4 [&>svg]:!h-4 [&>svg]:shrink-0';
 
 const CarouselArrows: React.FC = () => (
-  <div className='splide__arrows relative flex gap-2.5 shrink-0'>
+  <div className='splide__arrows relative flex gap-2 shrink-0'>
     <Button
       isIconOnly
       className={`${carouselArrowButtonClass} splide__arrow--prev`}
@@ -110,7 +110,7 @@ export const LongCarrousel: React.FC<LongCarrouselProps> = ({ data, autowidth, p
     <Splide
       options={{
         perPage: perPage,
-        gap: '1rem',
+        gap: '8px',
         pagination: false,
         perMove: perMove,
         speed: 1000,
@@ -125,7 +125,7 @@ export const LongCarrousel: React.FC<LongCarrouselProps> = ({ data, autowidth, p
         ))}
       </SplideTrack>
       <div className=' flex justify-between items-center'>
-        <div className='splide__arrows relative flex gap-2.5'>
+        <div className='splide__arrows relative flex gap-2'>
           <Button
             isIconOnly
             className={`${carouselArrowButtonClass} splide__arrow--prev`}
@@ -163,9 +163,9 @@ export const LongCarrouselFilter: React.FC<LongCarrouselProps> = ({
       }}
       hasTrack={false}
       aria-label='...'
-      className='flex w-full justify-between items-center gap-2.5'>
+      className='flex w-full justify-between items-center gap-2'>
       <div className='hidden justify-between items-center'>
-        <div className='splide__arrows relative flex gap-2.5'>
+        <div className='splide__arrows relative flex gap-2'>
           <Button
             isIconOnly
             className={`${carouselArrowButtonClass} splide__arrow--prev`}
@@ -180,7 +180,7 @@ export const LongCarrouselFilter: React.FC<LongCarrouselProps> = ({
         ))}
       </SplideTrack>
       <div className=' flex justify-between items-center'>
-        <div className='splide__arrows relative flex gap-2.5'>
+        <div className='splide__arrows relative flex gap-2'>
           <Button isIconOnly className={`${carouselArrowButtonClass} splide__arrow--next`} aria-label='Slide suivante'>
             <ArrowIcon />
           </Button>

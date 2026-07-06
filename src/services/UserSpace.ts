@@ -435,6 +435,63 @@ export function patchRecentUserResourcesFromOmeka(
 }
 
 /**
+ * Complète les miniatures manquantes via l'API Omeka S (par id item).
+ * Utilisé notamment par l'administration globale (listRecent sans vignettes).
+ */
+export async function enrichResourceCardsThumbnails<T extends StudentResourceCard>(
+  cards: T[],
+): Promise<T[]> {
+  const idsToFetch = cards
+    .filter((card) => !hasUsableThumbnail(card))
+    .map((card) => Number(card.id))
+    .filter((id) => Number.isFinite(id) && id > 0);
+
+  if (idsToFetch.length === 0) return cards;
+
+  const items: Record<string, any>[] = [];
+  const CONCURRENCY = 5;
+
+  for (let i = 0; i < idsToFetch.length; i += CONCURRENCY) {
+    const batch = idsToFetch.slice(i, i + CONCURRENCY);
+    const batchItems = await Promise.all(
+      batch.map(async (id) => {
+        try {
+          const response = await fetch(omekaApiUrl(`${OMEKA_API_BASE}items/${id}`));
+          if (!response.ok) return null;
+          return response.json();
+        } catch {
+          return null;
+        }
+      }),
+    );
+    items.push(...batchItems.filter(Boolean));
+  }
+
+  if (items.length === 0) return cards;
+
+  const thumbById = new Map<string, string>();
+
+  await Promise.all(
+    items.map(async (item) => {
+      const id = String(item['o:id']);
+      let thumb = extractThumbnailFromOmekaItem(item);
+      if (!thumb || isOmekaPlaceholderThumbnail(thumb)) {
+        thumb = (await enrichThumbnailFromMedia(item)) ?? thumb;
+      }
+      if (thumb && !isOmekaPlaceholderThumbnail(thumb)) {
+        thumbById.set(id, thumb);
+      }
+    }),
+  );
+
+  return cards.map((card) => {
+    const thumb = thumbById.get(String(card.id));
+    if (!thumb || hasUsableThumbnail(card)) return card;
+    return normalizeStudentResourceCard({ ...card, thumbnail: thumb }) as T;
+  });
+}
+
+/**
  * Complète les miniatures et actants manquants via l'API Omeka S (liste complète).
  */
 async function enrichApiCardsFromOmeka(

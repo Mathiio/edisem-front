@@ -2,7 +2,7 @@
  * API administration globale (global_admin) — GlobalAdminViewHelper backend.
  */
 
-import type { StudentResourceCard } from '@/services/UserSpace';
+import { enrichResourceCardsThumbnails, type StudentResourceCard } from '@/services/UserSpace';
 
 const EDISEM_AJAX_BASE =
   import.meta.env.VITE_EDISEM_AJAX_BASE ??
@@ -61,7 +61,8 @@ async function fetchGlobalAdmin<T>(action: string, params: Record<string, string
 
 export async function fetchGlobalAdminRecent(): Promise<AdminResourceCard[]> {
   const data = await fetchGlobalAdmin<{ items: AdminResourceCard[] }>('listRecent');
-  return data.items ?? [];
+  const items = data.items ?? [];
+  return enrichResourceCardsThumbnails(items);
 }
 
 export async function fetchGlobalAdminCatalog(options: {
