@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { EmptyStateCard } from '@/components/ui/EmptyStateCard';
 import { Bibliography } from '@/types/ui';
 import { getFormOnlyExternalUrl, isHttpUrl } from '@/lib/resourceUtils';
+import { LinkedResourceCard, LINKED_RESOURCE_LIST_CLASS } from '@/components/features/resource-links/LinkedResourceCard';
 
 const hasContent = (value: string | string[] | { first_name: string; last_name: string }[] | undefined | null): boolean => {
   // Si value est un tableau d'objets créateurs (avec first_name et last_name)
@@ -177,7 +178,6 @@ const bibliographyTemplates: { [key: number]: (item: Bibliography) => React.Reac
 export const BibliographyCard: React.FC<Bibliography & { uniqueKey?: number; onEdit?: (id: number) => void }> = (props) => {
   const { thumbnail, url, onEdit } = props;
   const resolvedId = props.id || (props as any)['o:id'] || (props as any)['value_resource_id'];
-  const [isHovered, setIsHovered] = useState(false);
   const externalUrl = getFormOnlyExternalUrl(props) || (isHttpUrl(url) ? url : null);
 
   const formatBibliography = (item: Bibliography) => {
@@ -185,40 +185,23 @@ export const BibliographyCard: React.FC<Bibliography & { uniqueKey?: number; onE
     return template ? template(item) : item.title || 'Référence non formatée';
   };
 
-  const content = (
-    <div className={`flex  ${thumbnail ? 'flex-row' : 'flex-col'} gap-4 items-start`}>
-      {thumbnail && (
-        <div className='flex-shrink-0'>
-          <img src={thumbnail} alt='thumbnail' className='w-12 object-cover rounded-md' />
-        </div>
-      )}
-      <div className='w-full flex flex-col gap-2.5'>
-        <p className='text-c6 text-base'>{formatBibliography(props)}</p>
-      </div>
-    </div>
-  );
+  const isLocked = !onEdit && !externalUrl;
 
   return (
-    <div
-      className={`w-full flex flex-row justify-between border-2 rounded-xl items-center gap-6 transition-transform-colors-opacity ${isHovered ? 'border-c6' : 'border-c3'}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
-      {onEdit ? (
-        <button className='w-full gap-6 p-6 flex flex-row justify-between text-left cursor-pointer' onClick={() => resolvedId && onEdit(resolvedId)}>
-          {content}
-        </button>
-      ) : externalUrl ? (
-        <a
-          className='w-full gap-6 p-6 flex flex-row justify-between'
-          href={externalUrl}
-          target='_blank'
-          rel='noopener noreferrer'>
-          {content}
-        </a>
-      ) : (
-        <div className='w-full gap-6 p-6 flex flex-row justify-between'>{content}</div>
-      )}
-    </div>
+    <LinkedResourceCard
+      thumbnail={thumbnail}
+      isLocked={isLocked}
+      href={!onEdit && externalUrl ? externalUrl : undefined}
+      external={Boolean(externalUrl)}
+      onClick={
+        onEdit
+          ? () => {
+              if (resolvedId) onEdit(resolvedId);
+            }
+          : undefined
+      }>
+      <p className='text-c6 text-base font-normal'>{formatBibliography(props)}</p>
+    </LinkedResourceCard>
   );
 };
 
@@ -275,7 +258,7 @@ export const Bibliographies: React.FC<BibliographiesProps> = ({ sections = [], b
             section.bibliographies.length > 0 && (
               <div key={sectionIndex}>
                 {!notitle && <h2 className='text-base text-c5 font-medium'>{section.title}</h2>}
-                <div className='flex flex-col gap-2.5'>
+                <div className={LINKED_RESOURCE_LIST_CLASS}>
                   {section.bibliographies.map((bibliography, index) => (
                     <BibliographyCard key={`${sectionIndex}-${index}`} {...bibliography} uniqueKey={index} onEdit={onEdit} />
                   ))}

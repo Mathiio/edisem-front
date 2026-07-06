@@ -1,4 +1,5 @@
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
+import { RELATED_RESOURCES_FIELD, createRelatedResourcesSmartRecommendations } from '@/config/relatedResourceConfig';
 import { SimplifiedDetailConfig } from '../simplifiedConfig';
 import { convertToGenericConfig } from '../simplifiedConfigAdapter';
 import { IMAGINAIRE_IA_VOCAB_FIELDS } from './imagiaireIAConfig';
@@ -54,6 +55,7 @@ export const recitArtitstiqueConfigSimplified: SimplifiedDetailConfig = {
       multiSelect: true,
       zone: 'details',
     },
+    relatedResources: RELATED_RESOURCES_FIELD,
   },
 
   views: [
@@ -116,7 +118,7 @@ export const recitArtitstiqueConfigSimplified: SimplifiedDetailConfig = {
   showKeywords: true,
   showRecommendations: true,
   showComments: true,
-  recommendationsTitle: 'Récits Artistiques similaires',
+  recommendationsTitle: 'Contenus associés',
   recommendationType: 'recit_artistique',
   defaultView: 'AnalyseCritique',
   formEnabled: true,
@@ -125,6 +127,8 @@ export const recitArtitstiqueConfigSimplified: SimplifiedDetailConfig = {
     { label: 'Ajouter Personne', templateId: 33, property: 'schema:agent' },
     { label: 'Ajouter Organisation', templateId: 104, property: 'schema:agent' },
   ],
+
+  smartRecommendations: createRelatedResourcesSmartRecommendations(),
 };
 
 export const recitArtitstiqueConfig = convertToGenericConfig(recitArtitstiqueConfigSimplified);

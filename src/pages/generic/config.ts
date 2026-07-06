@@ -199,9 +199,13 @@ export interface FormFieldConfig {
   selectionConfig?: {
     resourceType: string; // Type de ressource pour ResourcePicker
     templateId?: number; // Template ID Omeka S
+    templateIds?: number[]; // Templates multiples (contenus associés)
     itemSetId?: number; // Item set ID Omeka S (pour type itemset)
     multiple?: boolean;
+    pickerVariant?: 'default' | 'related';
   };
+  /** Zone d'affichage (overview = colonne gauche en édition) */
+  zone?: 'header' | 'overview' | 'details';
 }
 
 /**

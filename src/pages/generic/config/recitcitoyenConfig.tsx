@@ -1,8 +1,8 @@
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
+import { RELATED_RESOURCES_FIELD, createRelatedResourcesSmartRecommendations } from '@/config/relatedResourceConfig';
+import { IMAGINAIRE_IA_VOCAB_FIELDS } from './imagiaireIAConfig';
 import { SimplifiedDetailConfig } from '../simplifiedConfig';
 import { convertToGenericConfig } from '../simplifiedConfigAdapter';
-import { getRecitsCitoyensCards } from '@/services/Items';
-import { IMAGINAIRE_IA_VOCAB_FIELDS } from './imagiaireIAConfig';
 
 export const recitCitoyenConfigSimplified: SimplifiedDetailConfig = {
   resourceType: RESOURCE_TYPES.recit_citoyen.type,
@@ -33,6 +33,7 @@ export const recitCitoyenConfigSimplified: SimplifiedDetailConfig = {
       multiSelect: true,
       zone: 'details',
     },
+    relatedResources: RELATED_RESOURCES_FIELD,
   },
 
   views: [
@@ -71,7 +72,7 @@ export const recitCitoyenConfigSimplified: SimplifiedDetailConfig = {
   showKeywords: true,
   showRecommendations: true,
   showComments: true,
-  recommendationsTitle: 'Récits citoyens similaires',
+  recommendationsTitle: 'Contenus associés',
   recommendationType: 'recit_citoyen',
   defaultView: 'AnalyseCritique',
   formEnabled: true,
@@ -81,13 +82,7 @@ export const recitCitoyenConfigSimplified: SimplifiedDetailConfig = {
     { label: 'Ajouter Organisation', templateId: 104, property: 'schema:agent' },
   ],
 
-  smartRecommendations: {
-    getRelatedItems: async (itemDetails: any) => {
-      const recits = await getRecitsCitoyensCards();
-      return recits.filter((recit: any) => String(recit.id) !== String(itemDetails.id));
-    },
-    maxRecommendations: 5,
-  },
+  smartRecommendations: createRelatedResourcesSmartRecommendations(),
 };
 
 export const recitCitoyenConfig = convertToGenericConfig(recitCitoyenConfigSimplified);

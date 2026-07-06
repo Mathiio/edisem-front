@@ -199,6 +199,7 @@ const resolveContributorPersonnes = (
   const result: ResourceInfo[] = [];
 
   const addFromProperty = (property: string) => {
+    if (property === 'schema:isRelatedTo') return;
     getResourceIds(itemDetails, property).forEach((id) => {
       if (seen.has(id)) return;
       seen.add(id);
@@ -273,7 +274,12 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
     medias = [externalUrl];
   }
 
-  const resourceField = overviewFields.find((f) => f.type === 'resource');
+  const resourceField = overviewFields.find(
+    (field) =>
+      field.type === 'resource' &&
+      field.pickerVariant !== 'related' &&
+      field.property !== 'schema:isRelatedTo',
+  );
   const isPhotoMode = mediaUploadMode === 'photo';
   const isGalleryMode = mediaUploadMode === 'gallery';
 

@@ -1,8 +1,8 @@
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
+import { RELATED_RESOURCES_FIELD, createRelatedResourcesSmartRecommendations } from '@/config/relatedResourceConfig';
+import { IMAGINAIRE_IA_VOCAB_FIELDS } from './imagiaireIAConfig';
 import { SimplifiedDetailConfig } from '../simplifiedConfig';
 import { convertToGenericConfig } from '../simplifiedConfigAdapter';
-import { getRecitsMediatiquesCards } from '@/services/Items';
-import { IMAGINAIRE_IA_VOCAB_FIELDS } from './imagiaireIAConfig';
 
 export const recitMediatiqueConfigSimplified: SimplifiedDetailConfig = {
   resourceType: RESOURCE_TYPES.recit_mediatique.type,
@@ -37,6 +37,7 @@ export const recitMediatiqueConfigSimplified: SimplifiedDetailConfig = {
       multiSelect: true,
       zone: 'details',
     },
+    relatedResources: RELATED_RESOURCES_FIELD,
   },
 
   views: [
@@ -83,7 +84,7 @@ export const recitMediatiqueConfigSimplified: SimplifiedDetailConfig = {
   showKeywords: true,
   showRecommendations: true,
   showComments: true,
-  recommendationsTitle: 'Récits médiatiques similaires',
+  recommendationsTitle: 'Contenus associés',
   recommendationType: 'recit_mediatique',
   defaultView: 'AnalyseCritique',
   formEnabled: true,
@@ -93,13 +94,7 @@ export const recitMediatiqueConfigSimplified: SimplifiedDetailConfig = {
     { label: 'Ajouter Organisation', templateId: 104, property: 'dcterms:creator' },
   ],
 
-  smartRecommendations: {
-    getRelatedItems: async (itemDetails: any) => {
-      const recits = await getRecitsMediatiquesCards();
-      return recits.filter((recit: any) => String(recit.id) !== String(itemDetails.id));
-    },
-    maxRecommendations: 5,
-  },
+  smartRecommendations: createRelatedResourcesSmartRecommendations(),
 };
 
 export const recitMediatiqueConfig = convertToGenericConfig(recitMediatiqueConfigSimplified);

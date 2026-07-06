@@ -1,4 +1,5 @@
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
+import { RELATED_RESOURCES_FIELD, createRelatedResourcesSmartRecommendations } from '@/config/relatedResourceConfig';
 import {
   CONFERENCE_TYPE_PROPERTY,
   CONFERENCE_TYPE_VOCAB_ID,
@@ -44,6 +45,7 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
       multiSelect: true,
       zone: 'header',
     },
+    relatedResources: RELATED_RESOURCES_FIELD,
   },
 
   views: [
@@ -84,9 +86,11 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
   showKeywords: true,
   showRecommendations: true,
   showComments: true,
-  recommendationsTitle: 'Conférences associées',
+  recommendationsTitle: 'Contenus associés',
   defaultView: 'MicroResumes',
   formEnabled: true,
+
+  smartRecommendations: createRelatedResourcesSmartRecommendations(),
 
   contributorButtons: [
     { label: 'Ajouter Intervenant', templateId: 72, property: 'schema:agent' },

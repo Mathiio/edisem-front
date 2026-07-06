@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { MaximizeIcon, MinimizeIcon, SquareIcon, GalleryIcon } from '@/components/ui/icons';
 import { getYouTubeVideoId, getYouTubeThumbnailUrl } from '@/lib/utils';
 
@@ -11,22 +12,39 @@ interface MediaViewerProps {
   seekTo?: { time: number; id: number };
 }
 
+type MediaSize = { width: number; height: number };
+
+const computeContainFrameSize = (naturalWidth: number, naturalHeight: number, maxWidth: number, maxHeight: number): MediaSize => {
+  const scale = Math.min(maxWidth / naturalWidth, maxHeight / naturalHeight);
+  return {
+    width: Math.round(naturalWidth * scale),
+    height: Math.round(naturalHeight * scale),
+  };
+};
+
 const MediaViewer: React.FC<MediaViewerProps> = ({ src, alt = 'Media', className = '', isVideo = false, seekTo: seekToObj }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [objectFit, setObjectFit] = useState<'cover' | 'contain'>('cover');
   const [showControls, setShowControls] = useState(false);
+  const [mediaSize, setMediaSize] = useState<MediaSize | null>(null);
+  const [viewportSize, setViewportSize] = useState(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : 1920,
+    height: typeof window !== 'undefined' ? window.innerHeight : 1080,
+  }));
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [playerReady, setPlayerReady] = useState(false);
 
-  // Déterminer le type de média
+  const mediaUrl = typeof src === 'string' ? src : src.url ?? src.thumbnail ?? '';
   const mediaData = typeof src === 'string'
     ? {
         url: src,
-        thumbnail: (src.includes('youtube.com') || src.includes('youtu.be')) ? getYouTubeThumbnailUrl(src) : src
+        thumbnail: (src.includes('youtube.com') || src.includes('youtu.be')) ? getYouTubeThumbnailUrl(src) : src,
       }
     : src;
   const isYouTube = mediaData.url && (mediaData.url.includes('youtube.com') || mediaData.url.includes('youtu.be'));
   const youtubeVideoId = isYouTube ? getYouTubeVideoId(mediaData.url!) : null;
+
+  const hugMediaFrame = isFullscreen || objectFit === 'contain';
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
@@ -36,12 +54,35 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ src, alt = 'Media', className
     setObjectFit(objectFit === 'cover' ? 'contain' : 'cover');
   };
 
+  const handleMediaLoad = (event: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => {
+    const element = event.currentTarget;
+    const width = 'videoWidth' in element ? element.videoWidth : element.naturalWidth;
+    const height = 'videoHeight' in element ? element.videoHeight : element.naturalHeight;
+    if (width > 0 && height > 0) {
+      setMediaSize({ width, height });
+    }
+  };
+
   const handleBackdropClick = (event: React.MouseEvent) => {
-    // Fermer le plein écran seulement si on clique sur le backdrop (pas sur l'image)
     if (event.target === event.currentTarget) {
       setIsFullscreen(false);
     }
   };
+
+  useEffect(() => {
+    setMediaSize(null);
+  }, [mediaUrl]);
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+
+    const onResize = () => {
+      setViewportSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [isFullscreen]);
 
   // Gestion de la touche Échap pour sortir du plein écran
   useEffect(() => {
@@ -93,25 +134,27 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ src, alt = 'Media', className
     }
   }, [seekToObj, playerReady, youtubeVideoId]);
 
-  const containerClasses = isFullscreen
-    ? 'fixed inset-0 z-50 bg-black bg-opacity-80 backdrop-blur-[16px] flex items-center justify-center p-4 animate-in fade-in duration-300'
-    : `relative ${className}`;
+  const frameStyle: React.CSSProperties | undefined =
+    hugMediaFrame && mediaSize
+      ? isFullscreen
+        ? computeContainFrameSize(mediaSize.width, mediaSize.height, viewportSize.width * 0.9, viewportSize.height * 0.9)
+        : {
+            aspectRatio: `${mediaSize.width} / ${mediaSize.height}`,
+            maxWidth: '100%',
+            maxHeight: '100%',
+          }
+      : undefined;
 
-  const mediaWrapperClasses = isFullscreen ? ' flex justify-center max-w-[90vw] items-center max-h-[90vh]' : 'relative w-full h-full';
+  const mediaWrapperClasses = [
+    'relative overflow-hidden rounded-xl border-2 shrink-0',
+    isFullscreen ? 'border-c4 shadow-2xl' : 'border-c3',
+    hugMediaFrame ? 'w-auto h-auto max-w-full max-h-full' : 'w-full h-full bg-c2 flex items-center justify-center',
+  ].join(' ');
 
-  const mediaClasses = `transition-all duration-500 ease-out transform ${
-    isFullscreen
-      ? `rounded-12 shadow-2xl ${objectFit === 'cover' ? 'object-cover w-full h-full' : 'object-contain'} animate-in zoom-in-95 duration-300`
-      : `w-full h-full ${objectFit === 'cover' ? 'object-cover' : 'object-contain'}`
-  }`;
+  const mediaClasses = hugMediaFrame
+    ? 'block w-full h-full'
+    : `w-full h-full ${objectFit === 'cover' ? 'object-cover' : 'object-contain'}`;
 
-  // Style pour l'effet d'ombre sur les icônes
-  const iconShadowStyle = {
-    filter: 'drop-shadow(0 0 1px rgba(0, 0, 0, 0.8))',
-    WebkitFilter: 'drop-shadow(0 0 1px rgba(0, 0, 0, 0.8))',
-  };
-
-  // Render YouTube player
   const renderYouTubePlayer = () => {
     if (!youtubeVideoId) return null;
 
@@ -121,7 +164,7 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ src, alt = 'Media', className
       <iframe
         ref={iframeRef}
         src={embedUrl}
-        className={`${mediaClasses} rounded-12`}
+        className={`${mediaClasses} rounded-xl`}
         allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
         allowFullScreen
         title={alt}
@@ -129,52 +172,90 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ src, alt = 'Media', className
     );
   };
 
-  return (
-    <div
-      className={containerClasses}
-      onMouseEnter={() => !isYouTube && setShowControls(true)}
-      onMouseLeave={() => setShowControls(false)}
-      onClick={isFullscreen ? handleBackdropClick : undefined}>
-      {/* Wrapper pour le média et les contrôles associés */}
-      <div className={mediaWrapperClasses}>
-        {/* Média principal */}
-        {isYouTube ? (
-          renderYouTubePlayer()
-        ) : isVideo ? (
-          <video src={typeof src === 'string' ? src : mediaData.url} controls className={mediaClasses} />
-        ) : (
-          <img src={typeof src === 'string' ? src : mediaData.thumbnail || mediaData.url} alt={alt} className={mediaClasses} />
-        )}
+  const renderMediaFrame = () => (
+    <div className={mediaWrapperClasses} style={frameStyle}>
+      {isYouTube ? (
+        renderYouTubePlayer()
+      ) : isVideo ? (
+        <video
+          src={typeof src === 'string' ? src : mediaData.url}
+          controls
+          className={mediaClasses}
+          onLoadedMetadata={handleMediaLoad}
+        />
+      ) : (
+        <img
+          src={typeof src === 'string' ? src : mediaData.thumbnail || mediaData.url}
+          alt={alt}
+          className={mediaClasses}
+          onLoad={handleMediaLoad}
+        />
+      )}
 
-        {/* Contrôles en bas à droite de l'IMAGE (pas pour YouTube) */}
-        {!isYouTube && (
-          <div
-            className={`absolute bottom-4 right-4 flex items-center gap-10 bg-[#000] bg-opacity-30 backdrop-blur-[16px] rounded-12 px-3 py-2 transition-all duration-300 ease-out z-10 transform ${
-              showControls ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-95'
-            }`}>
-            <div className='flex gap-1'>
-              {/* Bouton mode d'affichage */}
-              {!isFullscreen && (
-                <button
-                  onClick={toggleObjectFit}
-                  className='text-[#fff] p-2 rounded-12 hover:bg-[#fff] hover:bg-opacity-20 transition-all duration-200'
-                  title={objectFit === 'cover' ? 'Mode Contain (ajuster)' : 'Mode Cover (remplir)'}>
-                  <div style={iconShadowStyle}>{objectFit === 'cover' ? <MinimizeIcon size={20} /> : <SquareIcon size={20} />}</div>
-                </button>
-              )}
+      {!isYouTube && (
+        <div
+          className={[
+            'absolute bottom-3 right-3 z-10',
+            'flex items-center gap-1 p-1',
+            'rounded-xl border-2 border-c3 bg-c2',
+            'transition-all duration-200 ease-out',
+            isFullscreen || showControls
+              ? 'opacity-100 translate-y-0 pointer-events-auto'
+              : 'opacity-0 translate-y-1 pointer-events-none',
+          ].join(' ')}>
+          {!isFullscreen && (
+            <button
+              type='button'
+              onClick={toggleObjectFit}
+              className='flex items-center justify-center w-9 h-9 rounded-lg text-c6 cursor-pointer hover:bg-c3 transition-colors duration-200'
+              title={objectFit === 'cover' ? 'Mode Contain (ajuster)' : 'Mode Cover (remplir)'}>
+              {objectFit === 'cover' ? <MinimizeIcon size={18} /> : <SquareIcon size={18} />}
+            </button>
+          )}
 
-              {/* Bouton plein écran */}
-              <button
-                onClick={toggleFullscreen}
-                className='text-[#fff] p-2 rounded-12 hover:bg-[#fff] hover:bg-opacity-20 transition-all duration-200'
-                title={isFullscreen ? 'Quitter le plein écran (Échap)' : 'Plein écran'}>
-                <div style={iconShadowStyle}>{isFullscreen ? <GalleryIcon size={20} /> : <MaximizeIcon size={20} />}</div>
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+          <button
+            type='button'
+            onClick={toggleFullscreen}
+            className='flex items-center justify-center w-9 h-9 rounded-lg text-c6 cursor-pointer hover:bg-c3 transition-colors duration-200'
+            title={isFullscreen ? 'Quitter le plein écran (Échap)' : 'Plein écran'}>
+            {isFullscreen ? <GalleryIcon size={18} /> : <MaximizeIcon size={18} />}
+          </button>
+        </div>
+      )}
     </div>
+  );
+
+  const inlineContainerClass = [
+    'relative',
+    className,
+    !isFullscreen && hugMediaFrame ? 'flex items-center justify-center' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const fullscreenOverlay = isFullscreen
+    ? createPortal(
+        <div
+          className='fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4'
+          onClick={handleBackdropClick}
+          onMouseEnter={() => !isYouTube && setShowControls(true)}
+          onMouseLeave={() => setShowControls(false)}>
+          {renderMediaFrame()}
+        </div>,
+        document.body,
+      )
+    : null;
+
+  return (
+    <>
+      <div
+        className={inlineContainerClass}
+        onMouseEnter={() => !isYouTube && !isFullscreen && setShowControls(true)}
+        onMouseLeave={() => setShowControls(false)}>
+        {!isFullscreen && renderMediaFrame()}
+      </div>
+      {fullscreenOverlay}
+    </>
   );
 };
 

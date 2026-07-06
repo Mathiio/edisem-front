@@ -109,7 +109,7 @@ const resolveReferenceFromCache = (ref: any, resourceCache?: Record<number, any>
 const ReferenceLoadingSkeleton: React.FC<{ count?: number }> = ({ count = 1 }) => (
   <>
     {Array.from({ length: count }).map((_, i) => (
-      <div key={i} className='w-full h-28 bg-c3 rounded-xl animate-pulse' />
+      <div key={i} className='w-full h-20 bg-c3 rounded-xl animate-pulse' />
     ))}
   </>
 );
@@ -368,11 +368,14 @@ export const fieldToFormField = (field: InternalFieldConfig): FormFieldConfig =>
     step: field.step,
     options: field.options,
     customVocabId: field.customVocabId,
-    selectionConfig: field.resourceTemplateId
+    zone: field.zone,
+    selectionConfig: field.resourceTemplateId || field.resourceTemplateIds?.length
       ? {
           resourceType: field.label,
           templateId: field.resourceTemplateId,
+          templateIds: field.resourceTemplateIds,
           multiple: field.multiSelect,
+          pickerVariant: field.pickerVariant,
         }
       : field.itemSetId
         ? {
@@ -614,9 +617,6 @@ const getResourceTypeFromTemplate = (
   return config?.type || 'unknown';
 };
 
-/**
- * Extrait les créateurs au bon format depuis les données Omeka S
- */
 const extractCreators = (resourceData: any): { first_name: string; last_name: string }[] => {
   const creators = resourceData['dcterms:creator'];
   if (!creators || !Array.isArray(creators)) return [];
@@ -707,6 +707,8 @@ const collectPrioritizedLinkedResourceIds = (data: any, config: SimplifiedDetail
   [...new Set(contributorProperties)].forEach((prop) => {
     getResourceIds(data, prop).forEach(add);
   });
+
+  getResourceIds(data, 'schema:isRelatedTo').forEach(add);
 
   collectAllLinkedResourceIds(data).forEach(add);
 
@@ -805,6 +807,21 @@ const resolveResourceThumbnailUrl = async (resourceData: any): Promise<string | 
   return undefined;
 };
 
+const resolveRecommendationActants = (item: any): any[] => {
+  if (Array.isArray(item?.actants) && item.actants.length > 0) return item.actants;
+  if (Array.isArray(item?.personnes) && item.personnes.length > 0) return item.personnes;
+  if (Array.isArray(item?.creator) && item.creator.length > 0) {
+    return item.creator
+      .map((creator: any) => ({
+        name: `${creator.first_name || creator.firstname || ''} ${creator.last_name || creator.lastname || ''}`.trim(),
+        firstname: creator.first_name || creator.firstname,
+        lastname: creator.last_name || creator.lastname,
+      }))
+      .filter((entry: any) => entry.name);
+  }
+  return [];
+};
+
 const cacheLinkedOmekaResource = async (
   resourceId: number,
   resourceCache: Record<number, any>,
@@ -854,6 +871,18 @@ const cacheLinkedOmekaResource = async (
       url: buildCachedResourceUrl(resourceType, resourceId, resourceData),
       ownerId: resourceData['o:owner']?.['o:id'],
     };
+
+    if (!contributorType) {
+      const contributorIds = [
+        ...new Set(
+          (['schema:agent', 'jdc:hasActant'] as const).flatMap((prop) => getResourceIds(resourceData, prop)),
+        ),
+      ];
+      if (contributorIds.length > 0) {
+        await Promise.all(contributorIds.map((id) => cacheLinkedOmekaResource(id, resourceCache)));
+        resourceCache[resourceId].actants = contributorIds.map((id) => resourceCache[id]).filter(Boolean);
+      }
+    }
   } catch (err) {
     console.error(`Erreur chargement ressource ${resourceId}:`, err);
   }
@@ -888,6 +917,11 @@ const applyEnrichedLinkedProperties = (enrichedData: any, data: any, resourceCac
   if (data['schema:associatedMedia']) {
     const mediaIds = getResourceIds(data, 'schema:associatedMedia');
     enrichedData.associatedMediaRefs = mediaIds.map((id) => resourceCache[id]).filter(Boolean);
+  }
+
+  if (data['schema:isRelatedTo']) {
+    const relatedIds = getResourceIds(data, 'schema:isRelatedTo');
+    enrichedData.relatedResources = relatedIds.map((id) => resourceCache[id]).filter(Boolean);
   }
 };
 
@@ -1671,7 +1705,7 @@ export const convertToGenericConfig = (config: SimplifiedDetailConfig): GenericD
     dataFetcher,
     progressiveDataFetcher,
 
-    // Smart recommendations
+    // Smart recommendations (schema:isRelatedTo uniquement)
     smartRecommendations: config.smartRecommendations,
 
     // Composants (utiliser les custom si fournis)
@@ -1746,14 +1780,23 @@ export const convertToGenericConfig = (config: SimplifiedDetailConfig): GenericD
 
     // Mapper pour les recommandations (carousel "similaires")
     mapRecommendationProps: config.customMapRecommendationProps ?? (config.recommendationType
-      ? (item: any) => ({
-          id: item.id || item['o:id'],
-          title: item.title || item['o:title'] || item['dcterms:title']?.[0]?.['@value'],
-          type: config.recommendationType,
-          url: null,
-          thumbnail: item.associatedMedia?.[0] || item.thumbnail || null,
-          personnes: item.actants || [],
-        })
+      ? (item: any) => {
+          const actants = resolveRecommendationActants(item);
+          return {
+            id: item.id || item['o:id'],
+            title: item.title || item.name || item['o:title'] || item['dcterms:title']?.[0]?.['@value'],
+            type: item.type || config.recommendationType,
+            url: item.url ?? null,
+            thumbnail:
+              item.thumbnail ||
+              item.thumbnailUrl ||
+              item.picture ||
+              item.associatedMedia?.[0] ||
+              null,
+            actants,
+            personnes: actants,
+          };
+        }
       : undefined),
 
     // Fetcher de recommandations custom
@@ -1996,7 +2039,7 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
       // Ajouter les mappings depuis les fields de la config
       fields.forEach((field) => {
         keyToProperty[field.key] = field.property;
-        if (field.type === 'resource') {
+        if (field.type === 'resource' && field.pickerVariant !== 'related' && field.property !== 'schema:isRelatedTo') {
           keyToProperty['personnes'] = field.property;
           keyToProperty['actants'] = field.property;
         }

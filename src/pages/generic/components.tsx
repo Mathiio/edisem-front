@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Spinner } from '@heroui/react';
 import { getYouTubeThumbnailUrl, isValidYouTubeUrl } from '@/lib/utils';
 import { AddResourceCard } from '@/components/features/forms/edit/AddResourceCard';
-import { ThumbnailIcon } from '@/components/ui/icons';
+import { LinkedResourceCard, LINKED_RESOURCE_LIST_CLASS } from '@/components/features/resource-links/LinkedResourceCard';
 import { ModalCloseIcon, modalCloseButtonClasses } from '@/theme/components';
 import { canEditLinkedResource, canUnlinkLinkedResource, shouldHardDeleteLinkedResource } from '@/lib/resourceEditHelpers';
 
@@ -45,13 +45,10 @@ export const ToolItem: React.FC<ToolItemProps> = ({
   disableNavigation = false,
   animationDelay = 450,
 }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false);
+  const [isNavigating, setIsNavigating] = React.useState(false);
   const navigate = useNavigate();
 
   const itemUrl = tool.url || tool.uri || '#';
-
-  // Complètement verrouillé : ni édition possible, ni navigation
   const isLocked = disableNavigation && !onEdit;
 
   const handleClick = (e: React.MouseEvent) => {
@@ -90,47 +87,21 @@ export const ToolItem: React.FC<ToolItemProps> = ({
     return undefined;
   };
 
-  const thumbnail = getThumbnail();
-  const borderClass = !isLocked && isHovered ? 'border-c4' : 'border-c3';
-
-  const innerContent = (
-    <div className='flex flex-row gap-4 items-center min-w-0'>
-      <div className='flex-shrink-0 w-10 h-10 rounded-md overflow-hidden flex items-center justify-center bg-gradient-to-br from-c2 to-c3'>
-        {thumbnail ? (
-          <img src={thumbnail} alt='' className='w-10 h-10 object-cover' />
-        ) : (
-          <ThumbnailIcon className='text-c4/40' size={22} />
-        )}
-      </div>
-      <div className='w-full flex flex-col gap-2.5 min-w-0'>
-        <p className='text-c6 text-base'>{tool.title}</p>
-        {tool.description && (
-          <p className='text-c4 text-sm leading-[120%] text-overflow-ellipsis line-clamp-3 w-full'>{tool.description}</p>
-        )}
-      </div>
-    </div>
-  );
-
   return (
-    <div
-      className={`w-full flex flex-row justify-between border-2 rounded-xl items-center gap-6 transition-colors ${borderClass} ${isLocked ? 'cursor-default' : 'cursor-pointer hover:bg-c2/40'} ${isNavigating ? 'opacity-50 pointer-events-none' : ''}`}
-      onMouseEnter={isLocked ? undefined : () => setIsHovered(true)}
-      onMouseLeave={isLocked ? undefined : () => setIsHovered(false)}>
-      {isLocked ? (
-        // Item verrouillé : div non-interactif, aucun effet de survol navigateur
-        <div className='w-full gap-6 p-4 flex flex-row'>
-          {innerContent}
-        </div>
-      ) : (
-        <Link
-          className='w-full gap-6 p-4 flex flex-row cursor-pointer'
-          to={itemUrl}
-          target={itemUrl.startsWith('http') ? '_blank' : undefined}
-          onClick={handleClick}>
-          {innerContent}
-        </Link>
-      )}
-    </div>
+    <LinkedResourceCard
+      thumbnail={getThumbnail()}
+      isLocked={isLocked}
+      href={isLocked ? undefined : itemUrl}
+      external={itemUrl.startsWith('http')}
+      onClick={isLocked ? undefined : handleClick}
+      isNavigating={isNavigating}>
+      <div className='flex flex-col gap-2.5 min-w-0'>
+        <p className='text-c6 text-base font-normal'>{tool.title}</p>
+        {tool.description && (
+          <p className='text-c4 text-sm leading-[120%] line-clamp-3 w-full'>{tool.description}</p>
+        )}
+      </div>
+    </LinkedResourceCard>
   );
 };
 
@@ -211,7 +182,7 @@ export const ItemsList: React.FC<ItemsListProps> = ({
   }
 
   return (
-    <div className='flex flex-col gap-2.5'>
+    <div className={LINKED_RESOURCE_LIST_CLASS}>
       {itemsArray.map((item) => {
         const mappedItem = mapUrl ? { ...item, url: mapUrl(item) } : item;
         const canEdit = Boolean(onEdit && canEditLinkedResource(item, currentOmekaUserId, userCreatedResourceIds, isGlobalAdminEdit));

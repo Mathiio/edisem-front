@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { ImageIcon } from '@/components/ui/icons';
+import React from 'react';
+import ReactDOMServer from 'react-dom/server';
 import { EmptyStateCard } from '@/components/ui/EmptyStateCard';
 import { getFormOnlyExternalUrl, isHttpUrl } from '@/lib/resourceUtils';
+import { Mediagraphy } from '@/types/ui';
+import { LinkedResourceCard, LINKED_RESOURCE_LIST_CLASS } from '@/components/features/resource-links/LinkedResourceCard';
 
 const formatAuthors = (creators: { first_name: string; last_name: string }[] = []) => {
   if (!Array.isArray(creators)) {
@@ -179,9 +181,6 @@ const mediagraphyTemplates: { [key: string]: (item: Mediagraphy) => React.ReactN
   ),
 };
 
-import ReactDOMServer from 'react-dom/server';
-import { Mediagraphy } from '@/types/ui';
-
 const ensureEndsWithPeriod = (content: React.ReactNode): React.ReactNode => {
   if (React.isValidElement(content)) {
     // Convertir l'élément React en chaîne HTML
@@ -221,58 +220,38 @@ export const MediagraphyCard: React.FC<Mediagraphy> = ({
   place,
   resource_template_id,
 }) => {
-  const [isHovered, setIsHovered] = useState(false);
   const externalUrl =
     getFormOnlyExternalUrl({ type: 'mediagraphie', uri, url: uri }) || (isHttpUrl(uri) ? uri : null);
 
   const template = mediagraphyTemplates[mediaType] || mediagraphyTemplates['default'];
 
-  const cardBody = (
-    <>
-      <div className={`flex flex-col justify-center transition-transform-colors-opacity ${isHovered ? 'text-c6' : 'text-c4'}`}>
-        {thumbnail ? <img src={thumbnail} alt='thumbnail' className='w-12 object-cover rounded-md' /> : <ImageIcon size={22} />}
-      </div>
-
-      <div className='w-full text-base text-c6 font-normal'>
+  return (
+    <LinkedResourceCard
+      thumbnail={thumbnail}
+      isLocked={!externalUrl}
+      href={externalUrl ?? undefined}
+      external={Boolean(externalUrl)}>
+      <p className='text-c6 text-base font-normal'>
         {ensureEndsWithPeriod(
           template({
-              id,
-              title,
-              creator,
-              format,
-              director,
-              date,
-              publisher,
-              uri,
-              class: mediaType,
-              medium,
-              isPartOf,
-              resource_template_id,
-              location,
-              place,
-            }),
-          )}
-        </div>
-    </>
-  );
-
-  return (
-    <div
-      className={`w-full flex flex-row justify-between border-2 rounded-xl items-center gap-6  transition-transform-colors-opacity ${isHovered ? 'border-c6' : 'border-c3'}`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}>
-      {externalUrl ? (
-        <a
-          className='w-full gap-6 p-6 flex flex-row justify-between'
-          href={externalUrl}
-          target='_blank'
-          rel='noopener noreferrer'>
-          {cardBody}
-        </a>
-      ) : (
-        <div className='w-full gap-6 p-6 flex flex-row justify-between'>{cardBody}</div>
-      )}
-    </div>
+            id,
+            title,
+            creator,
+            format,
+            director,
+            date,
+            publisher,
+            uri,
+            class: mediaType,
+            medium,
+            isPartOf,
+            resource_template_id,
+            location,
+            place,
+          }),
+        )}
+      </p>
+    </LinkedResourceCard>
   );
 };
 
@@ -314,7 +293,7 @@ export const Mediagraphies: React.FC<{ items: Mediagraphy[]; notitle?: boolean }
         {sortedConferenceMediagraphies.length > 0 && (
           <>
             {!notitle && <h2 className='text-base text-c5 font-medium'>Médiagraphies de Conférence</h2>}
-            <div className='flex flex-col gap-2.5'>
+            <div className={LINKED_RESOURCE_LIST_CLASS}>
               {sortedConferenceMediagraphies.map((item, index) => (
                 <MediagraphyCard key={index} {...item} />
               ))}
@@ -325,7 +304,7 @@ export const Mediagraphies: React.FC<{ items: Mediagraphy[]; notitle?: boolean }
         {sortedComplementaryMediagraphies.length > 0 && (
           <>
             {!notitle && <h2 className='text-base text-c5 font-medium'>Médiagraphies Complémentaires</h2>}
-            <div className='flex flex-col gap-2.5'>
+            <div className={LINKED_RESOURCE_LIST_CLASS}>
               {sortedComplementaryMediagraphies.map((item, index) => (
                 <MediagraphyCard key={index} {...item} />
               ))}

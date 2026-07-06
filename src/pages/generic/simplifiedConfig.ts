@@ -96,6 +96,12 @@ export interface FieldDefinition {
   /** Pour resource: template ID pour le picker */
   resourceTemplateId?: number;
 
+  /** Pour resource: plusieurs templates (ex. contenus associés) */
+  resourceTemplateIds?: number[];
+
+  /** Variante du picker : related = suggestions par mots-clés */
+  pickerVariant?: 'default' | 'related';
+
   /** Pour resource: permettre sélection multiple */
   multiSelect?: boolean;
 
@@ -390,6 +396,8 @@ export interface InternalFieldConfig {
 
   /** Pour resource */
   resourceTemplateId?: number;
+  resourceTemplateIds?: number[];
+  pickerVariant?: 'default' | 'related';
   multiSelect?: boolean;
 
   /** Pour itemset */
@@ -514,6 +522,8 @@ export const extractFieldsFromConfig = (fields: SimplifiedFieldsMapping): Intern
         max: fieldValue.max ?? defaults.max,
         step: fieldValue.step ?? defaults.step,
         resourceTemplateId: fieldValue.resourceTemplateId ?? defaults.resourceTemplateId,
+        resourceTemplateIds: fieldValue.resourceTemplateIds,
+        pickerVariant: fieldValue.pickerVariant,
         multiSelect: fieldValue.multiSelect ?? defaults.multiSelect,
         itemSetId: fieldValue.itemSetId,
         options: fieldValue.options,

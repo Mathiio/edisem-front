@@ -1,4 +1,5 @@
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
+import { RELATED_RESOURCES_FIELD, createRelatedResourcesSmartRecommendations } from '@/config/relatedResourceConfig';
 import { SimplifiedDetailConfig } from '../simplifiedConfig';
 import { convertToGenericConfig } from '../simplifiedConfigAdapter';
 
@@ -36,6 +37,7 @@ export const experimentationConfigSimplified: SimplifiedDetailConfig = {
       zone: 'header',
     },
     externalLink: { property: 'schema:url', type: 'url', label: 'Lien externe', placeholder: 'https://...', zone: 'details' },
+    relatedResources: RELATED_RESOURCES_FIELD,
   },
 
   views: [
@@ -96,7 +98,7 @@ export const experimentationConfigSimplified: SimplifiedDetailConfig = {
   showKeywords: true,
   showRecommendations: true,
   showComments: true,
-  recommendationsTitle: 'Expérimentations similaires',
+  recommendationsTitle: 'Contenus associés',
   recommendationType: 'experimentation',
   defaultView: 'ElementsNarratifs',
   formEnabled: true,
@@ -104,6 +106,8 @@ export const experimentationConfigSimplified: SimplifiedDetailConfig = {
   contributorButtons: [
     { label: 'Ajouter Intervenant', templateId: 72, property: 'schema:agent' },
   ],
+
+  smartRecommendations: createRelatedResourcesSmartRecommendations(),
 };
 
 export const experimentationConfig = convertToGenericConfig(experimentationConfigSimplified);

@@ -1,8 +1,8 @@
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
+import { RELATED_RESOURCES_FIELD, createRelatedResourcesSmartRecommendations } from '@/config/relatedResourceConfig';
+import { IMAGINAIRE_IA_VOCAB_FIELDS } from './imagiaireIAConfig';
 import { SimplifiedDetailConfig } from '../simplifiedConfig';
 import { convertToGenericConfig } from '../simplifiedConfigAdapter';
-import { getRecitsTechnoCards } from '@/services/Items';
-import { IMAGINAIRE_IA_VOCAB_FIELDS } from './imagiaireIAConfig';
 
 export const recitTechnoConfigSimplified: SimplifiedDetailConfig = {
   resourceType: RESOURCE_TYPES.recit_techno_industriel.type,
@@ -37,6 +37,7 @@ export const recitTechnoConfigSimplified: SimplifiedDetailConfig = {
       multiSelect: true,
       zone: 'details',
     },
+    relatedResources: RELATED_RESOURCES_FIELD,
   },
 
   views: [
@@ -90,7 +91,7 @@ export const recitTechnoConfigSimplified: SimplifiedDetailConfig = {
   showKeywords: true,
   showRecommendations: true,
   showComments: true,
-  recommendationsTitle: 'Récits techno similaires',
+  recommendationsTitle: 'Contenus associés',
   recommendationType: 'recit_techno_industriel',
   defaultView: 'AnalyseCritique',
   formEnabled: true,
@@ -100,13 +101,7 @@ export const recitTechnoConfigSimplified: SimplifiedDetailConfig = {
     { label: 'Ajouter Organisation', templateId: 104, property: 'schema:agent' },
   ],
 
-  smartRecommendations: {
-    getRelatedItems: async (itemDetails: any) => {
-      const recits = await getRecitsTechnoCards();
-      return recits.filter((recit: any) => String(recit.id) !== String(itemDetails.id));
-    },
-    maxRecommendations: 5,
-  },
+  smartRecommendations: createRelatedResourcesSmartRecommendations(),
 };
 
 export const recitTechnoConfig = convertToGenericConfig(recitTechnoConfigSimplified);

@@ -1,7 +1,7 @@
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
+import { RELATED_RESOURCES_FIELD, createRelatedResourcesSmartRecommendations } from '@/config/relatedResourceConfig';
 import { SimplifiedDetailConfig } from '../simplifiedConfig';
 import { convertToGenericConfig } from '../simplifiedConfigAdapter';
-import { getRecitsScientifiquesCards } from '@/services/Items';
 import { IMAGINAIRE_IA_VOCAB_FIELDS } from './imagiaireIAConfig';
 
 export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
@@ -36,6 +36,7 @@ export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
       multiSelect: true,
       zone: 'details',
     },
+    relatedResources: RELATED_RESOURCES_FIELD,
   },
 
   views: [
@@ -89,7 +90,7 @@ export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
   showKeywords: true,
   showRecommendations: true,
   showComments: true,
-  recommendationsTitle: 'Documentations similaires',
+  recommendationsTitle: 'Contenus associés',
   recommendationType: 'recit_scientifique',
   defaultView: 'AnalyseCritique',
   formEnabled: true,
@@ -99,13 +100,7 @@ export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
     { label: 'Ajouter Organisation', templateId: 104, property: 'dcterms:creator' },
   ],
 
-  smartRecommendations: {
-    getRelatedItems: async (itemDetails: any) => {
-      const docs = await getRecitsScientifiquesCards();
-      return docs.filter((doc: any) => String(doc.id) !== String(itemDetails.id));
-    },
-    maxRecommendations: 5,
-  },
+  smartRecommendations: createRelatedResourcesSmartRecommendations(),
 };
 
 export const recitScientifiqueConfig = convertToGenericConfig(recitScientifiqueConfigSimplified);

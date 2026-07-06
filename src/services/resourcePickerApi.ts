@@ -3,12 +3,20 @@
  * Remplace les requêtes Omeka /items complètes pour le ResourcePicker front.
  */
 
+import {
+  getResourceConfigByTemplateId,
+  getResourceConfigByType,
+  getRessourceLabel,
+} from '@/config/resourceConfig';
+
 export interface PickerListItem {
   id: number;
   title: string;
   thumbnail?: string;
   subtitle?: string;
   owner_id?: number | null;
+  /** Score de recoupement mots-clés (suggestions RelatedResourcePicker) */
+  matchScore?: number;
 }
 
 export interface PickerListResponse {
@@ -137,7 +145,8 @@ export async function fetchAllPickerResources(options: {
 }
 
 /** Normalise un item backend vers la forme attendue par ResourcePicker. */
-export function normalizePickerItem(item: PickerListItem): Record<string, unknown> {
+export function normalizePickerItem(item: PickerListItem, templateId?: number): Record<string, unknown> {
+  const typeConfig = templateId ? getResourceConfigByTemplateId(templateId) : null;
   return {
     id: item.id,
     'o:id': item.id,
@@ -146,5 +155,34 @@ export function normalizePickerItem(item: PickerListItem): Record<string, unknow
     thumbnail: item.thumbnail,
     subtitle: item.subtitle,
     owner_id: item.owner_id ?? null,
+    matchScore: item.matchScore,
+    ...(templateId != null ? { _pickerTemplateId: templateId } : {}),
+    ...(typeConfig ? { _resourceType: typeConfig.type } : {}),
   };
+}
+
+export function resolvePickerResourceTypeKey(resource: Record<string, unknown>): string | null {
+  if (typeof resource._resourceType === 'string') return resource._resourceType;
+  if (
+    typeof resource.subtitle === 'string' &&
+    resource.subtitle &&
+    getResourceConfigByType(resource.subtitle)
+  ) {
+    return resource.subtitle;
+  }
+  const templateId = resource._pickerTemplateId;
+  if (templateId != null) {
+    return getResourceConfigByTemplateId(Number(templateId))?.type ?? null;
+  }
+  return null;
+}
+
+export function getPickerResourceTypeLabel(resource: Record<string, unknown>): string {
+  const typeKey = resolvePickerResourceTypeKey(resource);
+  if (typeKey) return getRessourceLabel(typeKey);
+  const templateId = resource._pickerTemplateId;
+  if (templateId != null) {
+    return getResourceConfigByTemplateId(Number(templateId))?.label ?? 'Ressource';
+  }
+  return 'Ressource';
 }

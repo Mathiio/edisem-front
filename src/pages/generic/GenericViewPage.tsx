@@ -77,11 +77,26 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
   const fetchData = useCallback(async () => {
     if (!id) return;
 
+    const resolveRecommendations = async (result: FetchResult): Promise<any[]> => {
+      if (result.recommendations?.length && config.fetchRecommendations) {
+        return config.fetchRecommendations(result.recommendations, result);
+      }
+      if (config.smartRecommendations) {
+        return generateSmartRecommendations(result.itemDetails, config.smartRecommendations);
+      }
+      return [];
+    };
+
+    const shouldSkipRecommendationsLoading = (result: FetchResult): boolean => {
+      if (config.fetchRecommendations) return false;
+      if (!config.smartRecommendations?.getRelatedItems) return false;
+      return Array.isArray(result.itemDetails?.relatedResources);
+    };
+
     setLoading(true);
     setLoadingMedia(true);
     setLoadingKeywords(true);
     setLoadingViews(true);
-    setLoadingRecommendations(true);
 
     try {
       if ((config as any).progressiveDataFetcher) {
@@ -113,14 +128,11 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
         setLoadingKeywords(false);
         setLoadingViews(false);
 
-        setLoadingRecommendations(true);
+        if (!shouldSkipRecommendationsLoading(result)) {
+          setLoadingRecommendations(true);
+        }
         try {
-          let recs: any[] = [];
-          if (result.recommendations && result.recommendations.length > 0 && config.fetchRecommendations) {
-            recs = await config.fetchRecommendations(result.recommendations, result);
-          } else if (config.smartRecommendations) {
-            recs = await generateSmartRecommendations(result.itemDetails, config.smartRecommendations);
-          }
+          const recs = await resolveRecommendations(result);
           setRecommendations(recs || []);
         } catch {
           setRecommendations([]);
@@ -137,14 +149,11 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
         setLoadingKeywords(false);
         setLoadingViews(false);
 
-        setLoadingRecommendations(true);
+        if (!shouldSkipRecommendationsLoading(result)) {
+          setLoadingRecommendations(true);
+        }
         try {
-          let recs: any[] = [];
-          if (result.recommendations && result.recommendations.length > 0 && config.fetchRecommendations) {
-            recs = await config.fetchRecommendations(result.recommendations, result);
-          } else if (config.smartRecommendations) {
-            recs = await generateSmartRecommendations(result.itemDetails, config.smartRecommendations);
-          }
+          const recs = await resolveRecommendations(result);
           setRecommendations(recs || []);
         } catch {
           setRecommendations([]);

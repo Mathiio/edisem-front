@@ -44,12 +44,6 @@ textarea,
   scrollbar-color: var(--c2) var(--c1);
 }
 
-.scroll-container {
-  overflow-y: auto;
-  padding-right: 1em;
-  box-sizing: content-box;
-}
-
 .button-transition {
   transition: background-color 200ms ease-in-out;
 }
@@ -299,8 +293,16 @@ pre {
 }
 
 /* Animation pulse border pour highlight */
-@keyframes pulse-border {
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
 
+@keyframes pulse-border {
   0%,
   100% {
     background-color: var(--c4) !important;

@@ -17,9 +17,16 @@ import {
 import { Button } from '@/theme/components/button';
 import { SearchIcon, ThumbnailIcon, UserIcon, AddIcon } from '@/components/ui/icons';
 import { useGetDataByClass } from '@/hooks/useFetchData';
-import { getResourceConfigByTemplateId } from '@/config/resourceConfig';
-import { fetchAllPickerResources, normalizePickerItem } from '@/services/resourcePickerApi';
+import { getResourceConfigByTemplateId, getResourceIcon } from '@/config/resourceConfig';
+import {
+  fetchAllPickerResources,
+  getPickerResourceTypeLabel,
+  normalizePickerItem,
+  resolvePickerResourceTypeKey,
+} from '@/services/resourcePickerApi';
 import { QUICK_CREATE_CONFIGS, QuickCreateModal, type QuickCreatedItem } from './QuickCreateModal';
+import { PickerSuggestionsPanel } from './PickerSuggestionsPanel';
+import { PICKER_CARD_CHECKBOX_CLASSNAMES } from './pickerConstants';
 
 export interface ResourcePickerProps {
   isOpen: boolean;
@@ -42,6 +49,15 @@ export interface ResourcePickerProps {
   onCreateOverride?: () => void;
   /** Si true, masque la grille de sélection (création uniquement) */
   createOnly?: boolean;
+  /** Section optionnelle au-dessus de la grille (ex. suggestions par mots-clés) */
+  suggestionSection?: {
+    title: string;
+    items: any[];
+    loading?: boolean;
+    keywordCount?: number;
+  };
+  /** Affiche le type de ressource sous le titre (ex. contenus associés) au lieu de l'intervenant */
+  showResourceType?: boolean;
 }
 
 /**
@@ -74,7 +90,7 @@ const loadResourcesByTemplateId = async (
       fetchAllPickerResources({ templateId, q: options?.search }),
       loadTemplateInfo(templateId),
     ]);
-    return { resources: items.map(normalizePickerItem), templateLabel };
+    return { resources: items.map((item) => normalizePickerItem(item, templateId)), templateLabel };
   } catch (err) {
     console.error('[ResourcePicker] Erreur chargement ressources:', err);
     return { resources: [], templateLabel: `Template ${templateId}` };
@@ -150,6 +166,70 @@ const PickerScrollArea: React.FC<{ children: React.ReactNode }> = ({ children })
   </div>
 );
 
+const EMPTY_SELECTED_IDS: (string | number)[] = [];
+
+const serializeSelectedIds = (ids: (string | number)[]): string =>
+  ids.map((id) => String(id)).sort().join(',');
+
+type ResourcePickerCardProps = {
+  selected: boolean;
+  title: string;
+  thumbnailUrl: string | null;
+  secondaryLabel: string | null;
+  showResourceType: boolean;
+  TypeIcon?: React.FC<{ size?: number; className?: string }>;
+  onToggle: () => void;
+};
+
+const ResourcePickerCard: React.FC<ResourcePickerCardProps> = ({
+  selected,
+  title,
+  thumbnailUrl,
+  secondaryLabel,
+  showResourceType,
+  TypeIcon,
+  onToggle,
+}) => (
+  <div
+    onClick={onToggle}
+    className={`
+      relative cursor-pointer rounded-xl border-2 transition-all ease-in-out duration-200
+      ${
+        selected
+          ? 'border-action bg-action/10 shadow-[inset_0_0px_30px_rgba(var(--action-rgb),0.1)]'
+          : 'border-c3 hover:border-c4 hover:bg-c2 shadow-[inset_0_0px_30px_rgba(255,255,255,0.04)]'
+      }
+    `}>
+    <div className='absolute top-2 left-2 z-10 pointer-events-none'>
+      <Checkbox isSelected={selected} classNames={PICKER_CARD_CHECKBOX_CLASSNAMES} />
+    </div>
+
+    <div className='p-3 flex flex-col gap-2'>
+      <div
+        className={`w-full h-[80px] rounded-lg flex justify-center items-center overflow-hidden ${thumbnailUrl ? 'bg-cover bg-center' : 'bg-gradient-to-br from-c2 to-c3'}`}
+        style={thumbnailUrl ? { backgroundImage: `url(${thumbnailUrl})` } : {}}>
+        {!thumbnailUrl && <ThumbnailIcon className='text-c4/30' size={28} />}
+      </div>
+
+      <div className='flex flex-col gap-px'>
+        <p className='text-sm text-c6 font-medium line-clamp-2 leading-tight'>{title}</p>
+        {secondaryLabel && (
+          <div className='flex gap-1.5 items-center min-w-0'>
+            {showResourceType && TypeIcon ? (
+              <TypeIcon size={12} className='text-c4 shrink-0' />
+            ) : (
+              <div className='w-1.5 h-1.5 flex items-center justify-center bg-c3 rounded-md shrink-0'>
+                <UserIcon className='text-c4' size={10} />
+              </div>
+            )}
+            <p className='text-[11px] text-c4 font-normal truncate'>{secondaryLabel}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
 export const ResourcePicker: React.FC<ResourcePickerProps> = ({
   isOpen,
   onClose,
@@ -160,7 +240,7 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
   resourceTemplateIds,
   itemSetIds,
   multiSelect = false,
-  selectedIds = [],
+  selectedIds: selectedIdsProp,
   displayProperty = 'dcterms:title',
   filterFn,
   maxSelection,
@@ -168,7 +248,11 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
   allowCreate = false,
   onCreateOverride,
   createOnly = false,
+  suggestionSection,
+  showResourceType = false,
 }) => {
+  const selectedIds = selectedIdsProp ?? EMPTY_SELECTED_IDS;
+  const selectedIdsKey = serializeSelectedIds(selectedIds);
   const [searchTerm, setSearchTerm] = useState('');
   const [localSelectedIds, setLocalSelectedIds] = useState<Set<string | number>>(new Set(selectedIds));
   // Ressources créées via postMessage, en attente d'apparaître dans la liste rechargée
@@ -227,8 +311,8 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
     const itemSetIdList = itemSetIds && itemSetIds.length > 0 ? itemSetIds : [];
 
     if (!isOpen || trimmed.length < 2 || (templateIds.length === 0 && itemSetIdList.length === 0)) {
-      setApiSearchResults(null);
-      setApiSearchLoading(false);
+      setApiSearchResults((prev) => (prev === null ? prev : null));
+      setApiSearchLoading((prev) => (prev ? false : prev));
       return;
     }
 
@@ -236,11 +320,17 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
       setApiSearchLoading(true);
       try {
         const batches = await Promise.all([
-          ...templateIds.map((id) => fetchAllPickerResources({ templateId: id, q: trimmed })),
-          ...itemSetIdList.map((id) => fetchAllPickerResources({ itemSetId: id, q: trimmed })),
+          ...templateIds.map(async (id) => {
+            const items = await fetchAllPickerResources({ templateId: id, q: trimmed });
+            return items.map((item) => normalizePickerItem(item, id));
+          }),
+          ...itemSetIdList.map(async (id) => {
+            const items = await fetchAllPickerResources({ itemSetId: id, q: trimmed });
+            return items.map((item) => normalizePickerItem(item));
+          }),
         ]);
         const unique = new Map<string | number, any>();
-        batches.flat().forEach((item) => unique.set(item.id, normalizePickerItem(item)));
+        batches.flat().forEach((item) => unique.set(item.id as number, item));
         setApiSearchResults([...unique.values()]);
       } catch {
         setApiSearchResults([]);
@@ -363,16 +453,20 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
     return templateData?.resources || [];
   }, [resources, activeTab, templateDataList]);
 
-  // Reset local selection when modal opens
+  // Reset local selection when modal opens (selectedIdsKey évite une boucle si le parent recrée le tableau)
   useEffect(() => {
     if (isOpen) {
-      setLocalSelectedIds(new Set(selectedIds));
-      setSearchTerm('');
+      setLocalSelectedIds((prev) => {
+        const next = new Set(selectedIds);
+        if (prev.size === next.size && [...prev].every((id) => next.has(id))) return prev;
+        return next;
+      });
+      setSearchTerm((prev) => (prev === '' ? prev : ''));
     } else {
       pendingCreatedRef.current.clear();
       sessionCreatedIdsRef.current.clear();
     }
-  }, [isOpen, selectedIds]);
+  }, [isOpen, selectedIdsKey]);
 
   const getDisplayValue = useCallback(
     (resource: any): string => {
@@ -499,61 +593,23 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
     return text.slice(0, maxLength) + '...';
   };
 
-  // Composant carte pour une ressource
-  const ResourceCard: React.FC<{ resource: any }> = ({ resource }) => {
-    const selected = isSelected(resource);
-    const thumbnailUrl = getThumbnailUrl(resource);
+  // Composant carte pour une ressource — props calculées ici, composant stable au niveau module
+  const renderResourceCard = (resource: any) => {
+    const typeKey = showResourceType ? resolvePickerResourceTypeKey(resource) : null;
     const actantName = getActantName(resource);
     const resourceLabel = getResourceLabel(resource);
+    const typeLabel = showResourceType ? getPickerResourceTypeLabel(resource) : null;
 
     return (
-      <div
-        onClick={() => toggleSelection(resource)}
-        className={`
-          relative cursor-pointer rounded-xl border-2 transition-all ease-in-out duration-200
-          ${
-            selected
-              ? 'border-action bg-action/10 shadow-[inset_0_0px_30px_rgba(var(--action-rgb),0.1)]'
-              : 'border-c3 hover:border-c4 hover:bg-c2 shadow-[inset_0_0px_30px_rgba(255,255,255,0.04)]'
-          }
-        `}>
-        {/* Checkbox en haut à gauche */}
-        <div className='absolute top-2 left-2 z-10'>
-          <Checkbox
-            isSelected={selected}
-            onValueChange={() => toggleSelection(resource)}
-            classNames={{
-              wrapper: 'w-6 h-6 before:border-c4 before:border-2 after:bg-action',
-              icon: 'w-4 h-4',
-            }}
-          />
-        </div>
-
-        <div className='p-3 flex flex-col gap-2'>
-          {/* Thumbnail ou placeholder */}
-          <div
-            className={`w-full h-[80px] rounded-lg flex justify-center items-center overflow-hidden ${thumbnailUrl ? 'bg-cover bg-center' : 'bg-gradient-to-br from-c2 to-c3'}`}
-            style={thumbnailUrl ? { backgroundImage: `url(${thumbnailUrl})` } : {}}>
-            {!thumbnailUrl && <ThumbnailIcon className='text-c4/30' size={28} />}
-          </div>
-
-          {/* Contenu */}
-          <div className='flex flex-col gap-px'>
-            {/* Titre */}
-            <p className='text-sm text-c6 font-medium line-clamp-2 leading-tight'>{getDisplayValue(resource)}</p>
-
-            {/* Actant ou classe */}
-            {(actantName || resourceLabel) && (
-              <div className='flex gap-1.5 items-center'>
-                <div className='w-1.5 h-1.5 flex items-center justify-center bg-c3 rounded-md'>
-                  <UserIcon className='text-c4' size={10} />
-                </div>
-                <p className='text-[11px] text-c4 font-normal truncate'>{actantName || resourceLabel}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <ResourcePickerCard
+        selected={isSelected(resource)}
+        title={getDisplayValue(resource)}
+        thumbnailUrl={getThumbnailUrl(resource)}
+        secondaryLabel={showResourceType ? typeLabel : actantName || resourceLabel}
+        showResourceType={showResourceType}
+        TypeIcon={typeKey ? getResourceIcon(typeKey) : undefined}
+        onToggle={() => toggleSelection(resource)}
+      />
     );
   };
 
@@ -666,6 +722,21 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
             </div>
           )}
 
+          {/* Suggestions (RelatedResourcePicker) */}
+          {!createOnly && suggestionSection && (suggestionSection.loading || suggestionSection.items.length > 0) && (
+            <PickerSuggestionsPanel
+              title={suggestionSection.title}
+              items={suggestionSection.items}
+              loading={suggestionSection.loading}
+              keywordCount={suggestionSection.keywordCount}
+              getResourceId={getResourceId}
+              getTitle={getDisplayValue}
+              getThumbnailUrl={getThumbnailUrl}
+              isSelected={isSelected}
+              onToggle={toggleSelection}
+            />
+          )}
+
           {/* Loading state */}
           {loading && (
             <div className='flex justify-center items-center py-12'>
@@ -719,11 +790,7 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
                                   <Checkbox
                                     isSelected={selected}
                                     onValueChange={() => toggleSelection(resource)}
-                                    size='sm'
-                                    classNames={{
-                                      wrapper: 'w-1.5 h-1.5 before:border-c4 before:border-2 after:bg-action',
-                                      icon: 'w-3 h-3',
-                                    }}
+                                    classNames={PICKER_CARD_CHECKBOX_CLASSNAMES}
                                   />
                                   <span className='text-sm'>{getDisplayValue(resource)}</span>
                                 </div>
@@ -740,7 +807,7 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
                 <PickerScrollArea>
                   <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3'>
                     {filteredResources.map((resource) => (
-                      <ResourceCard key={String(getResourceId(resource))} resource={resource} />
+                      <div key={String(getResourceId(resource))}>{renderResourceCard(resource)}</div>
                     ))}
                   </div>
                 </PickerScrollArea>

@@ -27,6 +27,7 @@ import { AlertModal } from '@/components/ui/AlertModal';
 import { EditSaveBar } from '@/components/ui/EditSaveBar';
 import { EditModeBanner } from '@/components/ui/EditModeBanner';
 import { ResourcePicker } from '@/components/features/forms/modals/ResourcePicker';
+import { RelatedResourcePicker } from '@/components/features/forms/modals/RelatedResourcePicker';
 import { getTemplatePropertiesMap } from '@/services/Items';
 import { getEditExitPath, getResourceEditUrl, getGlobalAdminEditUrl, getResourceConfigByTemplateId, getRessourceLabel, TEMPLATE_ID_TO_TYPE, resolveResourceTypeFromOmekaItem, OMEKA_PROPERTY_IDS } from '@/config/resourceConfig';
 import {
@@ -341,7 +342,9 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
   const [activeResourceField, setActiveResourceField] = useState<{
     key: string;
     label: string;
-    templateId: number;
+    templateId?: number;
+    templateIds?: number[];
+    pickerVariant?: 'default' | 'related';
     displayMode?: 'grid' | 'alphabetic';
   } | null>(null);
 
@@ -1798,6 +1801,21 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     return { root: rootLabel, children };
   }, [config.type, editableViews, itemDetails, formData, resourceTree]);
 
+  const relatedPickerKeywordIds = useMemo(
+    () =>
+      (Array.isArray(formData.keywords) ? formData.keywords : [])
+        .map((kw: any) => kw.id ?? kw['o:id'])
+        .filter(Boolean),
+    [formData.keywords],
+  );
+
+  const activeFieldSelectedIds = useMemo(() => {
+    if (!activeResourceField) return [];
+    return (Array.isArray(formData[activeResourceField.key]) ? formData[activeResourceField.key] : [])
+      .map((r: any) => getLinkedResourceId(r))
+      .filter(Boolean);
+  }, [activeResourceField, activeResourceField ? formData[activeResourceField.key] : undefined]);
+
   // ================================
   // Loading spinner while fetching initial data
   // ================================
@@ -1821,6 +1839,68 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
   // Main render
   // ================================
   const OverviewComponent = config.overviewComponent;
+
+  const isMultiselectionResourceField = (field: { key: string; type: string; selectionConfig?: { templateId?: number; templateIds?: number[] } }) =>
+    field.type === 'multiselection' &&
+    Boolean(field.selectionConfig?.templateId || field.selectionConfig?.templateIds?.length) &&
+    !(autoContributorConfig && field.key === autoContributorConfig.fieldKey) &&
+    !(config.showKeywords && field.key === 'keywords');
+
+  const isRelatedResourcesField = (field: { key: string; selectionConfig?: { pickerVariant?: string } }) =>
+    field.key === 'relatedResources' || field.selectionConfig?.pickerVariant === 'related';
+
+  const overviewMultiselectionFields =
+    config.formFields?.filter(
+      (f) => isMultiselectionResourceField(f) && f.zone === 'overview' && !isRelatedResourcesField(f),
+    ) ?? [];
+  const relatedResourcesFields =
+    config.formFields?.filter((f) => isMultiselectionResourceField(f) && isRelatedResourcesField(f)) ?? [];
+  const detailsMultiselectionFields =
+    config.formFields?.filter(
+      (f) => isMultiselectionResourceField(f) && f.zone !== 'overview' && !isRelatedResourcesField(f),
+    ) ?? [];
+
+  const renderMultiselectionField = (field: NonNullable<typeof config.formFields>[number]) => {
+    const fieldSelected: any[] = Array.isArray(formData[field.key]) ? formData[field.key] : [];
+    return (
+      <div key={field.key} className='flex flex-col gap-2'>
+        <label className={formFieldLabelClass}>{field.label}</label>
+        <div className='flex flex-wrap gap-2 items-center'>
+          {fieldSelected.map((item: any, idx: number) => {
+            const itemId = getLinkedResourceId(item);
+            return (
+              <div key={itemId ?? idx} className={selectedResourceChipClass}>
+                <span>{getLinkedResourceTitle(item, field.selectionConfig?.templateId)}</span>
+                <button
+                  type='button'
+                  onClick={() => setValue(field.key, fieldSelected.filter((s: any) => String(getLinkedResourceId(s)) !== String(itemId)))}
+                  className={selectedResourceRemoveButtonClass}
+                  aria-label='Retirer'>
+                  <ModalCloseIcon />
+                </button>
+              </div>
+            );
+          })}
+          <button
+            type='button'
+            onClick={() =>
+              setActiveResourceField({
+                key: field.key,
+                label: field.label,
+                templateId: field.selectionConfig?.templateId,
+                templateIds: field.selectionConfig?.templateIds,
+                pickerVariant: field.selectionConfig?.pickerVariant,
+                displayMode: config.resourcePickerDisplay,
+              })
+            }
+            className={dropdownTriggerButtonClass}>
+            <AddIcon size={14} className='text-c4 shrink-0' />
+            Ajouter
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -1969,6 +2049,13 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
                 );
               })()}
 
+              {/* Overview multiselection (colonne gauche) */}
+              {overviewMultiselectionFields.length > 0 && (
+                <div className='w-full flex flex-col gap-4'>
+                  {overviewMultiselectionFields.map(renderMultiselectionField)}
+                </div>
+              )}
+
               {/* Unified form section */}
               <div className={`${useSingleColumnEdit ? 'border-t border-c3 pt-6' : 'rounded-xl p-6 border-2 border-c3'} flex flex-col gap-8 items-start w-full`}>
                 <FormTextInput
@@ -2115,47 +2202,16 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
                     />
                   ))}
 
-                {/* Multiselection resource fields */}
-                {config.formFields
-                  ?.filter((f) => f.type === 'multiselection' && f.selectionConfig?.templateId)
-                  .filter((f) => {
-                    if (autoContributorConfig && f.key === autoContributorConfig.fieldKey) return false;
-                    if (config.showKeywords && f.key === 'keywords') return false;
-                    return true;
-                  })
-                  .map((field) => {
-                    const fieldSelected: any[] = Array.isArray(formData[field.key]) ? formData[field.key] : [];
-                    return (
-                      <div key={field.key} className='flex flex-col gap-2'>
-                        <label className={formFieldLabelClass}>{field.label}</label>
-                        <div className='flex flex-wrap gap-2 items-center'>
-                          {fieldSelected.map((item: any, idx: number) => {
-                            const itemId = getLinkedResourceId(item);
-                            return (
-                              <div key={itemId ?? idx} className={selectedResourceChipClass}>
-                                <span>{getLinkedResourceTitle(item, field.selectionConfig?.templateId)}</span>
-                                <button
-                                  type='button'
-                                  onClick={() => setValue(field.key, fieldSelected.filter((s: any) => String(getLinkedResourceId(s)) !== String(itemId)))}
-                                  className={selectedResourceRemoveButtonClass}
-                                  aria-label='Retirer'>
-                                  <ModalCloseIcon />
-                                </button>
-                              </div>
-                            );
-                          })}
-                          <button
-                            type='button'
-                            onClick={() => setActiveResourceField({ key: field.key, label: field.label, templateId: field.selectionConfig!.templateId!, displayMode: config.resourcePickerDisplay })}
-                            className={dropdownTriggerButtonClass}>
-                            <AddIcon size={14} className='text-c4 shrink-0' />
-                            Ajouter
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                {/* Multiselection resource fields (hors zone overview) */}
+                {detailsMultiselectionFields.map(renderMultiselectionField)}
               </div>
+
+              {/* Contenus associés — hors cadre titre/description, juste en dessous */}
+              {relatedResourcesFields.length > 0 && (
+                <div className='w-full flex flex-col gap-4'>
+                  {relatedResourcesFields.map(renderMultiselectionField)}
+                </div>
+              )}
 
               {/* Single-column views (editSingleColumn config) */}
               {useSingleColumnEdit && editableViews.length > 0 && (
@@ -2228,7 +2284,33 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
         />
 
         {/* Field resource picker (multiselection form fields) */}
-        {activeResourceField && (
+        {activeResourceField && activeResourceField.pickerVariant === 'related' && activeResourceField.templateIds?.length ? (
+          <RelatedResourcePicker
+            isOpen={true}
+            onClose={() => setActiveResourceField(null)}
+            onSelect={(resources) => {
+              const existingItems: any[] = Array.isArray(formData[activeResourceField.key]) ? formData[activeResourceField.key] : [];
+              const normalizedNew = resources.map((r) => ({
+                id: r['o:id'] || r.id,
+                'o:id': r['o:id'] || r.id,
+                title: r['o:title'] || r.title || r.display_title || `Item ${r['o:id'] || r.id}`,
+              }));
+              const merged = [...existingItems, ...normalizedNew.filter((r) => !existingItems.some((e) => String(e.id) === String(r.id)))];
+              setValue(activeResourceField.key, merged);
+              setActiveResourceField(null);
+            }}
+            title={activeResourceField.label}
+            resourceTemplateIds={activeResourceField.templateIds}
+            keywordIds={relatedPickerKeywordIds}
+            excludeItemId={id}
+            multiSelect={true}
+            selectedIds={activeFieldSelectedIds}
+            filterFn={(resource) => {
+              const resourceId = resource['o:id'] || resource.id;
+              return !activeFieldSelectedIds.some((selectedId: string | number) => String(selectedId) === String(resourceId));
+            }}
+          />
+        ) : activeResourceField ? (
           <ResourcePicker
             isOpen={true}
             onClose={() => setActiveResourceField(null)}
@@ -2251,24 +2333,22 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
             }}
             title={activeResourceField.label}
             resourceTemplateId={activeResourceField.templateId}
+            resourceTemplateIds={activeResourceField.templateIds}
             multiSelect={true}
             displayMode={activeResourceField.displayMode === 'alphabetic' ? 'alphabetic' : 'grid'}
             allowCreate={
               activeResourceField.displayMode === 'alphabetic'
                 ? activeResourceField.templateId === 34
-                : !!(getResourceConfigByTemplateId(activeResourceField.templateId)?.createUrl || QUICK_CREATE_CONFIGS[activeResourceField.templateId])
+                : !!(activeResourceField.templateId && (getResourceConfigByTemplateId(activeResourceField.templateId)?.createUrl || QUICK_CREATE_CONFIGS[activeResourceField.templateId]))
             }
-            selectedIds={[]}
+            selectedIds={activeFieldSelectedIds}
             filterFn={(resource) => {
-              const alreadySelected = (Array.isArray(formData[activeResourceField.key]) ? formData[activeResourceField.key] : [])
-                .map((r: any) => r.id)
-                .filter(Boolean);
               const resourceId = resource['o:id'] || resource.id;
-              return !alreadySelected.includes(resourceId);
+              return !activeFieldSelectedIds.some((selectedId: string | number) => String(selectedId) === String(resourceId));
             }}
             onCreateOverride={onCreateNewResource ? handleFieldCreateInTab : undefined}
           />
-        )}
+        ) : null}
 
         {/* ItemSet creation modal */}
         <Modal

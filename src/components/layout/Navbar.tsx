@@ -62,7 +62,7 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({ trigger, section
 
       { isOpen && (
         <div
-          className={`absolute top-full columns-3 gap-10 p-4 shadow-2xl left-1/2 mt-2 bg-c2 rounded-2xl border-2 border-c3 z-50 ${listMode ? 'min-w-fit' : 'min-w-max'}    `}
+          className={`absolute top-full columns-3 gap-10 p-4 shadow-2xl left-1/2 mt-2 bg-c2 rounded-2xl border-2 border-c3 z-40 ${listMode ? 'min-w-fit' : 'min-w-max'}    `}
           style={{
             animation: isAnimating ? 'dropdownDisappear 200ms ease-in forwards' : 'dropdownAppear 200ms ease-out forwards',
           }}>
@@ -235,7 +235,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onReady }) => {
 
   return (
     <>
-      <nav className={`sticky top-0 left-0 right-0 z-40 transition-all duration-300 ${hasScrolled ? 'bg-c1/90 backdrop-blur-sm shadow-lg' : 'bg-transparent'}`}>
+      <nav className={`sticky top-0 left-0 right-0 z-30 transition-all duration-300 ${hasScrolled ? 'bg-c1/90 backdrop-blur-sm shadow-lg' : 'bg-transparent'}`}>
         <div className='max-w-screen-2xl mx-auto px-5 py-4'>
           <div className='flex items-center justify-between'>
             <Link to='/' className='flex items-center gap-2'>

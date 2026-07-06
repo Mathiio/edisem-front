@@ -678,54 +678,23 @@ export const defaultSimilarityCalculator = (item1: any, item2: any): number => {
 };
 
 /**
- * Génère des recommandations intelligentes basées sur:
- * 1. Les éléments liés (même contexte parent)
- * 2. Les éléments similaires (même type avec keywords similaires)
+ * Recommandations : uniquement les contenus liés via getRelatedItems (ex. schema:isRelatedTo).
+ * Pas de fallback « items du même type ».
  */
 export const generateSmartRecommendations = async (itemDetails: any, strategy: SmartRecommendationsStrategy): Promise<any[]> => {
   const maxRecommendations = strategy.maxRecommendations || 5;
-  const recommendations: any[] = [];
 
-  // 1. Récupérer les éléments liés (priorité haute)
-  if (strategy.getRelatedItems) {
-    const relatedItemsResult = strategy.getRelatedItems(itemDetails);
+  if (!strategy.getRelatedItems) return [];
 
-    // Support pour retour synchrone ou asynchrone
-    const relatedItems = relatedItemsResult instanceof Promise ? await relatedItemsResult : relatedItemsResult;
+  const relatedItemsResult = strategy.getRelatedItems(itemDetails);
+  const relatedItems = relatedItemsResult instanceof Promise ? await relatedItemsResult : relatedItemsResult;
 
-    // Filtrer l'item actuel
-    const filteredRelated = relatedItems.filter((item: any) => String(item.id) !== String(itemDetails.id));
+  const currentId = itemDetails.id || itemDetails['o:id'];
+  const filteredRelated = (relatedItems ?? []).filter(
+    (item: any) => String(item.id || item['o:id']) !== String(currentId),
+  );
 
-    recommendations.push(...filteredRelated);
-  }
-
-  // 2. Si pas assez de recommandations, chercher des items similaires
-  if (recommendations.length < maxRecommendations && strategy.getAllResourcesOfType) {
-    const allResources = await strategy.getAllResourcesOfType();
-
-    // Filtrer l'item actuel et ceux déjà dans les recommandations
-    const existingIds = new Set([String(itemDetails.id), ...recommendations.map((r) => String(r.id))]);
-
-    const candidates = allResources.filter((item: any) => !existingIds.has(String(item.id)));
-
-    // Calculer la similarité avec chaque candidat
-    const similarityCalculator = strategy.calculateSimilarity || defaultSimilarityCalculator;
-
-    const scored = candidates.map((item: any) => ({
-      item,
-      score: similarityCalculator(itemDetails, item),
-    }));
-
-    // Trier par score décroissant et prendre les meilleurs
-    scored.sort((a, b) => b.score - a.score);
-
-    const needed = maxRecommendations - recommendations.length;
-    const similarItems = scored.slice(0, needed).map((s) => s.item);
-
-    recommendations.push(...similarItems);
-  }
-
-  return recommendations.slice(0, maxRecommendations);
+  return filteredRelated.slice(0, maxRecommendations);
 };
 
 // helpers.ts - Section Target Mapper (à ajouter à votre fichier existant)
