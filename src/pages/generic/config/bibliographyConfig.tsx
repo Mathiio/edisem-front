@@ -57,7 +57,7 @@ export const bibliographyConfigSimplified: SimplifiedDetailConfig = {
       property: 'dcterms:publisher',
       type: 'text',
       label: 'Éditeur / Revue',
-      placeholder: 'Éditeur ou revue...',
+      placeholder: 'Maison d’édition, revue, site web ou institution...',
       zone: 'details',
     },
     volume: {
@@ -119,8 +119,8 @@ export const bibliographyConfigSimplified: SimplifiedDetailConfig = {
     bookTitle: {
       property: 'dcterms:isPartOf',
       type: 'text',
-      label: 'Titre du livre',
-      placeholder: 'Titre du livre ou de la revue...',
+      label: 'Titre du livre ',
+      placeholder: 'Titre du livre sur lequel la note est faite...',
       zone: 'details',
     },
     event: {

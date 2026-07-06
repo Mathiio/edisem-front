@@ -875,7 +875,7 @@ const cacheLinkedOmekaResource = async (
     if (!contributorType) {
       const contributorIds = [
         ...new Set(
-          (['schema:agent', 'jdc:hasActant'] as const).flatMap((prop) => getResourceIds(resourceData, prop)),
+          (['schema:agent', 'jdc:hasActant', 'dcterms:creator'] as const).flatMap((prop) => getResourceIds(resourceData, prop)),
         ),
       ];
       if (contributorIds.length > 0) {
@@ -2039,11 +2039,25 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
       // Ajouter les mappings depuis les fields de la config
       fields.forEach((field) => {
         keyToProperty[field.key] = field.property;
-        if (field.type === 'resource' && field.pickerVariant !== 'related' && field.property !== 'schema:isRelatedTo') {
+        if (
+          !config.contributorButtons?.length &&
+          field.type === 'resource' &&
+          field.pickerVariant !== 'related' &&
+          field.property !== 'schema:isRelatedTo'
+        ) {
           keyToProperty['personnes'] = field.property;
           keyToProperty['actants'] = field.property;
         }
       });
+
+      if (config.contributorButtons?.length) {
+        const contributorProperty = [...new Set(config.contributorButtons.map((btn) => btn.property))][0];
+        keyToProperty['personnes'] = contributorProperty;
+        keyToProperty['actants'] = contributorProperty;
+        config.contributorButtons.forEach((btn) => {
+          keyToProperty[btn.property] = btn.property;
+        });
+      }
 
       // Ajouter les mappings depuis les vues (pour les categories et items)
       if (config.views) {
@@ -2269,6 +2283,11 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
       Object.entries(originalSystemFields).forEach(([key, value]) => {
         updatedItem[key] = value;
       });
+
+      const contributorProperty = config.contributorButtons?.[0]?.property;
+      if (contributorProperty === 'dcterms:creator' && writtenOmekaProperties.has('dcterms:creator')) {
+        updatedItem['schema:agent'] = [];
+      }
 
       console.log('[handleSave] Item data to send:', updatedItem);
 

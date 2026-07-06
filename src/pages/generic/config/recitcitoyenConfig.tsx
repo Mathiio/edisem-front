@@ -78,8 +78,8 @@ export const recitCitoyenConfigSimplified: SimplifiedDetailConfig = {
   formEnabled: true,
 
   contributorButtons: [
-    { label: 'Ajouter Personne', templateId: 33, property: 'schema:agent' },
-    { label: 'Ajouter Organisation', templateId: 104, property: 'schema:agent' },
+    { label: 'Ajouter Personne', templateId: 33, property: 'dcterms:creator' },
+    { label: 'Ajouter Organisation', templateId: 104, property: 'dcterms:creator' },
   ],
 
   smartRecommendations: createRelatedResourcesSmartRecommendations(),

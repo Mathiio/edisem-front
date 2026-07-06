@@ -196,6 +196,56 @@ const fadeIn: Variants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
 };
 
+const LEGACY_CONTRIBUTOR_PROPERTIES = ['schema:agent', 'jdc:hasActant'];
+
+function getContributorProperties(config: GenericDetailPageConfig): string[] {
+  const fromButtons = config.contributorButtons?.map((btn) => btn.property) ?? [];
+  return [...new Set(fromButtons.length > 0 ? fromButtons : ['schema:agent'])];
+}
+
+function getPrimaryContributorProperty(config: GenericDetailPageConfig): string {
+  return getContributorProperties(config)[0] ?? 'schema:agent';
+}
+
+/** Propriétés Omeka à lire pour hydrater les contributeurs (inclut schema:agent si dcterms:creator). */
+function getContributorHydrationProperties(config: GenericDetailPageConfig): string[] {
+  const primary = getContributorProperties(config);
+  if (primary.includes('dcterms:creator')) {
+    return [...new Set([...primary, ...LEGACY_CONTRIBUTOR_PROPERTIES])];
+  }
+  return primary;
+}
+
+function hydrateContributorResources(
+  itemDetails: any,
+  resourceCache: Record<number, any>,
+  properties: string[],
+): any[] {
+  const seen = new Set<string>();
+  const result: any[] = [];
+
+  for (const property of properties) {
+    const linked = itemDetails[property];
+    if (!Array.isArray(linked) || linked.length === 0) continue;
+
+    for (const ref of linked) {
+      const resourceId = getLinkedResourceId(ref);
+      if (resourceId == null || seen.has(String(resourceId))) continue;
+      seen.add(String(resourceId));
+      const cached = resourceCache[Number(resourceId)];
+      result.push({
+        id: resourceId,
+        'o:id': resourceId,
+        title: cached?.title || getLinkedResourceTitle(ref),
+        name: getLinkedResourceTitle(ref),
+        display_title: ref.display_title,
+      });
+    }
+  }
+
+  return result;
+}
+
 // ================================
 // Composant principal GenericEditPage
 // ================================
@@ -535,9 +585,9 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
                 })
                 .filter(Boolean);
               extractedData[field.key] = hydratedResources;
-              const contributorProperties = ['schema:agent', 'jdc:hasActant', 'dcterms:contributor', 'schema:contributor', 'cito:credits'];
+              const hydrationProps = getContributorHydrationProperties(config);
               const prop2 = field.dataPath?.split('.')[0] || '';
-              if (contributorProperties.includes(prop2)) {
+              if (hydrationProps.includes(prop2)) {
                 extractedData.personnes = hydratedResources;
                 extractedData.actants = hydratedResources;
               }
@@ -590,6 +640,21 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
           .filter(Boolean);
         if (hydrated.length > 0) extractedData[viewKey] = hydrated;
       });
+
+      const contributorHydrationProperties = getContributorHydrationProperties(config);
+      if (contributorHydrationProperties.length > 0) {
+        const resourceCache = itemDetails.resourceCache || {};
+        const hydratedContributors = hydrateContributorResources(itemDetails, resourceCache, contributorHydrationProperties);
+        if (hydratedContributors.length > 0) {
+          const primaryContributorProperty = getPrimaryContributorProperty(config);
+          getContributorProperties(config).forEach((property) => {
+            extractedData[property] = hydratedContributors;
+          });
+          extractedData.personnes = hydratedContributors;
+          extractedData.actants = hydratedContributors;
+          extractedData[primaryContributorProperty] = hydratedContributors;
+        }
+      }
 
       if (!formInitializedRef.current) {
         reset(extractedData);
@@ -806,13 +871,14 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
   };
 
   const findOmekaPropertyKey = (rawItem: any, simpleKey: string): string | null => {
+    const contributorProperties = getContributorHydrationProperties(config);
     const keyMappings: Record<string, string[]> = {
       keywords: ['jdc:hasConcept', 'jdc:hasKeyword', 'dcterms:subject'],
       title: ['dcterms:title'],
       description: ['dcterms:description'],
       date: ['dcterms:date'],
-      personnes: ['schema:agent', 'jdc:hasActant', 'dcterms:contributor', 'schema:contributor'],
-      actants: ['jdc:hasActant', 'schema:agent'],
+      personnes: contributorProperties.concat(['dcterms:contributor', 'schema:contributor']),
+      actants: ['jdc:hasActant', 'schema:agent', 'dcterms:creator'],
       percentage: ['schema:ratingValue'],
       fullUrl: ['schema:url', 'bibo:uri'],
       externalLink: ['bibo:uri', 'schema:url'],
@@ -929,8 +995,8 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
         let omekaPropertyKey = viewMappedProperty || formFieldKeyToProperty[key] || key;
         const keyToOmekaProp: Record<string, string> = {
           keywords: 'jdc:hasConcept',
-          personnes: 'schema:agent',
-          actants: 'jdc:hasActant',
+          personnes: getPrimaryContributorProperty(config),
+          actants: getPrimaryContributorProperty(config),
           'theatre:credit': 'theatre:credit',
           'schema:description': 'schema:description',
           references: 'dcterms:references',
@@ -1042,6 +1108,11 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
           }
         }
       }
+    }
+
+    const primaryContributorProperty = getPrimaryContributorProperty(config);
+    if (primaryContributorProperty === 'dcterms:creator' && writtenOmekaProperties.has('dcterms:creator')) {
+      updatedItem['schema:agent'] = [];
     }
 
     const saveResponse = await fetch(omekaApiUrl(`${API_BASE}items/${id}`), {

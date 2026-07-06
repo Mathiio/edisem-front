@@ -211,6 +211,11 @@ const resolveContributorPersonnes = (
   if (contributorProperties?.length) {
     contributorProperties.forEach(addFromProperty);
     if (result.length > 0) return result;
+
+    if (contributorProperties.includes('dcterms:creator')) {
+      addFromProperty('schema:agent');
+      if (result.length > 0) return result;
+    }
   }
 
   if (resourceField) {

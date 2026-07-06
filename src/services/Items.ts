@@ -450,10 +450,60 @@ export async function getComments() {
   }
 }
 
+/** Complète actants/personnes depuis dcterms:creator quand l'API Query ne les renvoie pas. */
+async function enrichRecitCardsCreators(cards: any[]): Promise<any[]> {
+  if (!Array.isArray(cards) || cards.length === 0) return cards;
+
+  const needsEnrichment = cards.filter(
+    (card) =>
+      (!Array.isArray(card.actants) || card.actants.length === 0) &&
+      (!Array.isArray(card.personnes) || card.personnes.length === 0),
+  );
+  if (needsEnrichment.length === 0) return cards;
+
+  const enrichedById = new Map<string, any>();
+
+  await Promise.all(
+    needsEnrichment.map(async (card) => {
+      try {
+        const response = await fetch(`${API_URL}/items/${card.id}`);
+        if (!response.ok) return;
+        const item = await response.json();
+        const creatorRefs = [
+          ...(Array.isArray(item['dcterms:creator']) ? item['dcterms:creator'] : []),
+          ...(Array.isArray(item['schema:agent']) ? item['schema:agent'] : []),
+        ];
+        const seen = new Set<number>();
+        const actants = creatorRefs
+          .filter((ref: any) => {
+            const id = ref?.value_resource_id;
+            if (!id || seen.has(id)) return false;
+            seen.add(id);
+            return true;
+          })
+          .map((ref: any) => ({
+            id: String(ref.value_resource_id),
+            name: ref.display_title || `Item ${ref.value_resource_id}`,
+            picture: typeof ref.thumbnail_url === 'string' ? ref.thumbnail_url : undefined,
+          }));
+
+        if (actants.length > 0) {
+          enrichedById.set(String(card.id), { ...card, actants, personnes: actants });
+        }
+      } catch (error) {
+        console.error(`[enrichRecitCardsCreators] Item ${card.id}:`, error);
+      }
+    }),
+  );
+
+  if (enrichedById.size === 0) return cards;
+  return cards.map((card) => enrichedById.get(String(card.id)) ?? card);
+}
+
 export async function getRecitsCitoyensCards() {
   try {
     const data = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getRecitsCitoyensCards&json=1');
-    return data;
+    return enrichRecitCardsCreators(data);
   } catch (error) {
     console.error('Error fetching recits citoyens cards:', error);
     return [];
@@ -473,7 +523,7 @@ export async function getOutilsCards() {
 export async function getRecitsMediatiquesCards() {
   try {
     const data = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getRecitsMediatiquesCards&json=1');
-    return data;
+    return enrichRecitCardsCreators(data);
   } catch (error) {
     console.error('Error fetching recits mediatiques cards:', error);
     return [];
@@ -483,7 +533,7 @@ export async function getRecitsMediatiquesCards() {
 export async function getRecitsScientifiquesCards() {
   try {
     const data = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getRecitsScientifiquesCards&json=1');
-    return data;
+    return enrichRecitCardsCreators(data);
   } catch (error) {
     console.error('Error fetching recits scientifiques cards:', error);
     return [];
@@ -493,7 +543,7 @@ export async function getRecitsScientifiquesCards() {
 export async function getRecitsTechnoCards() {
   try {
     const data = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getRecitsTechnoCards&json=1');
-    return data;
+    return enrichRecitCardsCreators(data);
   } catch (error) {
     console.error('Error fetching recits techno cards:', error);
     return [];
@@ -503,7 +553,7 @@ export async function getRecitsTechnoCards() {
 export async function getRecitsArtistiquesCards() {
   try {
     const data = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getRecitsArtistiquesCards&json=1');
-    return data;
+    return enrichRecitCardsCreators(data);
   } catch (error) {
     console.error('Error fetching recits artistiques cards:', error);
     return [];
