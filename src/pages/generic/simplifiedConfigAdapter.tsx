@@ -243,7 +243,7 @@ const InlineMicroresumeForm: React.FC<{
   );
 };
 import { getResourceConfigByTemplateId, isFormOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
-import { buildCachedResourceUrl } from '@/lib/resourceUtils';
+import { buildCachedResourceUrl, pickOmekaDisplayThumbnail, pickOmekaMediaThumbnail } from '@/lib/resourceUtils';
 import { enrichItemWithResourceOwner } from '@/lib/resourceOwner';
 import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/ui/form/AutoResizingTextarea';
 import {
@@ -529,19 +529,20 @@ export const loadResourceInfo = async (resourceId: number): Promise<ResourceInfo
     const item = await res.json();
 
     let thumbnailUrl: string | undefined;
-    if (item['thumbnail_display_urls']?.square) {
-      thumbnailUrl = item['thumbnail_display_urls'].square;
+    const displayThumb = pickOmekaDisplayThumbnail(item['thumbnail_display_urls']);
+    if (displayThumb) {
+      thumbnailUrl = displayThumb;
     } else if (item['o:thumbnail']?.['o:id']) {
       const mediaRes = await fetchWithRetry(`${API_BASE}media/${item['o:thumbnail']['o:id']}`, 1, 300);
       if (mediaRes && mediaRes.ok) {
         const mediaData = await mediaRes.json();
-        thumbnailUrl = mediaData['o:thumbnail_urls']?.square || mediaData['o:original_url'];
+        thumbnailUrl = pickOmekaMediaThumbnail(mediaData);
       }
     } else if (item['o:media']?.[0]?.['o:id']) {
       const mediaRes = await fetchWithRetry(`${API_BASE}media/${item['o:media'][0]['o:id']}`, 1, 300);
       if (mediaRes && mediaRes.ok) {
         const mediaData = await mediaRes.json();
-        thumbnailUrl = mediaData['o:thumbnail_urls']?.square || mediaData['o:original_url'];
+        thumbnailUrl = pickOmekaMediaThumbnail(mediaData);
       }
     }
 
@@ -776,16 +777,15 @@ async function loadOverviewMediaEntries(
 }
 
 const resolveResourceThumbnailUrl = async (resourceData: any): Promise<string | undefined> => {
-  if (resourceData['thumbnail_display_urls']?.square) {
-    return resourceData['thumbnail_display_urls'].square;
-  }
+  const displayThumb = pickOmekaDisplayThumbnail(resourceData['thumbnail_display_urls']);
+  if (displayThumb) return displayThumb;
 
   if (resourceData['o:thumbnail']?.['o:id']) {
     try {
       const thumbRes = await fetchWithRetry(`${API_BASE}media/${resourceData['o:thumbnail']['o:id']}`, 1, 300);
       if (thumbRes && thumbRes.ok) {
         const thumbData = await thumbRes.json();
-        return thumbData['o:thumbnail_urls']?.square || thumbData['o:original_url'];
+        return pickOmekaMediaThumbnail(thumbData);
       }
     } catch (e) {
       console.error('Erreur chargement thumbnail:', e);
@@ -797,7 +797,7 @@ const resolveResourceThumbnailUrl = async (resourceData: any): Promise<string | 
       const mediaRes = await fetchWithRetry(`${API_BASE}media/${resourceData['o:media'][0]['o:id']}`, 1, 300);
       if (mediaRes && mediaRes.ok) {
         const mediaData = await mediaRes.json();
-        return mediaData['o:thumbnail_urls']?.square || mediaData['o:original_url'];
+        return pickOmekaMediaThumbnail(mediaData);
       }
     } catch (e) {
       console.error('Erreur chargement média:', e);
@@ -1225,7 +1225,10 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
               if (id == null || resourceCache[id]) return;
               resourceCache[id] = {
                 title: getLinkedResourceTitle(item, view.resourceTemplateId),
-                thumbnailUrl: item['thumbnail_display_urls']?.square || item.thumbnail || item.thumbnailUrl,
+                thumbnailUrl:
+                  pickOmekaDisplayThumbnail(item['thumbnail_display_urls']) ||
+                  item.thumbnail ||
+                  item.thumbnailUrl,
               };
             });
           } else if (isEditing && formDataItems.length > 0) {
@@ -1238,7 +1241,10 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
               if (!resourceCache[id]) {
                 resourceCache[id] = {
                   title: getLinkedResourceTitle(item, view.resourceTemplateId),
-                  thumbnailUrl: item['thumbnail_display_urls']?.square || item.thumbnail || item.thumbnailUrl,
+                  thumbnailUrl:
+                  pickOmekaDisplayThumbnail(item['thumbnail_display_urls']) ||
+                  item.thumbnail ||
+                  item.thumbnailUrl,
                 };
               }
             });

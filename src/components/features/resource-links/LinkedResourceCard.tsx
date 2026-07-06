@@ -5,6 +5,9 @@ import { ImageIcon } from '@/components/ui/icons';
 /** Espacement vertical entre cartes dans une liste « Autres choix » */
 export const LINKED_RESOURCE_LIST_CLASS = 'flex flex-col gap-2';
 
+/** Colonne vignette à largeur fixe — le texte démarre toujours au même endroit. */
+const THUMBNAIL_SLOT_CLASS = 'flex-shrink-0 w-18 h-12 flex items-center justify-center self-center';
+
 export interface LinkedResourceCardProps {
   thumbnail?: string | null;
   children: React.ReactNode;
@@ -36,11 +39,17 @@ export const LinkedResourceCard: React.FC<LinkedResourceCardProps> = ({
 
   const body = (
     <div className='flex flex-row gap-4 items-center min-w-0 w-full p-4'>
-      <div className='flex-shrink-0 w-12 h-12 rounded-md overflow-hidden flex items-center justify-center bg-gradient-to-br from-c2 to-c3'>
+      <div className={THUMBNAIL_SLOT_CLASS}>
         {thumbnail ? (
-          <img src={thumbnail} alt='' className='w-12 h-12 object-cover' />
+          <img
+            src={thumbnail}
+            alt=''
+            className='block max-h-12 max-w-full w-auto h-auto rounded-sm object-contain'
+          />
         ) : (
-          <ImageIcon size={22} className='text-c4/40' />
+          <div className='flex h-12 w-12 items-center justify-center rounded-md bg-gradient-to-br from-c2 to-c3'>
+            <ImageIcon size={22} className='text-c4/40' />
+          </div>
         )}
       </div>
       <div className='min-w-0 flex-1'>{children}</div>

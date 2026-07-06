@@ -185,6 +185,27 @@ export function resolveOmekaThumbnail(url: string | null | undefined): string | 
   return resolved;
 }
 
+/** Préfère medium/large pour conserver le ratio (listes « Autres choix »). */
+export function pickOmekaDisplayThumbnail(
+  displayUrls?: Record<string, string | undefined> | null,
+): string | undefined {
+  if (!displayUrls) return undefined;
+  const raw = displayUrls.medium || displayUrls.large || displayUrls.square;
+  return resolveOmekaThumbnail(typeof raw === 'string' ? raw : null) ?? undefined;
+}
+
+/** Préfère l'original ou medium plutôt que le crop carré Omeka. */
+export function pickOmekaMediaThumbnail(
+  mediaData?: { 'o:original_url'?: string; 'o:thumbnail_urls'?: Record<string, string | undefined> } | null,
+): string | undefined {
+  if (!mediaData) return undefined;
+  const fromOriginal = resolveOmekaThumbnail(mediaData['o:original_url']);
+  if (fromOriginal) return fromOriginal;
+  const urls = mediaData['o:thumbnail_urls'];
+  const raw = urls?.medium || urls?.large || urls?.square;
+  return resolveOmekaThumbnail(typeof raw === 'string' ? raw : null) ?? undefined;
+}
+
 /**
  * Extract thumbnail from resource item.
  * Supports direct property or YouTube URL derivation.
