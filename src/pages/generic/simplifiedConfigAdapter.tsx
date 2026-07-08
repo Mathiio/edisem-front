@@ -243,7 +243,7 @@ const InlineMicroresumeForm: React.FC<{
   );
 };
 import { getResourceConfigByTemplateId, isFormOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
-import { buildCachedResourceUrl, pickOmekaDisplayThumbnail, pickOmekaMediaThumbnail } from '@/lib/resourceUtils';
+import { buildCachedResourceUrl, pickOmekaDisplayThumbnail, pickOmekaMediaThumbnail, resolveOmekaThumbnail } from '@/lib/resourceUtils';
 import { enrichItemWithResourceOwner } from '@/lib/resourceOwner';
 import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/ui/form/AutoResizingTextarea';
 import {
@@ -691,7 +691,7 @@ const collectPrioritizedLinkedResourceIds = (data: any, config: SimplifiedDetail
   };
 
   config.views?.forEach((view) => {
-    if (view.renderType === 'references' && view.property) {
+    if ((view.renderType === 'references' || view.renderType === 'items') && view.property) {
       getResourceIds(data, view.property).forEach(add);
     }
   });
@@ -1213,6 +1213,18 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
           let resourceIds = getResourceIds(itemDetails, view.property || '');
           const resourceCache = { ...(itemDetails?.resourceCache || {}) };
           const formDataItems: any[] = isEditing && Array.isArray(itemDetails[view.key]) ? itemDetails[view.key] : [];
+          const viewPropertyRefs: any[] = Array.isArray(itemDetails[view.property || ''])
+            ? itemDetails[view.property || '']
+            : [];
+          const linkedRefThumbnailById = new Map<string, string>();
+          viewPropertyRefs.forEach((ref: any) => {
+            const refId = ref?.value_resource_id;
+            if (refId == null) return;
+            const thumb =
+              pickOmekaDisplayThumbnail(ref['thumbnail_display_urls']) ||
+              resolveOmekaThumbnail(ref.thumbnail_url);
+            if (thumb) linkedRefThumbnailById.set(String(refId), thumb);
+          });
 
           if (isEditing && formData?.[view.key] !== undefined && Array.isArray(formData[view.key])) {
             // formData[view.key] fait autorité sur les IDs (reflète ajouts et suppressions)
@@ -1269,7 +1281,13 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                   (formItem ? getLinkedResourceTitle(formItem, view.resourceTemplateId) : undefined) ||
                   cachedTitle ||
                   getResourceFallbackTitle(id, cachedTemplateId),
-                thumbnail: update?.thumbnail || cached?.thumbnailUrl || formItem?.thumbnail || formItem?.thumbnailUrl,
+                thumbnail:
+                  update?.thumbnail ||
+                  cached?.thumbnailUrl ||
+                  cached?.thumbnail ||
+                  linkedRefThumbnailById.get(String(id)) ||
+                  formItem?.thumbnail ||
+                  formItem?.thumbnailUrl,
                 url: cached?.url,
                 ownerId: getResourceOwnerId(cached) ?? getResourceOwnerId(formItem),
               };

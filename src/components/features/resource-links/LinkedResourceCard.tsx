@@ -72,7 +72,7 @@ export const LinkedResourceCard: React.FC<LinkedResourceCardProps> = ({
   if (onClick && !hasHref) {
     return (
       <div className={shellClassName}>
-        <button type='button' className='w-full text-left' onClick={onClick}>
+        <button type='button' className='w-full text-left cursor-pointer' onClick={onClick}>
           {body}
         </button>
       </div>
@@ -82,7 +82,7 @@ export const LinkedResourceCard: React.FC<LinkedResourceCardProps> = ({
   if (hasHref && external) {
     return (
       <div className={shellClassName}>
-        <a className='block w-full' href={href} target='_blank' rel='noopener noreferrer' onClick={onClick}>
+        <a className='block w-full cursor-pointer' href={href} target='_blank' rel='noopener noreferrer' onClick={onClick}>
           {body}
         </a>
       </div>
@@ -92,7 +92,7 @@ export const LinkedResourceCard: React.FC<LinkedResourceCardProps> = ({
   if (hasHref) {
     return (
       <div className={shellClassName}>
-        <Link className='block w-full' to={href!} onClick={onClick}>
+        <Link className='block w-full cursor-pointer' to={href!} onClick={onClick}>
           {body}
         </Link>
       </div>
