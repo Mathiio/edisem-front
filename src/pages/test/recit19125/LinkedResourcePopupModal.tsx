@@ -49,12 +49,6 @@ const CATEGORY_CONFIG: Record<
     })) ?? [],
 };
 
-const POPUP_TITLES: Record<PopupViewKey, string> = {
-  AnalyseCritique: 'Analyse critique',
-  ElementsNarratifs: 'Élément narratif',
-  ElementsEsthetiques: 'Élément esthétique',
-};
-
 function normalizeMedias(itemDetails: any): string[] {
   const raw = itemDetails?.associatedMedia;
   const medias: string[] = Array.isArray(raw) ? raw : typeof raw === 'string' ? [raw] : [];
@@ -192,9 +186,6 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
       }}>
       <ModalContent className='max-h-[85vh] bg-c1 border-2 border-c3'>
         <ModalHeader className='flex flex-col gap-px py-4 border-b border-c3'>
-          {/* <span className='text-c4 text-xs font-medium uppercase tracking-wide'>
-            {popup ? POPUP_TITLES[popup.viewKey] : ''}
-          </span> */}
           <h2 className='text-c6 text-xl font-semibold leading-tight'>
             {loading ? 'Chargement...' : title || 'Sans titre'}
           </h2>
