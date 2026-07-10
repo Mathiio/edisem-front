@@ -55,6 +55,7 @@ export const analyseCritiqueConfigSimplified: SimplifiedDetailConfig = {
   showComments: true,
   recommendationsTitle: 'Autres analyses critiques',
   formEnabled: true,
+  useItemPageEngine: true,
 };
 
 export const analyseCritiqueConfig = convertToGenericConfig(analyseCritiqueConfigSimplified);

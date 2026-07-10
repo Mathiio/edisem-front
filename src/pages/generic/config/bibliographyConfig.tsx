@@ -138,6 +138,7 @@ export const bibliographyConfigSimplified: SimplifiedDetailConfig = {
   showRecommendations: false,
   showComments: false,
   formEnabled: true,
+  useItemPageEngine: true,
 };
 
 export const bibliographyConfig = convertToGenericConfig(bibliographyConfigSimplified);

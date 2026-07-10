@@ -88,6 +88,7 @@ export const feedbackConfigSimplified: SimplifiedDetailConfig = {
   recommendationsTitle: "Autres retours d'expérience",
   defaultView: 'experimentation',
   formEnabled: true,
+  useItemPageEngine: true,
 
   smartRecommendations: {
     maxRecommendations: 5,

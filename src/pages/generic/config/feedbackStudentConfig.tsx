@@ -92,6 +92,7 @@ export const feedbackStudentConfigSimplified: SimplifiedDetailConfig = {
   recommendationsTitle: "Autres retours d'expérience",
   defaultView: 'experimentation',
   formEnabled: true,
+  useItemPageEngine: true,
 
   // Smart recommendations
   smartRecommendations: {

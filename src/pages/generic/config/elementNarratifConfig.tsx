@@ -76,6 +76,7 @@ export const elementNarratifConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'element_narratif',
   defaultView: 'Analyse',
   formEnabled: true,
+  useItemPageEngine: true,
 
   smartRecommendations: {
     maxRecommendations: 5,

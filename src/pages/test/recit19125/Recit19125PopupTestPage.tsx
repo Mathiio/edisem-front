@@ -79,7 +79,8 @@ export const Recit19125PopupTestPage: React.FC = () => {
       <div className='w-full bg-amber-500/15 border-b border-amber-500/30 px-6 py-3 text-center'>
         <p className='text-c6 text-sm'>
           <span className='font-medium'>Page test</span> — item {TEST_ITEM_ID} (Her). Les analyses
-          critiques, éléments narratifs et esthétiques s&apos;ouvrent en popup au lieu de naviguer.
+          critiques, éléments narratifs et esthétiques s&apos;ouvrent en popup au lieu de naviguer
+          (popup désormais chargée via le nouveau backend <code>getChildItem</code>, un seul appel réseau).
         </p>
       </div>
       <GenericDetailPage config={config} itemId={TEST_ITEM_ID} />

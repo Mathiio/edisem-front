@@ -12,7 +12,6 @@ import React from 'react';
 import { IconSvgProps } from '@/types/ui';
 import {
   CONFERENCE_TEMPLATE_ID,
-  LEGACY_CONFERENCE_TEMPLATE_IDS,
 } from './conferenceTypeConfig';
 
 export {
@@ -418,8 +417,6 @@ export const OMEKA_PROPERTY_IDS: Record<string, number> = {
 export const TEMPLATE_ID_TO_TYPE: Record<number, ResourceType> = (() => {
   const acc: Record<number, ResourceType> = {
     [CONFERENCE_TEMPLATE_ID]: 'seminaire',
-    [LEGACY_CONFERENCE_TEMPLATE_IDS.journee_etudes]: 'journee_etudes',
-    [LEGACY_CONFERENCE_TEMPLATE_IDS.colloque]: 'colloque',
   };
 
   Object.values(RESOURCE_TYPES).forEach((config) => {

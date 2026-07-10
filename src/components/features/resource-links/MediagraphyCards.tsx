@@ -219,9 +219,11 @@ export const MediagraphyCard: React.FC<Mediagraphy> = ({
   location,
   place,
   resource_template_id,
+  ...rest
 }) => {
   const externalUrl =
-    getFormOnlyExternalUrl({ type: 'mediagraphie', uri, url: uri }) || (isHttpUrl(uri) ? uri : null);
+    getFormOnlyExternalUrl({ type: 'mediagraphie', uri, ...rest }) ||
+    (isHttpUrl(uri) ? uri : null);
 
   const template = mediagraphyTemplates[mediaType] || mediagraphyTemplates['default'];
 

@@ -28,7 +28,8 @@ import { Bibliographies } from '@/components/features/resource-links/Bibliograph
 import { Mediagraphies } from '@/components/features/resource-links/MediagraphyCards';
 import { Citations } from '@/components/features/resource-links/CitationsCards';
 import { Microresumes } from '@/components/features/resource-links/MicroresumesCards';
-import { getResourceDetails } from '@/services/resourceDetails';
+import { getItemPage } from '@/services/itemPage';
+import { createItemPageDataFetcher, createProgressiveItemPageDataFetcher } from './itemPageFastFetcher';
 import { ReferenceAddButtons } from '@/components/features/forms/edit/AddResourceCard';
 import { outlineButtonClass } from '@/theme/components/button';
 import { GenericDetailPage } from './GenericDetailPage';
@@ -103,7 +104,24 @@ const resolveReferenceFromCache = (ref: any, resourceCache?: Record<number, any>
   if (id === undefined) return ref;
 
   const cached = resourceCache?.[id];
-  return cached || null;
+  if (cached) return cached;
+
+  // Fallback : métadonnées embarquées dans la propriété parente (si hors cache / limite atteinte)
+  const displayTitle = ref.display_title;
+  const thumbnail =
+    pickOmekaDisplayThumbnail(ref['thumbnail_display_urls']) ||
+    resolveOmekaThumbnail(ref.thumbnail_url);
+  if (displayTitle || thumbnail) {
+    return {
+      id,
+      title: displayTitle || getResourceFallbackTitle(id),
+      thumbnail,
+      thumbnailUrl: thumbnail,
+      value_resource_id: id,
+    };
+  }
+
+  return null;
 };
 
 const ReferenceLoadingSkeleton: React.FC<{ count?: number }> = ({ count = 1 }) => (
@@ -243,7 +261,7 @@ const InlineMicroresumeForm: React.FC<{
   );
 };
 import { getResourceConfigByTemplateId, isFormOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
-import { buildCachedResourceUrl, pickOmekaDisplayThumbnail, pickOmekaMediaThumbnail, resolveOmekaThumbnail } from '@/lib/resourceUtils';
+import { buildCachedResourceUrl, extractExternalUrlFromOmekaItem, getResourceThumbnail, getYouTubeThumbnail, pickOmekaDisplayThumbnail, pickOmekaMediaThumbnail, resolveOmekaThumbnail } from '@/lib/resourceUtils';
 import { enrichItemWithResourceOwner } from '@/lib/resourceOwner';
 import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/ui/form/AutoResizingTextarea';
 import {
@@ -605,7 +623,7 @@ export const resourceManagement = {
 /**
  * Détermine le type de ressource basé sur le template ID
  */
-const getResourceTypeFromTemplate = (
+export const getResourceTypeFromTemplate = (
   templateId: number | undefined,
   resourceData?: Record<string, unknown>,
 ): string => {
@@ -650,9 +668,10 @@ const collectSourceProperties = (fields: InternalFieldConfig[]): Record<string, 
   return result;
 };
 
-const MAX_LINKED_RESOURCES = 30;
+/** Nombre max de ressources liées préchargées (hors bibliographies/médiagraphies, toujours chargées à part). */
+const MAX_LINKED_RESOURCES = 60;
 
-const getContributorDisplayType = (templateId: number | undefined): string | undefined => {
+export const getContributorDisplayType = (templateId: number | undefined): string | undefined => {
   if (templateId === 72) return 'actant';
   if (templateId === 96) return 'student';
   if (templateId === 104) return 'organisation';
@@ -679,7 +698,24 @@ const usesAssociatedMediaAsReferenceView = (config: SimplifiedDetailConfig): boo
     (view) => view.renderType === 'references' && view.property === 'schema:associatedMedia',
   ) ?? false;
 
-/** Charge d'abord les refs des vues (biblio / médiagraphie), puis contributeurs, puis le reste. */
+/** IDs des vues « références » (bibliographies, médiagraphies…) — toujours chargés en entier. */
+const collectReferenceViewResourceIds = (data: any, config: SimplifiedDetailConfig): number[] => {
+  const ids: number[] = [];
+  const seen = new Set<number>();
+  config.views?.forEach((view) => {
+    if (view.renderType === 'references' && view.property) {
+      getResourceIds(data, view.property).forEach((id) => {
+        if (!seen.has(id)) {
+          seen.add(id);
+          ids.push(id);
+        }
+      });
+    }
+  });
+  return ids;
+};
+
+/** Charge d'abord les refs des vues (biblio / médiagraphie), puis items liés, puis contributeurs, puis le reste. */
 const collectPrioritizedLinkedResourceIds = (data: any, config: SimplifiedDetailConfig): number[] => {
   const ids: number[] = [];
   const seen = new Set<number>();
@@ -691,7 +727,12 @@ const collectPrioritizedLinkedResourceIds = (data: any, config: SimplifiedDetail
   };
 
   config.views?.forEach((view) => {
-    if ((view.renderType === 'references' || view.renderType === 'items') && view.property) {
+    if (view.renderType === 'references' && view.property) {
+      getResourceIds(data, view.property).forEach(add);
+    }
+  });
+  config.views?.forEach((view) => {
+    if (view.renderType === 'items' && view.property) {
       getResourceIds(data, view.property).forEach(add);
     }
   });
@@ -714,6 +755,18 @@ const collectPrioritizedLinkedResourceIds = (data: any, config: SimplifiedDetail
   collectAllLinkedResourceIds(data).forEach(add);
 
   return ids.slice(0, MAX_LINKED_RESOURCES);
+};
+
+const loadLinkedResourceCache = async (
+  data: any,
+  config: SimplifiedDetailConfig,
+  resourceCache: Record<number, any>,
+): Promise<void> => {
+  const prioritizedIds = collectPrioritizedLinkedResourceIds(data, config);
+  await Promise.all(prioritizedIds.map((resourceId) => cacheLinkedOmekaResource(resourceId, resourceCache)));
+
+  const missingReferenceIds = collectReferenceViewResourceIds(data, config).filter((id) => !resourceCache[id]);
+  await Promise.all(missingReferenceIds.map((resourceId) => cacheLinkedOmekaResource(resourceId, resourceCache)));
 };
 
 async function loadLinkedAssociatedMediaEntries(data: any): Promise<AssociatedMediaEntry[]> {
@@ -780,6 +833,9 @@ const resolveResourceThumbnailUrl = async (resourceData: any): Promise<string | 
   const displayThumb = pickOmekaDisplayThumbnail(resourceData['thumbnail_display_urls']);
   if (displayThumb) return displayThumb;
 
+  const ytFromSchema = getYouTubeThumbnail(extractExternalUrlFromOmekaItem(resourceData) ?? '');
+  if (ytFromSchema) return ytFromSchema;
+
   if (resourceData['o:thumbnail']?.['o:id']) {
     try {
       const thumbRes = await fetchWithRetry(`${API_BASE}media/${resourceData['o:thumbnail']['o:id']}`, 1, 300);
@@ -843,6 +899,7 @@ const cacheLinkedOmekaResource = async (
       resourceData['foaf:familyName']?.[0]?.['@value'] || resourceData['schema:familyName']?.[0]?.['@value'] || '';
     const displayTitle =
       resourceData['o:title'] || `${firstname} ${lastname}`.trim() || getResourceFallbackTitle(resourceId, templateId);
+    const externalUrl = extractExternalUrlFromOmekaItem(resourceData);
 
     resourceCache[resourceId] = {
       id: resourceId,
@@ -869,6 +926,8 @@ const cacheLinkedOmekaResource = async (
       number: resourceData['bibo:number']?.[0]?.['@value'] || null,
       mediagraphyType: resourceData['edisem:typeMediagraphie']?.[0]?.['@value'] || null,
       url: buildCachedResourceUrl(resourceType, resourceId, resourceData),
+      uri: externalUrl ?? undefined,
+      externalLink: externalUrl ?? undefined,
       ownerId: resourceData['o:owner']?.['o:id'],
     };
 
@@ -973,6 +1032,36 @@ const applyCombinedFieldProperties = (
   });
 };
 
+/** Micro-résumés / citations via Item Page. */
+const fetchMicroResumesAndCitationsFromItemPage = async (
+  id: string,
+  config: SimplifiedDetailConfig,
+): Promise<{ microResumes?: unknown[]; citations?: unknown[] } | null> => {
+  const needsMicro = config.views?.some((v) => v.renderType === 'microresumes');
+  const needsCitations = config.views?.some((v) => v.renderType === 'citations');
+  if (!needsMicro && !needsCitations) return null;
+
+  try {
+    const page = await getItemPage(id);
+    if (!page?.supported) return null;
+
+    const result: { microResumes?: unknown[]; citations?: unknown[] } = {};
+    (config.views ?? []).forEach((view) => {
+      const fastView = page.views[view.key];
+      if (view.renderType === 'microresumes' && fastView?.type === 'microresumes') {
+        result.microResumes = fastView.items;
+      }
+      if (view.renderType === 'citations' && fastView?.type === 'citations') {
+        result.citations = fastView.items;
+      }
+    });
+
+    return result;
+  } catch {
+    return null;
+  }
+};
+
 // ========================================
 // Data Fetcher générique pour Omeka S (PROGRESSIF)
 // ========================================
@@ -998,27 +1087,26 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
 
       applyCombinedFieldProperties(enrichedData, data, fieldSourceProperties);
 
-      const resourceIds = collectPrioritizedLinkedResourceIds(data, config);
       const resourceCache: Record<number, any> = {};
 
       const hasMicroresumesView = config.views?.some((v) => v.renderType === 'microresumes');
       const hasCitationsView = config.views?.some((v) => v.renderType === 'citations');
-      const detailsPromise =
+      const itemPageViewsPromise =
         hasMicroresumesView || hasCitationsView
-          ? getResourceDetails(id).catch(() => null)
+          ? fetchMicroResumesAndCitationsFromItemPage(id, config)
           : Promise.resolve(null);
 
-      const [keywords, , details] = await Promise.all([
+      const [keywords, , itemPageViews] = await Promise.all([
         loadKeywordsFromData(data, config),
-        Promise.all(resourceIds.map((resourceId) => cacheLinkedOmekaResource(resourceId, resourceCache))),
-        detailsPromise,
+        loadLinkedResourceCache(data, config, resourceCache),
+        itemPageViewsPromise,
       ]);
 
       applyEnrichedLinkedProperties(enrichedData, data, resourceCache);
       enrichedData.resourceCache = resourceCache;
 
-      if (hasMicroresumesView && details?.microResumes) enrichedData.microResumes = details.microResumes;
-      if (hasCitationsView && details?.citations) enrichedData.citations = details.citations;
+      if (hasMicroresumesView && itemPageViews?.microResumes) enrichedData.microResumes = itemPageViews.microResumes;
+      if (hasCitationsView && itemPageViews?.citations) enrichedData.citations = itemPageViews.citations;
 
       onProgress({
         itemDetails: enrichedData,
@@ -1063,27 +1151,26 @@ const createOmekaDataFetcher = (config: SimplifiedDetailConfig, fields: Internal
 
       applyCombinedFieldProperties(enrichedData, data, fieldSourceProperties);
 
-      const resourceIds = collectPrioritizedLinkedResourceIds(data, config);
       const resourceCache: Record<number, any> = {};
 
       const hasMicroresumesView = config.views?.some((v) => v.renderType === 'microresumes');
       const hasCitationsView = config.views?.some((v) => v.renderType === 'citations');
-      const detailsPromise =
+      const itemPageViewsPromise =
         hasMicroresumesView || hasCitationsView
-          ? getResourceDetails(id).catch(() => null)
+          ? fetchMicroResumesAndCitationsFromItemPage(id, config)
           : Promise.resolve(null);
 
-      const [keywords, , details] = await Promise.all([
+      const [keywords, , itemPageViews] = await Promise.all([
         loadKeywordsFromData(data, config),
-        Promise.all(resourceIds.map((resourceId) => cacheLinkedOmekaResource(resourceId, resourceCache))),
-        detailsPromise,
+        loadLinkedResourceCache(data, config, resourceCache),
+        itemPageViewsPromise,
       ]);
 
       applyEnrichedLinkedProperties(enrichedData, data, resourceCache);
       enrichedData.resourceCache = resourceCache;
 
-      if (hasMicroresumesView && details?.microResumes) enrichedData.microResumes = details.microResumes;
-      if (hasCitationsView && details?.citations) enrichedData.citations = details.citations;
+      if (hasMicroresumesView && itemPageViews?.microResumes) enrichedData.microResumes = itemPageViews.microResumes;
+      if (hasCitationsView && itemPageViews?.citations) enrichedData.citations = itemPageViews.citations;
 
       return {
         itemDetails: enrichedData,
@@ -1387,40 +1474,48 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
 
           const enrichedProperty = enrichedPropertyMap[view.property || ''];
           const resourceCache = itemDetails?.resourceCache || {};
+          const rawRefs: any[] = Array.isArray(itemDetails?.[view.property || ''])
+            ? itemDetails[view.property || '']
+            : [];
           const expectedRefCount = getResourceIds(itemDetails, view.property || '').length;
 
-          // Données enrichies pour l'affichage (avec titre, auteur, etc.)
-          let enrichedRefs = enrichedProperty ? itemDetails?.[enrichedProperty] : null;
-          if (!enrichedRefs || enrichedRefs.length === 0) {
-            const rawRefs = itemDetails?.[view.property || ''] || [];
-            enrichedRefs = rawRefs
-              .map((ref: any) => resolveReferenceFromCache(ref, resourceCache))
-              .filter(Boolean);
+          const enrichedById = new Map<string, any>();
+          if (enrichedProperty && Array.isArray(itemDetails?.[enrichedProperty])) {
+            itemDetails[enrichedProperty].forEach((ref: any) => {
+              const refId = getReferenceResourceId(ref);
+              if (refId != null) enrichedById.set(String(refId), ref);
+            });
           }
+
+          const resolveRawReference = (ref: any) => {
+            const refId = getReferenceResourceId(ref);
+            const enriched = refId != null ? enrichedById.get(String(refId)) : null;
+            return resolveReferenceFromCache(enriched || ref, resourceCache);
+          };
 
           let refs: any[];
           if (isEditing && formData?.[view.key] && Array.isArray(formData[view.key])) {
-            // formData[view.key] fait autorité sur les IDs (reflète ajouts et suppressions)
-            const formIds = new Set(formData[view.key].map((item: any) => String(item.id || item['o:id'] || item.value_resource_id)));
-            // Filtrer les items enrichis par les IDs dans formData (gère suppressions)
-            const kept = enrichedRefs.filter((r: any) => formIds.has(String(r.id || r['o:id'])));
-            // Ajouter les nouveaux items de formData qui ne sont pas dans les enrichis
-            const enrichedIds = new Set(enrichedRefs.map((r: any) => String(r.id || r['o:id'])));
+            const formIds = new Set(
+              formData[view.key].map((item: any) => String(item.id || item['o:id'] || item.value_resource_id)),
+            );
+            const kept = rawRefs
+              .filter((ref: any) => formIds.has(String(getReferenceResourceId(ref) ?? ref.value_resource_id)))
+              .map(resolveRawReference)
+              .filter(Boolean);
+            const keptIds = new Set(kept.map((r: any) => String(r.id || r['o:id'])));
             const added = formData[view.key]
               .filter((item: any) => {
                 const itemId = String(item.id || item['o:id'] || item.value_resource_id);
-                return !enrichedIds.has(itemId);
+                return !keptIds.has(itemId);
               })
               .map((item: any) => resolveReferenceFromCache(item, resourceCache) || item);
             refs = [...kept, ...added];
           } else {
-            refs = enrichedRefs
-              .map((ref: any) => resolveReferenceFromCache(ref, resourceCache))
-              .filter(Boolean);
+            refs = rawRefs.map(resolveRawReference).filter(Boolean);
           }
 
           const pendingRefCount = Math.max(0, expectedRefCount - refs.length);
-          const isLoadingRefs = pendingRefCount > 0;
+          const isLoadingRefs = loadingViews && pendingRefCount > 0;
 
           const mediagraphies = refs.filter((ref: any) => ref?.type === 'mediagraphie' || ref?.mediagraphyType);
           const bibliographies = refs.filter((ref: any) => {
@@ -1717,9 +1812,18 @@ export const convertToGenericConfig = (config: SimplifiedDetailConfig): GenericD
   // 2. Créer les formFields pour le mode édition
   const formFields = config.formEnabled ? fields.filter((f) => f.editable !== false).map(fieldToFormField) : undefined;
 
-  // 3. Créer les data fetchers (utiliser le custom si fourni)
-  const dataFetcher = config.customDataFetcher ?? createOmekaDataFetcher(config, fields);
-  const progressiveDataFetcher = config.customDataFetcher ? undefined : createProgressiveOmekaDataFetcher(config, fields);
+  // 3. Créer les data fetchers (custom > Item Page engine > Omeka S N+1)
+  const slowFetcher = createOmekaDataFetcher(config, fields);
+  const slowProgressiveFetcher = createProgressiveOmekaDataFetcher(config, fields);
+  const dataFetcher = config.customDataFetcher
+    ?? (config.useItemPageEngine
+      ? createItemPageDataFetcher(config, fields, slowFetcher)
+      : slowFetcher);
+  const progressiveDataFetcher = config.customDataFetcher
+    ? undefined
+    : config.useItemPageEngine
+      ? createProgressiveItemPageDataFetcher(config, fields, slowProgressiveFetcher)
+      : slowProgressiveFetcher;
 
   // 4. Créer les viewOptions
   const viewOptions = createViewOptions(config.views);
@@ -1806,17 +1910,18 @@ export const convertToGenericConfig = (config: SimplifiedDetailConfig): GenericD
     mapRecommendationProps: config.customMapRecommendationProps ?? (config.recommendationType
       ? (item: any) => {
           const actants = resolveRecommendationActants(item);
+          const thumbnail =
+            getResourceThumbnail(item) ||
+            item.thumbnail ||
+            item.thumbnailUrl ||
+            item.picture ||
+            null;
           return {
             id: item.id || item['o:id'],
             title: item.title || item.name || item['o:title'] || item['dcterms:title']?.[0]?.['@value'],
             type: item.type || config.recommendationType,
-            url: item.url ?? null,
-            thumbnail:
-              item.thumbnail ||
-              item.thumbnailUrl ||
-              item.picture ||
-              item.associatedMedia?.[0] ||
-              null,
+            url: item.url ?? item.externalLink ?? item.uri ?? null,
+            thumbnail,
             actants,
             personnes: actants,
           };

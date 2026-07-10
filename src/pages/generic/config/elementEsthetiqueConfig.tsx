@@ -56,6 +56,7 @@ export const elementEsthetiqueConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'element_esthetique',
   defaultView: 'Analyse',
   formEnabled: true,
+  useItemPageEngine: true,
 
   smartRecommendations: {
     maxRecommendations: 5,

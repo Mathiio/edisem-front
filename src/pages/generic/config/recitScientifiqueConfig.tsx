@@ -94,6 +94,7 @@ export const recitScientifiqueConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'recit_scientifique',
   defaultView: 'AnalyseCritique',
   formEnabled: true,
+  useItemPageEngine: true,
 
   contributorButtons: [
     { label: 'Ajouter Personne', templateId: 33, property: 'dcterms:creator' },

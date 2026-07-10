@@ -838,7 +838,6 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
             dangerouslySetInnerHTML={{ __html: description }}
           />
         )}
-        {actants && actants.length > 0 && <p className='text-sm text-end text-c4 italic'>Ajouté par : {actants.map((a) => getPersonDisplayName(a)).join(', ')}</p>}
         {detailsFields
           .filter((f) => f.type === 'itemset')
           .map((field) => {

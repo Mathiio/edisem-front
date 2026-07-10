@@ -37,6 +37,13 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
       zone: 'overview',
       editable: false,
     },
+    sessionUrl: {
+      property: 'schema:url',
+      type: 'url',
+      label: 'Vidéo',
+      placeholder: 'https://youtu.be/...',
+      zone: 'overview',
+    },
     keywords: {
       property: 'jdc:hasConcept',
       type: 'resource',
@@ -89,6 +96,7 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
   recommendationsTitle: 'Contenus associés',
   defaultView: 'MicroResumes',
   formEnabled: true,
+  useItemPageEngine: true,
 
   smartRecommendations: createRelatedResourcesSmartRecommendations(),
 

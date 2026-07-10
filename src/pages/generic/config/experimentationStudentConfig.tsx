@@ -84,6 +84,7 @@ export const experimentationStudentConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'experimentation_etudiant',
   defaultView: 'bibo:abstract',
   formEnabled: true,
+  useItemPageEngine: true,
 
   contributorButtons: [
     { label: 'Ajouter Étudiant', templateId: 96, property: 'schema:agent' },

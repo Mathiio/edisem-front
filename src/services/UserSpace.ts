@@ -192,31 +192,6 @@ export interface AllStudentResources {
   total: number;
 }
 
-export interface StudentResourceDetails {
-  id: number;
-  title: string;
-  type: 'experimentation_etudiant' | 'outil_etudiant' | 'retour_experience_etudiant';
-  resource_template_id: number;
-  created: string;
-  modified: string;
-  owner_id: number;
-  values: Record<string, any[]>;
-  media: {
-    id: number;
-    storage_id: string;
-    media_type: string;
-    source: string;
-    url: string;
-    thumbnail: string;
-  }[];
-  actants: {
-    id: number;
-    title: string;
-    picture: string | null;
-    role: string;
-  }[];
-}
-
 export interface TemplateProperty {
   property_id: number;
   term: string;
@@ -837,24 +812,6 @@ export async function getStudentFeedbacks(): Promise<StudentResourceCard[]> {
     return await response.json();
   } catch (error) {
     console.error('Error fetching student feedbacks:', error);
-    throw error;
-  }
-}
-
-/**
- * Récupère les détails complets d'une ressource
- */
-export async function getStudentResourceDetails(id: number): Promise<StudentResourceDetails> {
-  try {
-    const response = await fetch(`${API_BASE}&action=getResourceDetails&id=${id}&json=1`);
-
-    if (!response.ok) {
-      throw new Error('Erreur lors de la récupération des détails');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching resource details:', error);
     throw error;
   }
 }

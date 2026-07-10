@@ -138,6 +138,7 @@ export const mediagraphyConfigSimplified: SimplifiedDetailConfig = {
   showRecommendations: false,
   showComments: false,
   formEnabled: true,
+  useItemPageEngine: true,
 };
 
 export const mediagraphyConfig = convertToGenericConfig(mediagraphyConfigSimplified);

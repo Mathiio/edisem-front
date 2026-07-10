@@ -10,7 +10,6 @@ import { ResourceCard } from '@/components/features/shared/corpus/ResourceCard';
 import { ThumbnailIcon } from '@/components/ui/icons';
 import MediaViewer from '@/components/features/resource-links/MediaViewer';
 import { MediaDropzone, MediaFile } from '@/components/features/forms/edit/MediaDropzone';
-import { getResourceDetails } from '@/services/resourceDetails';
 import * as Items from '@/services/Items';
 
 // ========================================
@@ -25,6 +24,7 @@ interface ToolOverviewProps {
   release: string | null;
   homepage: string | null;
   itemId: string | number | null;
+  usageCount?: number;
   isEditing?: boolean;
   loadingMedia?: boolean;
   mediaFiles?: MediaFile[];
@@ -43,6 +43,7 @@ const CustomToolOverview: React.FC<ToolOverviewProps> = ({
   release,
   homepage,
   itemId,
+  usageCount: usageCountProp = 0,
   isEditing = false,
   loadingMedia = false,
   mediaFiles = [],
@@ -52,19 +53,7 @@ const CustomToolOverview: React.FC<ToolOverviewProps> = ({
   removedMediaIndexes = [],
   onRemoveExistingMedia,
 }) => {
-  const [usageCount, setUsageCount] = React.useState<number | null>(null);
-
-  React.useEffect(() => {
-    if (isEditing || !itemId) {
-      setUsageCount(isEditing ? null : 0);
-      return;
-    }
-    let cancelled = false;
-    getResourceDetails(itemId)
-      .then((details: any) => { if (!cancelled) setUsageCount((details?.usedBy || []).length); })
-      .catch(() => { if (!cancelled) setUsageCount(0); });
-    return () => { cancelled = true; };
-  }, [itemId, isEditing]);
+  const usageCount = usageCountProp;
 
   const existingMedias = allMedias.filter((_, i) => !removedMediaIndexes.includes(i));
   const handleRemove = (index: number) => {
@@ -143,11 +132,7 @@ const CustomToolOverview: React.FC<ToolOverviewProps> = ({
           </div>
           <div className='flex flex-col gap-2.5'>
             <p className='text-sm text-c5 py-3 w-full text-center'>
-              {usageCount === null ? (
-                <span className='text-c4'>…</span>
-              ) : (
-                <>Utilis&eacute; dans {usageCount} ressource{usageCount > 1 ? 's' : ''}</>
-              )}
+              Utilis&eacute; dans {usageCount} ressource{usageCount > 1 ? 's' : ''}
             </p>
           </div>
         </div>
@@ -226,6 +211,7 @@ interface ToolDetailsProps {
   fileRelease: string[];
   programmingLanguages: string[];
   itemId: string | number | null;
+  usedBy?: any[];
 }
 
 const CustomToolDetails: React.FC<ToolDetailsProps> = ({
@@ -237,28 +223,10 @@ const CustomToolDetails: React.FC<ToolDetailsProps> = ({
   fileRelease,
   programmingLanguages,
   itemId,
+  usedBy = [],
 }) => {
-  const [usedBy, setUsedBy] = React.useState<any[]>([]);
-  const [loadingUsedBy, setLoadingUsedBy] = React.useState(true);
   const [relatedTools, setRelatedTools] = React.useState<any[]>([]);
   const [loadingRelated, setLoadingRelated] = React.useState(true);
-
-  // Fetch usedBy from PHP backend
-  React.useEffect(() => {
-    if (!itemId) return;
-    let cancelled = false;
-    getResourceDetails(itemId)
-      .then((details: any) => {
-        if (!cancelled) setUsedBy(details?.usedBy || []);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoadingUsedBy(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [itemId]);
 
   // Fetch related tools
   React.useEffect(() => {
@@ -338,7 +306,7 @@ const CustomToolDetails: React.FC<ToolDetailsProps> = ({
       </div>
 
       {/* Carousel: Resources using this tool */}
-      {!loadingUsedBy && usedBy.length > 0 && (
+      {usedBy.length > 0 && (
         <div className='w-full flex flex-col items-center gap-12 mt-5'>
           <div className='w-full'>
             <FullCarrousel
@@ -549,6 +517,7 @@ const sharedToolConfigBase: Omit<SimplifiedDetailConfig, 'resourceType' | 'templ
     const release = getOmekaValue(itemDetails, 'DOAP:release');
     const homepage = getOmekaValue(itemDetails, 'DOAP:homepage');
     const itemId = itemDetails['o:id'] || null;
+    const usageCount = Array.isArray(itemDetails.usedBy) ? itemDetails.usedBy.length : 0;
 
     return {
       title,
@@ -558,6 +527,7 @@ const sharedToolConfigBase: Omit<SimplifiedDetailConfig, 'resourceType' | 'templ
       release: typeof release === 'string' ? release : null,
       homepage: typeof homepage === 'string' ? homepage : null,
       itemId,
+      usageCount,
     };
   },
 
@@ -570,6 +540,7 @@ const sharedToolConfigBase: Omit<SimplifiedDetailConfig, 'resourceType' | 'templ
     const fileRelease = getAllOmekaValues(itemDetails, 'DOAP:file-release');
     const programmingLanguages = getProgrammingLanguages(itemDetails);
     const itemId = itemDetails['o:id'] || null;
+    const usedBy = Array.isArray(itemDetails.usedBy) ? itemDetails.usedBy : [];
 
     return {
       description: typeof description === 'string' ? description : null,
@@ -580,6 +551,7 @@ const sharedToolConfigBase: Omit<SimplifiedDetailConfig, 'resourceType' | 'templ
       fileRelease,
       programmingLanguages,
       itemId,
+      usedBy,
     };
   },
 
@@ -587,6 +559,7 @@ const sharedToolConfigBase: Omit<SimplifiedDetailConfig, 'resourceType' | 'templ
   showRecommendations: false,
   showComments: true,
   formEnabled: true,
+  useItemPageEngine: true,
   editSingleColumn: true,
 };
 

@@ -633,5 +633,3 @@ export async function advancedSearch(query: string, types: string[] = []) {
     return [];
   }
 }
-
-export * from './resourceDetails';

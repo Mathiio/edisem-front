@@ -338,6 +338,13 @@ export interface SimplifiedDetailConfig {
 
   // ---- Overrides custom (pour configs avancées comme les conférences) ----
 
+  /**
+   * Active le moteur backend optimisé "Item Page" (getItemPage / ItemPageConfig) à la place du
+   * pipeline N+1 GET /omk/api/items/{id}. Repli automatique sur le fetcher Omeka S standard
+   * si le template n'est pas couvert ou en cas d'erreur.
+   */
+  useItemPageEngine?: boolean;
+
   /** Data fetcher custom — remplace le fetcher Omeka S par défaut */
   customDataFetcher?: (id: string) => Promise<import('./config').FetchResult>;
 

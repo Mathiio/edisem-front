@@ -76,6 +76,7 @@ export const recitCitoyenConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'recit_citoyen',
   defaultView: 'AnalyseCritique',
   formEnabled: true,
+  useItemPageEngine: true,
 
   contributorButtons: [
     { label: 'Ajouter Personne', templateId: 33, property: 'dcterms:creator' },

@@ -102,6 +102,7 @@ export const experimentationConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'experimentation',
   defaultView: 'ElementsNarratifs',
   formEnabled: true,
+  useItemPageEngine: true,
 
   contributorButtons: [
     { label: 'Ajouter Intervenant', templateId: 72, property: 'schema:agent' },

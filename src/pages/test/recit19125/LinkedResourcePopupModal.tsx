@@ -8,11 +8,7 @@ import {
   modalBottomFadeClass,
   modalCloseButtonClasses,
 } from '@/theme/components';
-import { getAllOmekaValues, getOmekaValue } from '@/pages/generic/simplifiedConfigAdapter';
-import { analyseCritiqueConfig } from '@/pages/generic/config/analyseCritiqueConfig';
-import { elementNarratifConfig, elementNarratifConfigSimplified } from '@/pages/generic/config/elementNarratifConfig';
-import { elementEsthetiqueConfig, elementEsthetiqueConfigSimplified } from '@/pages/generic/config/elementEsthetiqueConfig';
-import { GenericDetailPageConfig } from '@/pages/generic/config';
+import { fieldValue, flattenMediaUrls, getChildItem, ItemPageData, viewCategoryEntries } from '@/services/itemPage';
 import { PopupMediaGallery } from './PopupMediaGallery';
 
 export type PopupViewKey = 'AnalyseCritique' | 'ElementsNarratifs' | 'ElementsEsthetiques';
@@ -27,37 +23,14 @@ interface LinkedResourcePopupModalProps {
   onClose: () => void;
 }
 
-const CONFIG_BY_VIEW: Record<PopupViewKey, GenericDetailPageConfig> = {
-  AnalyseCritique: analyseCritiqueConfig,
-  ElementsNarratifs: elementNarratifConfig,
-  ElementsEsthetiques: elementEsthetiqueConfig,
-};
-
-const CATEGORY_CONFIG: Record<
-  'ElementsNarratifs' | 'ElementsEsthetiques',
-  { label: string; property: string }[]
-> = {
-  ElementsNarratifs:
-    elementNarratifConfigSimplified.views?.[0]?.categories?.[0]?.subcategories?.map((sub) => ({
-      label: sub.label,
-      property: sub.property,
-    })) ?? [],
-  ElementsEsthetiques:
-    elementEsthetiqueConfigSimplified.views?.[0]?.categories?.[0]?.subcategories?.map((sub) => ({
-      label: sub.label,
-      property: sub.property,
-    })) ?? [],
-};
-
-function normalizeMedias(itemDetails: any): string[] {
-  const raw = itemDetails?.associatedMedia;
-  const medias: string[] = Array.isArray(raw) ? raw : typeof raw === 'string' ? [raw] : [];
-  return medias.filter(Boolean);
-}
-
+/**
+ * Popup d'item enfant (analyse critique, élément narratif/esthétique) — même structure/rendu
+ * qu'avant, mais chargée via le nouveau backend "Item Page" (getChildItem, un seul appel réseau)
+ * au lieu de config.dataFetcher (GET /omk/api/items/{id} + enrichissements N+1).
+ */
 export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> = ({ popup, onClose }) => {
   const { isOpen, onOpen, onClose: closeModal } = useDisclosure();
-  const [item, setItem] = useState<any | null>(null);
+  const [item, setItem] = useState<ItemPageData | null>(null);
   const [medias, setMedias] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -81,13 +54,11 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
     setItem(null);
     setMedias([]);
 
-    const config = CONFIG_BY_VIEW[popup.viewKey];
-    config
-      .dataFetcher(String(popup.resourceId))
+    getChildItem(popup.resourceId)
       .then((result) => {
         if (cancelled) return;
-        setItem(result.itemDetails);
-        setMedias(normalizeMedias(result.itemDetails));
+        setItem(result);
+        setMedias(result ? flattenMediaUrls(result.associatedMedia) : []);
         setLoading(false);
       })
       .catch(() => {
@@ -107,7 +78,7 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
     onClose();
   };
 
-  const title = item ? String(getOmekaValue(item, 'dcterms:title') || item['o:title'] || '') : '';
+  const title = item?.title || '';
 
   const renderContent = () => {
     if (loading) {
@@ -128,12 +99,12 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
     }
 
     if (popup?.viewKey === 'AnalyseCritique') {
-      const argument = getOmekaValue(item, 'dcterms:description');
+      const argument = fieldValue(item.fields.argument);
       return (
         <div className='flex flex-col gap-5'>
           <PopupMediaGallery key={String(popup?.resourceId)} medias={medias} />
           {argument ? (
-            <p className='text-c6 text-base whitespace-pre-line leading-relaxed'>{String(argument)}</p>
+            <p className='text-c6 text-base whitespace-pre-line leading-relaxed'>{argument}</p>
           ) : (
             !medias.length && <p className='text-c4 text-sm italic text-center py-8'>Aucune analyse renseignée.</p>
           )}
@@ -141,14 +112,7 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
       );
     }
 
-    const fields = popup ? CATEGORY_CONFIG[popup.viewKey as 'ElementsNarratifs' | 'ElementsEsthetiques'] : [];
-    const filledFields = fields
-      .map((field) => {
-        const values = getAllOmekaValues(item, field.property);
-        if (values.length === 0) return null;
-        return { ...field, values };
-      })
-      .filter(Boolean) as { label: string; property: string; values: string[] }[];
+    const filledFields = viewCategoryEntries(item.views.Analyse);
 
     return (
       <div className='flex flex-col gap-5'>
@@ -156,7 +120,7 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
         {filledFields.length > 0 ? (
           <div className='flex flex-col gap-3'>
             {filledFields.map((field) => (
-              <div key={field.property} className='rounded-xl border-2 border-c3 p-4'>
+              <div key={field.key} className='rounded-xl border-2 border-c3 p-4'>
                 <p className='text-c4 text-sm font-medium mb-1.5'>{field.label}</p>
                 <p className='text-c6 text-base whitespace-pre-line leading-relaxed'>{field.values.join(', ')}</p>
               </div>

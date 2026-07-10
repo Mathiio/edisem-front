@@ -1,6 +1,15 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import * as Items from '@/services/Items';
+import {
+  fieldValue,
+  getItemPage,
+  ItemPageCard,
+  ItemPageData,
+  ItemPageView,
+} from '@/services/itemPage';
+import { getResourceTypeFromTemplate } from '@/pages/generic/simplifiedConfigAdapter';
+import { resolveOmekaThumbnail } from '@/lib/resourceUtils';
 import { Layouts } from '@/components/layout/Layouts';
 import { DynamicBreadcrumbs } from '@/components/layout/DynamicBreadcrumbs';
 import { Link, Skeleton } from '@heroui/react';
@@ -30,6 +39,74 @@ interface ToolDetails {
   usedBy?: any[]; // Resources using this outil
   usageCount?: number;
   logo?: string;
+}
+
+function categoryValues(view: ItemPageView | undefined, key: string): string[] {
+  if (!view || view.type !== 'categories') return [];
+  return view.values[key]?.values ?? [];
+}
+
+function mapUsedByCard(card: ItemPageCard) {
+  if (card.id == null) return null;
+  const thumb = resolveOmekaThumbnail(card.thumbnail ?? undefined) ?? undefined;
+  const templateId = card.resource_template_id ?? undefined;
+  return {
+    id: card.id,
+    title: card.title,
+    thumbnail: thumb,
+    thumbnailUrl: thumb,
+    resource_template_id: templateId,
+    type: card.type || getResourceTypeFromTemplate(templateId),
+  };
+}
+
+function mapItemPageToToolDetails(page: ItemPageData): ToolDetails {
+  const caracteristiques = page.views.caracteristiques;
+  const specifications = page.views.specifications;
+  const liens = page.views.liens;
+  const usedByView = page.views.usedBy;
+
+  const associatedMedia = page.associatedMedia.map((media, index) => {
+    if (typeof media === 'string') {
+      return { id: index, url: media, thumbnail: media };
+    }
+    return {
+      id: media.id,
+      url: media.url,
+      thumbnail: media.thumbnail ?? media.url,
+      title: media.title,
+    };
+  });
+
+  const usedBy =
+    usedByView?.type === 'usedBy'
+      ? usedByView.items.map(mapUsedByCard).filter(Boolean)
+      : [];
+
+  const programmingLanguages = categoryValues(specifications, 'programmingLanguage').map((title) => ({ title }));
+
+  return {
+    id: page.id,
+    title: page.title,
+    description: fieldValue(page.fields.description) ?? undefined,
+    purpose: categoryValues(caracteristiques, 'purpose')[0] ?? fieldValue(page.fields.purpose) ?? undefined,
+    category: categoryValues(caracteristiques, 'category')[0] ?? fieldValue(page.fields.category) ?? undefined,
+    release: fieldValue(page.fields.date) ?? undefined,
+    fileRelease: categoryValues(specifications, 'fileRelease'),
+    license: categoryValues(caracteristiques, 'license')[0],
+    homepage:
+      categoryValues(liens, 'homepage')[0] ??
+      fieldValue(page.fields.externalLink) ??
+      undefined,
+    repository: categoryValues(liens, 'repository')[0],
+    bugDatabase: categoryValues(liens, 'bugDatabase')[0],
+    os: categoryValues(caracteristiques, 'operatingSystem'),
+    programmingLanguages,
+    associatedMedia,
+    usedBy,
+    usageCount: usedBy.length,
+    logo: resolveOmekaThumbnail(page.thumbnail ?? undefined) ?? undefined,
+  };
 }
 
 const SimpleToolCard = ({ outil }: { outil: any }) => {
@@ -73,8 +150,12 @@ export const Tool: React.FC = () => {
 
     setLoading(true);
     try {
-      const data = await Items.getResourceDetails(id);
-      setTool(data as unknown as ToolDetails);
+      const page = await getItemPage(id);
+      if (!page?.supported) {
+        setTool(null);
+        return;
+      }
+      setTool(mapItemPageToToolDetails(page));
     } catch(e) {
         console.error("Error fetching outil details", e);
     } finally {

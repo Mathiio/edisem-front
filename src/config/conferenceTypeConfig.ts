@@ -8,12 +8,6 @@ export const CONFERENCE_TYPE_PROPERTY = 'dcterms:type';
 export const CONFERENCE_TYPE_PROPERTY_ID = 8;
 export const CONFERENCE_TYPE_VOCAB_ID = 57;
 
-/** Templates legacy (avant migration) */
-export const LEGACY_CONFERENCE_TEMPLATE_IDS = {
-  journee_etudes: 121,
-  colloque: 122,
-} as const;
-
 /** Termes du vocabulaire custom « Type de conférence » (vocab 57) */
 export const CONFERENCE_TYPE_TERMS = {
   seminaire: 'séminaire',
@@ -64,7 +58,7 @@ export function resolveConferenceResourceTypeFromTerm(term: string | null | unde
   return TERM_TO_RESOURCE_TYPE[term.trim()] ?? null;
 }
 
-/** Résout le ResourceType d'une conférence depuis un item Omeka S (dcterms:type + fallback legacy template) */
+/** Résout le ResourceType d'une conférence depuis un item Omeka S (dcterms:type, template 71) */
 export function resolveResourceTypeFromOmekaItem(item: Record<string, unknown>): ResourceType | null {
   const fromTerm = resolveConferenceResourceTypeFromTerm(extractConferenceTypeTerm(item));
   if (fromTerm) return fromTerm;
@@ -75,8 +69,6 @@ export function resolveResourceTypeFromOmekaItem(item: Record<string, unknown>):
     id = (templateRef as { 'o:id'?: number })['o:id'];
   }
 
-  if (Number(id) === LEGACY_CONFERENCE_TEMPLATE_IDS.journee_etudes) return 'journee_etudes';
-  if (Number(id) === LEGACY_CONFERENCE_TEMPLATE_IDS.colloque) return 'colloque';
   if (Number(id) === CONFERENCE_TEMPLATE_ID) return 'seminaire';
 
   return null;

@@ -122,6 +122,7 @@ export const recitArtitstiqueConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'recit_artistique',
   defaultView: 'AnalyseCritique',
   formEnabled: true,
+  useItemPageEngine: true,
 
   contributorButtons: [
     { label: 'Ajouter Personne', templateId: 33, property: 'schema:agent' },

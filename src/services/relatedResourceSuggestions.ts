@@ -1,5 +1,5 @@
 import { getResourceCardsByKeyword } from '@/services/Items';
-import { CONFERENCE_TEMPLATE_ID, LEGACY_CONFERENCE_TEMPLATE_IDS } from '@/config/conferenceTypeConfig';
+import { CONFERENCE_TEMPLATE_ID } from '@/config/conferenceTypeConfig';
 import { RESOURCE_TYPES, getResourceConfigByTemplateId } from '@/config/resourceConfig';
 import { type PickerListItem } from '@/services/resourcePickerApi';
 
@@ -26,8 +26,6 @@ function resolveCardResourceType(card: Record<string, unknown>): string {
   if (explicitType) return String(explicitType);
 
   const templateId = getCardTemplateId(card);
-  if (templateId === LEGACY_CONFERENCE_TEMPLATE_IDS.journee_etudes) return 'journee_etudes';
-  if (templateId === LEGACY_CONFERENCE_TEMPLATE_IDS.colloque) return 'colloque';
   if (templateId === CONFERENCE_TEMPLATE_ID) return 'seminaire';
 
   const config = getResourceConfigByTemplateId(templateId);
@@ -38,12 +36,7 @@ function cardMatchesAllowedTemplates(card: Record<string, unknown>, allowedTempl
   const templateId = getCardTemplateId(card);
   if (templateId && allowedTemplateIds.has(templateId)) return true;
 
-  if (
-    allowedTemplateIds.has(CONFERENCE_TEMPLATE_ID) &&
-    (templateId === CONFERENCE_TEMPLATE_ID ||
-      templateId === LEGACY_CONFERENCE_TEMPLATE_IDS.journee_etudes ||
-      templateId === LEGACY_CONFERENCE_TEMPLATE_IDS.colloque)
-  ) {
+  if (allowedTemplateIds.has(CONFERENCE_TEMPLATE_ID) && templateId === CONFERENCE_TEMPLATE_ID) {
     return true;
   }
 

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ConfigurableDetailPage } from './ConfigurableDetailPage';
 import { getToolConfigForTemplateId, toolConfig } from './config/toolConfig';
-import { getResourceDetails } from '@/services/resourceDetails';
+import { getItemPage } from '@/services/itemPage';
 import type { PageMode } from './config';
 
 interface ToolDetailPageProps {
@@ -25,11 +25,10 @@ export const ToolDetailPage: React.FC<ToolDetailPageProps> = ({ initialMode = 'v
 
     let cancelled = false;
 
-    getResourceDetails(id)
-      .then((details) => {
+    getItemPage(id)
+      .then((page) => {
         if (cancelled) return;
-        const templateId = details?.template_id;
-        setConfig(getToolConfigForTemplateId(templateId));
+        setConfig(getToolConfigForTemplateId(page?.resource_template_id));
       })
       .catch(() => {
         if (!cancelled) setConfig(toolConfig);

@@ -11,8 +11,8 @@ import { Button } from '@/theme/components/button';
 import {
   CONFERENCE_TEMPLATE_ID,
   getConferenceDetailUrl,
-  LEGACY_CONFERENCE_TEMPLATE_IDS,
   resolveConferenceResourceTypeFromTerm,
+  type ConferenceResourceType,
 } from '@/config/conferenceTypeConfig';
 
 const BASE_URL = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=MotsCles';
@@ -33,7 +33,7 @@ type ConferenceItem = {
 
 type CitationItem = {
   id: number; title: string;
-  parent_conf?: { id: number; title: string; template: number } | null;
+  parent_conf?: { id: number; title: string; template: number; conference_type?: string | null } | null;
 };
 
 type GenericItem = { id: number; title: string };
@@ -94,30 +94,33 @@ const parseIds = (raw: string): number[] =>
       .filter(n => !isNaN(n) && n > 0)
   )];
 
+const CONF_SLUG_TO_TYPE: Record<string, ConferenceResourceType> = {
+  seminaires: 'seminaire',
+  'journees-etudes': 'journee_etudes',
+  colloques: 'colloque',
+};
+
 /** Retourne le path de navigation pour une conférence */
 function conferenceItemPath(
-  template: number,
   id: number,
   conferenceTypeTerm?: string | null,
+  groupSlug?: string,
 ): string {
   const fromTerm = resolveConferenceResourceTypeFromTerm(conferenceTypeTerm);
   if (fromTerm) return getConferenceDetailUrl(fromTerm, id);
-  if (template === LEGACY_CONFERENCE_TEMPLATE_IDS.journee_etudes) {
-    return getConferenceDetailUrl('journee_etudes', id);
-  }
-  if (template === LEGACY_CONFERENCE_TEMPLATE_IDS.colloque) {
-    return getConferenceDetailUrl('colloque', id);
-  }
-  return getConferenceDetailUrl('seminaire', id);
+  const fromSlug = groupSlug ? CONF_SLUG_TO_TYPE[groupSlug] : undefined;
+  return getConferenceDetailUrl(fromSlug ?? 'seminaire', id);
 }
 
 /** Retourne le path de navigation pour un item selon son template et son id */
-function itemPath(template: number, id: number, extra?: { conf_template?: number; conf_type?: string | null }): string | null {
+function itemPath(
+  template: number,
+  id: number,
+  extra?: { conf_template?: number; conf_type?: string | null; conf_slug?: string },
+): string | null {
   switch (template) {
     case CONFERENCE_TEMPLATE_ID:
-    case LEGACY_CONFERENCE_TEMPLATE_IDS.journee_etudes:
-    case LEGACY_CONFERENCE_TEMPLATE_IDS.colloque:
-      return conferenceItemPath(template, id, extra?.conf_type);
+      return conferenceItemPath(id, extra?.conf_type, extra?.conf_slug);
     case 81:  return `/corpus/bibliographie/${id}`;
     case 103: return `/corpus/recit-artistique/${id}`;
     case 108: return `/corpus/experimentation/${id}`;
@@ -131,17 +134,11 @@ function itemPath(template: number, id: number, extra?: { conf_template?: number
     case 80: {
       const ct = extra?.conf_template;
       if (!ct) return null;
-      return conferenceItemPath(ct, id, extra?.conf_type);
+      return conferenceItemPath(id, extra?.conf_type);
     }
     default: return null;
   }
 }
-
-const CONF_TEMPLATES = new Set([
-  CONFERENCE_TEMPLATE_ID,
-  LEGACY_CONFERENCE_TEMPLATE_IDS.journee_etudes,
-  LEGACY_CONFERENCE_TEMPLATE_IDS.colloque,
-]);
 
 const USAGE_COLUMNS = [
   { key: 'conf_seminaire',          label: `Séminaire (${CONFERENCE_TEMPLATE_ID})` },
@@ -164,12 +161,18 @@ const USAGE_COLUMNS = [
   { key: 'personne',                label: 'Personne (33)' },
 ] as const;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Section : Recherche et exploration d'un mot-clé
-// ─────────────────────────────────────────────────────────────────────────────
+const CONF_SLUGS = new Set(Object.keys(CONF_SLUG_TO_TYPE));
 
-function ItemCard({ template, item }: { template: number; item: ConferenceItem | CitationItem | GenericItem }) {
-  const isConf     = CONF_TEMPLATES.has(template);
+function ItemCard({
+  template,
+  groupSlug,
+  item,
+}: {
+  template: number;
+  groupSlug: string;
+  item: ConferenceItem | CitationItem | GenericItem;
+}) {
+  const isConf     = CONF_SLUGS.has(groupSlug);
   const isCitation = template === 80;
 
   // Chemin de navigation
@@ -178,14 +181,14 @@ function ItemCard({ template, item }: { template: number; item: ConferenceItem |
 
   if (isConf) {
     const conf = item as ConferenceItem;
-    path     = conferenceItemPath(template, item.id, conf.conference_type);
+    path     = conferenceItemPath(item.id, conf.conference_type, groupSlug);
     subtitle = [conf.agent, conf.edition?.title].filter(Boolean).join(' — ') || null;
   } else if (isCitation) {
     const cit = item as CitationItem;
     if (cit.parent_conf) {
       path     = itemPath(80, cit.parent_conf.id, {
         conf_template: cit.parent_conf.template,
-        conf_type: (cit.parent_conf as { conference_type?: string }).conference_type,
+        conf_type: cit.parent_conf.conference_type,
       });
       subtitle = `→ ${cit.parent_conf.title}`;
     }
@@ -212,6 +215,10 @@ function ItemCard({ template, item }: { template: number; item: ConferenceItem |
   return inner;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Section : Recherche et exploration d'un mot-clé
+// ─────────────────────────────────────────────────────────────────────────────
+
 function GroupSection({ group }: { group: Group }) {
   const [expanded, setExpanded] = useState(true);
   const count = group.items.length;
@@ -230,7 +237,7 @@ function GroupSection({ group }: { group: Group }) {
       {expanded && (
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2'>
           {group.items.map(item => (
-            <ItemCard key={item.id} template={group.template} item={item} />
+            <ItemCard key={item.id} template={group.template} groupSlug={group.slug} item={item} />
           ))}
         </div>
       )}

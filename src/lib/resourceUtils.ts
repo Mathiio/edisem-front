@@ -179,10 +179,18 @@ export function resolveOmekaPublicUrl(url: string | null | undefined): string | 
   return `/omk/files/${trimmed}`;
 }
 
+/** Omeka S génère les dérivés square/medium/large en .jpg même si l'original est .png/.jpeg. */
+function normalizeOmekaDerivativeThumbnailUrl(url: string): string {
+  return url.replace(
+    /(\/files\/(?:medium|square|large)\/[a-f0-9]+)\.(?:png|jpe?g|gif|webp)$/i,
+    '$1.jpg',
+  );
+}
+
 export function resolveOmekaThumbnail(url: string | null | undefined): string | null {
   const resolved = resolveOmekaPublicUrl(url);
   if (!resolved || isOmekaPlaceholderThumbnail(resolved)) return null;
-  return resolved;
+  return normalizeOmekaDerivativeThumbnailUrl(resolved);
 }
 
 /** Préfère medium/large pour conserver le ratio (listes « Autres choix »). */

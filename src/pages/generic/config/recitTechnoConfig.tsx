@@ -95,6 +95,7 @@ export const recitTechnoConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'recit_techno_industriel',
   defaultView: 'AnalyseCritique',
   formEnabled: true,
+  useItemPageEngine: true,
 
   contributorButtons: [
     { label: 'Ajouter Personne', templateId: 33, property: 'dcterms:creator' },

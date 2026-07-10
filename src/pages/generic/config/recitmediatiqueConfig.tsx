@@ -88,6 +88,7 @@ export const recitMediatiqueConfigSimplified: SimplifiedDetailConfig = {
   recommendationType: 'recit_mediatique',
   defaultView: 'AnalyseCritique',
   formEnabled: true,
+  useItemPageEngine: true,
 
   contributorButtons: [
     { label: 'Ajouter Personne', templateId: 33, property: 'dcterms:creator' },
