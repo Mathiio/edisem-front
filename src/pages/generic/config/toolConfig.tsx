@@ -42,7 +42,6 @@ const CustomToolOverview: React.FC<ToolOverviewProps> = ({
   allMedias,
   release,
   homepage,
-  itemId,
   usageCount: usageCountProp = 0,
   isEditing = false,
   loadingMedia = false,

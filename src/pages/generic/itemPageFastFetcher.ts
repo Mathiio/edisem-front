@@ -347,14 +347,16 @@ function buildItemDetailsFromItemPage(
   // --- Médias (associatedMedia) ---
   // Conférences : schema:url prime sur tout autre média (vidéo de session en colonne gauche)
   if (config.templateId === 71) {
+    const schemaUrlEntries = itemDetails['schema:url'];
+    const firstSchemaUrlEntry = Array.isArray(schemaUrlEntries) ? schemaUrlEntries[0] : undefined;
     const sessionUrl =
       fieldValue(page.fields.sessionUrl) ??
-      (typeof itemDetails['schema:url']?.[0] === 'object'
-        ? (itemDetails['schema:url'][0] as { '@id'?: string })['@id']
+      (typeof firstSchemaUrlEntry === 'object' && firstSchemaUrlEntry !== null
+        ? (firstSchemaUrlEntry as { '@id'?: string })['@id']
         : null);
     if (sessionUrl) {
       itemDetails.associatedMedia = [sessionUrl];
-      if (!itemDetails['schema:url']?.length) {
+      if (!Array.isArray(schemaUrlEntries) || schemaUrlEntries.length === 0) {
         itemDetails['schema:url'] = scalarToOmekaEntries(
           { property: 'schema:url', type: 'url' } as InternalFieldConfig,
           sessionUrl,
