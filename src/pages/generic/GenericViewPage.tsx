@@ -550,8 +550,8 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
 
       {shouldShowRightColumn ? (
         <div className='col-span-10 grid grid-cols-10 gap-6 items-start'>
-          {config.showKeywords && (
-            <div className='col-span-10 lg:col-span-6 lg:row-start-1'>
+          {hasKeywordsRow && (
+            <div className='col-span-10 lg:col-span-6 lg:col-start-1 lg:row-start-1'>
               {loadingKeywords ? (
                 <KeywordsCarouselSkeleton />
               ) : (
@@ -571,7 +571,11 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
             </div>
           )}
 
-          <motion.div className={`col-span-10 lg:col-span-6 lg:self-start ${mainContentRowClass}`} variants={fadeIn} initial='hidden' animate='visible'>
+          <motion.div
+            className={`col-span-10 lg:col-span-6 lg:col-start-1 lg:self-start ${mainContentRowClass}`}
+            variants={fadeIn}
+            initial='hidden'
+            animate='visible'>
             <div ref={leftColumnRef} className='flex flex-col gap-5'>
               {loading ? (
                 OverviewSkeleton ? <OverviewSkeleton /> : <div>Loading...</div>
