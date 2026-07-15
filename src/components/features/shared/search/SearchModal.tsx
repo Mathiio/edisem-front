@@ -5,7 +5,8 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { advancedSearch } from '@/services/Items';
 import { WideResourceCard } from '@/components/features/shared/search/WideResourceCard';
 import { RESOURCE_TYPES, ResourceType } from '@/config/resourceConfig';
-import { Modal, ModalBody, ModalContent, ModalHeader, modalBottomFadeClass, modalCloseButtonClasses } from '@/theme/components';
+import { Modal, ModalBody, ModalContent, ModalHeader, modalCloseButtonClasses } from '@/theme/components';
+import { ScrollFadeArea } from '@/components/ui/ScrollFadeArea';
 
 export interface SearchModalRef {
   openWithSearch: (searchTerm: string) => void;
@@ -133,75 +134,69 @@ export const SearchModal = forwardRef<SearchModalRef, SearchModalProps>(
                 onClear={() => setQuery('')}
               />
 
-              <div className='relative flex min-h-0 flex-1 flex-col overflow-hidden'>
-                <div className='pointer-events-none absolute top-0 left-0 z-10 h-5 w-full bg-gradient-to-b from-c1 to-transparent' />
+              <ScrollFadeArea contentClassName='pt-2'>
+                {loading ? (
+                  <div className='flex flex-col items-center justify-center gap-2 py-10'>
+                    <Spinner color='current' className='text-c6' size='sm' />
+                    <p className='text-c5 text-sm'>Recherche en cours…</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className='flex flex-col'>
+                      {Object.entries(
+                        results.reduce(
+                          (acc, item) => {
+                            const type = item.type || 'unknown';
+                            if (!acc[type]) acc[type] = [];
+                            acc[type].push(item);
+                            return acc;
+                          },
+                          {} as Record<string, any[]>,
+                        ),
+                      ).map(([type, items]) => {
+                        const config = RESOURCE_TYPES[type as ResourceType];
+                        const label = config?.collectionLabel || config?.label || type;
+                        const Icon = config?.icon;
 
-                <div className='min-h-0 flex-1 overflow-y-auto pt-2 scrollbar-hide'>
-                  {loading ? (
-                    <div className='flex flex-col items-center justify-center gap-2 py-10'>
-                      <Spinner color='current' className='text-c6' size='sm' />
-                      <p className='text-c5 text-sm'>Recherche en cours…</p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className='flex flex-col'>
-                        {Object.entries(
-                          results.reduce(
-                            (acc, item) => {
-                              const type = item.type || 'unknown';
-                              if (!acc[type]) acc[type] = [];
-                              acc[type].push(item);
-                              return acc;
-                            },
-                            {} as Record<string, any[]>,
-                          ),
-                        ).map(([type, items]) => {
-                          const config = RESOURCE_TYPES[type as ResourceType];
-                          const label = config?.collectionLabel || config?.label || type;
-                          const Icon = config?.icon;
-
-                          return (
-                            <div key={type} className='mb-4'>
-                              <div className='mb-2 flex items-center gap-2 px-1'>
-                                {Icon && <Icon className='text-c4' size={14} />}
-                                <h3 className='text-sm font-medium uppercase tracking-wide text-c4'>
-                                  {label}{' '}
-                                  <span className='text-xs opacity-60'>({(items as any[]).length})</span>
-                                </h3>
-                              </div>
-                              <div className='grid grid-cols-1 gap-2.5'>
-                                {(items as any[]).map((item) => (
-                                  <div key={item.id} onClick={() => onClose()}>
-                                    <WideResourceCard item={item} />
-                                  </div>
-                                ))}
-                              </div>
+                        return (
+                          <div key={type} className='mb-4'>
+                            <div className='mb-2 flex items-center gap-2 px-1'>
+                              {Icon && <Icon className='text-c4' size={14} />}
+                              <h3 className='text-sm font-medium uppercase tracking-wide text-c4'>
+                                {label}{' '}
+                                <span className='text-xs opacity-60'>({(items as any[]).length})</span>
+                              </h3>
                             </div>
-                          );
-                        })}
+                            <div className='grid grid-cols-1 gap-2.5'>
+                              {(items as any[]).map((item) => (
+                                <div key={item.id} onClick={() => onClose()}>
+                                  <WideResourceCard item={item} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {hasSearched && results.length === 0 && (
+                      <div className='flex flex-col items-center justify-center gap-1 py-10 text-center'>
+                        <SearchIcon size={24} className='mb-1 text-c4' />
+                        <p className='text-base font-medium text-c5'>Aucun résultat trouvé</p>
+                        <p className='text-sm text-c4'>Réessayez avec d&apos;autres termes</p>
                       </div>
+                    )}
 
-                      {hasSearched && results.length === 0 && (
-                        <div className='flex flex-col items-center justify-center gap-1 py-10 text-center'>
-                          <SearchIcon size={24} className='mb-1 text-c4' />
-                          <p className='text-base font-medium text-c5'>Aucun résultat trouvé</p>
-                          <p className='text-sm text-c4'>Réessayez avec d&apos;autres termes</p>
-                        </div>
-                      )}
-
-                      {!hasSearched && query === '' && selectedTypes.length === 0 && (
-                        <div className='flex flex-col items-center justify-center gap-1 py-10 text-center'>
-                          <SearchIcon size={24} className='mb-1 text-c4' />
-                          <p className='text-base font-medium text-c5'>Commencez à taper…</p>
-                          <p className='text-sm text-c4'>Pour rechercher un contenu Edisem</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                <div className={`pointer-events-none absolute bottom-0 left-0 z-10 w-full ${modalBottomFadeClass}`} />
-              </div>
+                    {!hasSearched && query === '' && selectedTypes.length === 0 && (
+                      <div className='flex flex-col items-center justify-center gap-1 py-10 text-center'>
+                        <SearchIcon size={24} className='mb-1 text-c4' />
+                        <p className='text-base font-medium text-c5'>Commencez à taper…</p>
+                        <p className='text-sm text-c4'>Pour rechercher un contenu Edisem</p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </ScrollFadeArea>
             </ModalBody>
           </ModalContent>
         </Modal>

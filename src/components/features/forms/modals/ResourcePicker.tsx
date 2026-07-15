@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { ScrollFadeArea } from '@/components/ui/ScrollFadeArea';
 import { Spinner, Chip, Checkbox } from '@heroui/react';
 import {
   Modal,
@@ -9,7 +10,6 @@ import {
   modalCloseButtonClasses,
   modalFooterCancelButtonClass,
   modalFooterConfirmButtonClass,
-  modalBottomFadeClass,
   Input,
   Select,
   SelectItem,
@@ -160,10 +160,9 @@ const loadResourcesByMultipleTemplateIds = async (templateIds: number[]): Promis
 };
 
 const PickerScrollArea: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className='relative'>
-    <div className='max-h-[450px] overflow-y-auto pr-px'>{children}</div>
-    <div className={`absolute bottom-0 left-0 right-0 z-10 ${modalBottomFadeClass}`} aria-hidden />
-  </div>
+  <ScrollFadeArea fill={false} contentClassName='max-h-[450px] pr-px'>
+    {children}
+  </ScrollFadeArea>
 );
 
 const EMPTY_SELECTED_IDS: (string | number)[] = [];

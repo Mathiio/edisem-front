@@ -29,6 +29,7 @@ import { Mediagraphies } from '@/components/features/resource-links/MediagraphyC
 import { Citations } from '@/components/features/resource-links/CitationsCards';
 import { Microresumes } from '@/components/features/resource-links/MicroresumesCards';
 import { getItemPage } from '@/services/itemPage';
+import { shouldOpenInLinkedResourcePopup } from '@/config/linkedResourcePopupConfig';
 import { createItemPageDataFetcher, createProgressiveItemPageDataFetcher } from './itemPageFastFetcher';
 import { ReferenceAddButtons } from '@/components/features/forms/edit/AddResourceCard';
 import { outlineButtonClass } from '@/theme/components/button';
@@ -1294,6 +1295,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
         userCreatedResourceIds,
         currentOmekaUserId,
         isGlobalAdminEdit,
+        onOpenLinkedResource,
       } = context;
       switch (view.renderType) {
         case 'items': {
@@ -1399,17 +1401,24 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
 
           const viewCreateOnly = inferViewCreateOnly(view);
           const viewTemplateId = resolveViewTemplateId(view);
+          const useLinkedResourcePopup =
+            !isEditing && Boolean(onOpenLinkedResource) && shouldOpenInLinkedResourcePopup(view);
 
           return (
             <ItemsList
               items={allItems}
-              mapUrl={mapUrl}
+              mapUrl={useLinkedResourcePopup ? undefined : mapUrl}
               loading={loadingViews}
               isEditing={isEditing}
               resourceLabel={view.title}
               userCreatedResourceIds={userCreatedResourceIds}
               currentOmekaUserId={currentOmekaUserId}
               isGlobalAdminEdit={isGlobalAdminEdit}
+              onItemOpen={
+                useLinkedResourcePopup
+                  ? (id) => onOpenLinkedResource!(id, view.key)
+                  : undefined
+              }
               onAdd={
                 isEditing
                   ? viewCreateOnly

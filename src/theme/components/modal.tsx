@@ -29,9 +29,13 @@ export const modalFooterClass = 'flex flex-row gap-2 px-6 py-4 justify-end';
 export const modalFooterCancelButtonClass = cancelButtonClass;
 export const modalFooterConfirmButtonClass = primaryButtonClass;
 
+/** Fondu haut (zone scrollable) — afficher seulement s’il reste du contenu au-dessus. */
+export const modalTopFadeClass =
+  'h-3 bg-gradient-to-b from-c1 to-transparent pointer-events-none';
+
 /** Fondu bas (zone scrollable modale ou bandeau fixe). */
 export const modalBottomFadeClass =
-  'h-5 bg-gradient-to-t from-c1 to-transparent pointer-events-none';
+  'h-3 bg-gradient-to-t from-c1 to-transparent pointer-events-none';
 
 export const Modal = extendVariants(OModal, {
   variants: {

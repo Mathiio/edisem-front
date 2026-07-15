@@ -76,6 +76,7 @@ export interface RenderContentContext {
   onItemsChange?: (viewKey: string, items: any) => void;
   formData?: Record<string, any>; // Données du formulaire en mode édition
   onNavigate?: (path: string) => void; // Pour déclencher la navigation avec animation
+  onOpenLinkedResource?: (resourceId: string | number, viewKey: string) => void;
   updatedResources?: Record<string, { title?: string; thumbnail?: string }>; // Titres/thumbnails mis à jour
   userCreatedResourceIds?: Set<string>;
   currentOmekaUserId?: number | null;

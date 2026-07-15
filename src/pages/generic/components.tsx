@@ -35,6 +35,7 @@ interface ToolItemProps {
   onNavigate?: (url: string) => void; // Callback pour navigation avec animation
   animationDelay?: number; // Délai en ms avant navigation (pour laisser l'animation jouer)
   onEdit?: (id: string | number) => void; // Callback pour édition (ouvre un onglet)
+  onOpen?: (id: string | number) => void; // Callback pour ouverture en popup
   disableNavigation?: boolean; // En mode édition : outil non modifiable → aucune action au clic
 }
 
@@ -42,6 +43,7 @@ export const ToolItem: React.FC<ToolItemProps> = ({
   tool,
   onNavigate,
   onEdit,
+  onOpen,
   disableNavigation = false,
   animationDelay = 450,
 }) => {
@@ -49,12 +51,17 @@ export const ToolItem: React.FC<ToolItemProps> = ({
   const navigate = useNavigate();
 
   const itemUrl = tool.url || tool.uri || '#';
-  const isLocked = disableNavigation && !onEdit;
+  const isLocked = disableNavigation && !onEdit && !onOpen;
 
   const handleClick = (e: React.MouseEvent) => {
     if (onEdit) {
       e.preventDefault();
       onEdit(tool.id);
+      return;
+    }
+    if (onOpen) {
+      e.preventDefault();
+      onOpen(tool.id);
       return;
     }
     if (disableNavigation || !itemUrl || itemUrl === '#') {
@@ -91,8 +98,8 @@ export const ToolItem: React.FC<ToolItemProps> = ({
     <LinkedResourceCard
       thumbnail={getThumbnail()}
       isLocked={isLocked}
-      href={isLocked ? undefined : itemUrl}
-      external={itemUrl.startsWith('http')}
+      href={onOpen || isLocked ? undefined : itemUrl}
+      external={!onOpen && itemUrl.startsWith('http')}
       onClick={isLocked ? undefined : handleClick}
       isNavigating={isNavigating}>
       <div className='flex flex-col gap-2.5 min-w-0'>
@@ -145,6 +152,7 @@ interface ItemsListProps {
   onRemoveItem?: (id: string | number) => void;
   onNavigate?: (url: string) => void; // Callback pour animation avant navigation
   onEdit?: (id: string | number) => void; // Callback pour édition
+  onItemOpen?: (id: string | number) => void; // Callback pour ouverture en popup
   resourceTemplateId?: number; // Template de la vue (règle délier vs supprimer)
   userCreatedResourceIds?: Set<string>; // IDs créés par l'utilisateur dans cette session
   currentOmekaUserId?: number | null; // Propriétaire Omeka S courant (o:owner)
@@ -161,6 +169,7 @@ export const ItemsList: React.FC<ItemsListProps> = ({
   onRemoveItem,
   onNavigate,
   onEdit,
+  onItemOpen,
   resourceTemplateId,
   userCreatedResourceIds,
   currentOmekaUserId,
@@ -198,6 +207,7 @@ export const ItemsList: React.FC<ItemsListProps> = ({
               tool={mappedItem}
               onNavigate={onNavigate}
               onEdit={canEdit ? onEdit : undefined}
+              onOpen={onItemOpen}
               disableNavigation={isEditing && !canEdit}
             />
             {isEditing && canRemove && (

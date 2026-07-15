@@ -6,6 +6,8 @@ import { LongCarrousel, FullCarrousel } from '@/components/ui/Carrousels';
 import { KeywordsCard, KeywordsCarouselSkeleton } from '@/components/features/resource-links/KeywordsCards';
 import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared/corpus/ResourceCard';
 import { SearchModal, SearchModalRef } from '@/components/features/shared/search/SearchModal';
+import { LinkedResourcePopupModal } from '@/components/features/resource-links/LinkedResourcePopupModal';
+import { LinkedResourcePopupState } from '@/config/linkedResourcePopupConfig';
 import { ThumbnailIcon, ArrowIcon } from '@/components/ui/icons';
 import { ResourceOwnerAttribution } from '@/components/ui/ResourceOwnerAttribution';
 import CommentSection from '@/components/features/shared/CommentSection';
@@ -66,10 +68,15 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
   const [matchedHeight, setMatchedHeight] = useState<number | null>(null);
   const [isExitingRightColumn, setIsExitingRightColumn] = useState(false);
   const [videoSeek, setVideoSeek] = useState<{ time: number; id: number } | null>(null);
+  const [linkedResourcePopup, setLinkedResourcePopup] = useState<LinkedResourcePopupState | null>(null);
   const currentVideoTime = videoSeek?.time ?? 0;
 
   const leftColumnRef = useRef<HTMLDivElement>(null);
   const searchModalRef = useRef<SearchModalRef>(null);
+
+  const handleOpenLinkedResource = useCallback((resourceId: string | number, viewKey: string) => {
+    setLinkedResourcePopup({ resourceId, viewKey });
+  }, []);
 
   // ================================
   // Data fetch (full — avec recommandations)
@@ -403,10 +410,11 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
       loadingViews,
       onTimeChange: handleTimeChange,
       isEditing: false,
+      onOpenLinkedResource: handleOpenLinkedResource,
     });
 
     return content || null;
-  }, [itemDetails, selected, viewData, loading, loadingViews, config.viewOptions]);
+  }, [itemDetails, selected, viewData, loading, loadingViews, config.viewOptions, handleOpenLinkedResource]);
 
   // ================================
   // Keywords (sorted)
@@ -723,6 +731,10 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
       )}
 
       <SearchModal ref={searchModalRef} notrigger={true} />
+      <LinkedResourcePopupModal
+        popup={linkedResourcePopup}
+        onClose={() => setLinkedResourcePopup(null)}
+      />
     </Layouts>
   );
 };

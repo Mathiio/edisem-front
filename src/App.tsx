@@ -54,7 +54,6 @@ import { MotsClesPage } from '@/pages/admin/MotsClesPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import GlobalAdministration from '@/pages/admin/GlobalAdministration';
 import { CreateResourcePage } from '@/pages/generic/CreateResourcePage';
-import { Recit19125PopupTestPage } from '@/pages/test/recit19125/Recit19125PopupTestPage';
 
 // Create context for navbar ready callback
 interface NavbarReadyContextType {
@@ -184,7 +183,6 @@ function App() {
             <Route path='/corpus/recit-mediatique/:id' element={<ConfigurableDetailPage config={recitMediatiqueConfig} />} />
             <Route path='/corpus/recit-citoyen/:id' element={<ConfigurableDetailPage config={recitCitoyenConfig} />} />
             <Route path='/corpus/recit-artistique/:id' element={<ConfigurableDetailPage config={recitArtitstiqueConfig} />} />
-            <Route path='/test/recit-artistique/19125' element={<Recit19125PopupTestPage />} />
             <Route path='/corpus/recit-techno-industriel/:id' element={<ConfigurableDetailPage config={recitTechnoConfig} />} />
 
             {/* Routes pour les personnes/intervenants */}

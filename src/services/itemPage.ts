@@ -3,8 +3,6 @@
  * edisem-back/modules/CartoAffect/src/View/Helper). Remplace, pour les templates couverts,
  * le pipeline `GET /omk/api/items/{id}` + enrichissements N+1 par un seul appel qui ne renvoie
  * que les champs réellement affichés.
- *
- * Pour l'instant utilisé uniquement sur la page de test "Her" (src/pages/test/recit19125).
  */
 
 const QUERY_API_URL = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax';
@@ -211,7 +209,7 @@ export function getItemPage(id: string | number): Promise<ItemPageData | null> {
   return fetchItemPageAction('getItemPage', id);
 }
 
-/** Alias sémantique pour un item enfant ouvert en popup (analyse critique, élément narratif...). */
+/** Item enfant ouvert en popup (analyse critique, élément narratif/esthétique, retour d'expérience…). */
 export function getChildItem(id: string | number): Promise<ItemPageData | null> {
   return fetchItemPageAction('getChildItem', id);
 }
