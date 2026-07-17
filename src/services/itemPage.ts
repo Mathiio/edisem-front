@@ -214,6 +214,13 @@ export function getChildItem(id: string | number): Promise<ItemPageData | null> 
   return fetchItemPageAction('getChildItem', id);
 }
 
+/** Invalide le cache lecture Item Page pour un id (après sauvegarde Omeka). */
+export function invalidateItemPageCache(id: string | number): void {
+  const key = String(id);
+  itemPageCache.delete(`getItemPage:${key}`);
+  itemPageCache.delete(`getChildItem:${key}`);
+}
+
 // --- Petits helpers de lecture, pour éviter de répéter les vérifications de type partout ---
 
 export function fieldValue(field: ItemPageField | undefined): string | null {

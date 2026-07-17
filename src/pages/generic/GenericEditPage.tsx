@@ -55,6 +55,7 @@ import { useFormState } from '@/hooks/useFormState';
 import { useAuth } from '@/hooks/useAuth';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '@/utils/omekaApi';
 import { resolveOmekaPropertyId, deleteMedia } from './simplifiedConfigAdapter';
+import { invalidateItemPageCache } from '@/services/itemPage';
 import { MediaFile, DEFAULT_AUTHOR_TEMPLATE_IDS } from '@/components/features/forms/edit/MediaDropzone';
 import { GenericDetailPageConfig, PageMode } from './config';
 
@@ -841,9 +842,10 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
               return;
             }
 
-            // Surgical save OK — rafraîchir itemDetails pour que la colonne droite affiche le nouvel item
-            // Ne pas appeler fetchData() en mode brouillon : il vide itemDetails (comportement voulu pour les drafts)
-            if (!isDraft) fetchData();
+            // Surgical save OK — invalider le cache (pas de refetch : pendingLinks a déjà mis à jour formData)
+            if (!isDraft) {
+              invalidateItemPageCache(id);
+            }
 
             // Afficher le toast
             addToast({
@@ -1167,6 +1169,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       }
     }
 
+    invalidateItemPageCache(id);
     return result;
   };
 

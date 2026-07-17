@@ -176,14 +176,21 @@ export const StudentFormWrapper: React.FC<StudentFormWrapperProps> = ({ initialC
                 },
               ],
             }));
+
+            // Création : fermer l'onglet enfant (le parent reçoit le lien via pendingLinks)
+            const newTabs = prevTabs
+              .map((t) => (t.id === parentId ? { ...t, isDirty: true } : t))
+              .filter((t) => t.id !== tabId);
+            setActiveTabId(parentId);
+            return newTabs;
           }
 
-          // Marquer le parent comme dirty et supprimer l'onglet enfant
-          const newTabs = prevTabs.map((t) => (t.id === parentId ? { ...t, isDirty: true } : t)).filter((t) => t.id !== tabId);
-
-          // Changer vers le parent
+          // Édition enfant : conserver l'onglet (form déjà à jour après save) — réouverture instantanée
+          const newTabs = prevTabs.map((t) => {
+            if (t.id === tabId) return { ...t, isDirty: false };
+            return t;
+          });
           setActiveTabId(parentId);
-
           return newTabs;
         }
 

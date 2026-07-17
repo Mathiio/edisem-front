@@ -28,7 +28,7 @@ import { Bibliographies } from '@/components/features/resource-links/Bibliograph
 import { Mediagraphies } from '@/components/features/resource-links/MediagraphyCards';
 import { Citations } from '@/components/features/resource-links/CitationsCards';
 import { Microresumes } from '@/components/features/resource-links/MicroresumesCards';
-import { getItemPage } from '@/services/itemPage';
+import { getItemPage, invalidateItemPageCache } from '@/services/itemPage';
 import { shouldOpenInLinkedResourcePopup } from '@/config/linkedResourcePopupConfig';
 import { createItemPageDataFetcher, createProgressiveItemPageDataFetcher } from './itemPageFastFetcher';
 import { ReferenceAddButtons } from '@/components/features/forms/edit/AddResourceCard';
@@ -2473,6 +2473,8 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
       if (mediaErrors.length > 0) {
         console.warn('[handleSave] Erreurs médias:', mediaErrors);
       }
+
+      invalidateItemPageCache(itemId);
     } catch (err) {
       console.error('[handleSave] Erreur:', err);
       throw err;
