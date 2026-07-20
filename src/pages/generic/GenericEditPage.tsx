@@ -54,7 +54,7 @@ import { deleteUserResource } from '@/services/UserSpace';
 import { useFormState } from '@/hooks/useFormState';
 import { useAuth } from '@/hooks/useAuth';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '@/utils/omekaApi';
-import { resolveOmekaPropertyId, deleteMedia } from './simplifiedConfigAdapter';
+import { resolveOmekaPropertyId, deleteMedia, syncCategoryValuesToFormFields, isUrlOmekaProperty } from './simplifiedConfigAdapter';
 import { invalidateItemPageCache } from '@/services/itemPage';
 import { MediaFile, DEFAULT_AUTHOR_TEMPLATE_IDS } from '@/components/features/forms/edit/MediaDropzone';
 import { GenericDetailPageConfig, PageMode } from './config';
@@ -898,15 +898,6 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     return possibleKeys[0] || null;
   };
 
-  const getPropertyId = (omekaPropertyKey: string, propMap?: Record<string, number>): number | null => {
-    const map = propMap || propertiesMap;
-    const propId = map[omekaPropertyKey];
-    if (propId) return propId;
-    const localName = omekaPropertyKey.split(':')[1];
-    if (localName && map[localName]) return map[localName];
-    return OMEKA_PROPERTY_IDS[omekaPropertyKey] ?? null;
-  };
-
   // ================================
   // Save to Omeka S (edit mode)
   // ================================
@@ -935,6 +926,8 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
         formFieldKeyToProperty[field.key] = prop;
       }
     });
+
+    syncCategoryValuesToFormFields(data, config.formFields);
 
     for (const field of config.formFields ?? []) {
       if (field.type !== 'selection' && field.type !== 'multiselection') continue;
@@ -1046,17 +1039,21 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
               : null;
           const propertyId =
             existingEntries[0]?.property_id ??
-            templatePropMap[omekaKey] ??
-            OMEKA_PROPERTY_IDS[omekaKey];
+            (await resolveOmekaPropertyId(omekaKey, templatePropMap, updatedItem));
+          const fieldType = config.formFields?.find((f) => f.dataPath?.split('.')[0] === omekaKey)?.type;
+          const isUrlProperty = isUrlOmekaProperty(omekaKey, formPropertyToKey[omekaKey], fieldType);
           if (propertyId || value.length === 0) {
             if (value.length === 0) {
               updatedItem[omekaKey] = [];
             } else {
               updatedItem[omekaKey] = (value as any[])
                 .map((v: any) => {
-                  if (typeof v === 'object' && v?.property_id && v?.type && v?.['@value']) return v;
-                  const str = typeof v === 'string' ? v : String(v?.['@value'] ?? '');
+                  if (typeof v === 'object' && v?.property_id && v?.type && (v?.['@value'] || v?.['@id'])) return v;
+                  const str = typeof v === 'string' ? v : String(v?.['@value'] ?? v?.['@id'] ?? '');
                   if (!str.trim()) return null;
+                  if (isUrlProperty) {
+                    return { type: 'uri', property_id: propertyId, '@id': str.trim(), is_public: true };
+                  }
                   return { type: existingOmekaType ?? 'literal', property_id: propertyId, '@value': str, is_public: true };
                 })
                 .filter(Boolean);
@@ -1070,13 +1067,8 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       if (typeof value === 'string') {
         const omekaPropertyKey = getFormFieldOmekaProperty(key) || findOmekaPropertyKey(updatedItem, key);
         if (omekaPropertyKey) {
-          const isUrlProperty =
-            omekaPropertyKey === 'schema:url' ||
-            omekaPropertyKey === 'bibo:uri' ||
-            key === 'fullUrl' ||
-            key === 'externalLink' ||
-            key === 'url' ||
-            config.formFields?.find((f) => f.key === key)?.type === 'url';
+          const fieldType = config.formFields?.find((f) => f.key === key)?.type;
+          const isUrlProperty = isUrlOmekaProperty(omekaPropertyKey, key, fieldType);
 
           if (updatedItem[omekaPropertyKey] && Array.isArray(updatedItem[omekaPropertyKey]) && updatedItem[omekaPropertyKey].length > 0) {
             if (isUrlProperty) {
@@ -1087,7 +1079,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
               updatedItem[omekaPropertyKey][0]['@value'] = value;
             }
           } else if (value.trim() !== '') {
-            const propertyId = getPropertyId(omekaPropertyKey, templatePropMap);
+            const propertyId = await resolveOmekaPropertyId(omekaPropertyKey, templatePropMap, updatedItem);
             if (propertyId) {
               if (isUrlProperty) {
                 updatedItem[omekaPropertyKey] = [{ type: 'uri', property_id: propertyId, '@id': value, is_public: true }];
@@ -1103,7 +1095,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
           if (updatedItem[omekaPropertyKey] && Array.isArray(updatedItem[omekaPropertyKey]) && updatedItem[omekaPropertyKey].length > 0) {
             updatedItem[omekaPropertyKey][0]['@value'] = String(value);
           } else {
-            const propertyId = getPropertyId(omekaPropertyKey, templatePropMap);
+            const propertyId = await resolveOmekaPropertyId(omekaPropertyKey, templatePropMap, updatedItem);
             if (propertyId) {
               updatedItem[omekaPropertyKey] = [{ type: 'literal', property_id: propertyId, '@value': String(value), is_public: true }];
             }

@@ -2041,9 +2041,56 @@ function buildOmekaResourceLinks(items: { id?: number; 'o:id'?: number; value_re
     }));
 }
 
-const URL_OMEKA_PROPERTIES = new Set(['bibo:uri', 'schema:url']);
+const URL_OMEKA_PROPERTIES = new Set(['bibo:uri', 'schema:url', 'DOAP:homepage', 'DOAP:repository', 'DOAP:bug-database']);
 
 const LINKED_RESOURCE_RENDER_TYPES = new Set(['items', 'references', 'microresumes', 'citations']);
+
+/**
+ * Propage les valeurs saisies dans les vues « categories » (clés Omeka brutes, ex. DOAP:os)
+ * vers les clés formulaire alias (ex. externalLink ← DOAP:homepage) avant sauvegarde.
+ */
+export function syncCategoryValuesToFormFields(
+  data: Record<string, unknown>,
+  formFields?: { key: string; type?: string; dataPath?: string }[],
+): void {
+  formFields?.forEach((field) => {
+    const omekaProp = field.dataPath?.split('.')[0];
+    if (!omekaProp || !omekaProp.includes(':')) return;
+    const raw = data[omekaProp];
+    if (!Array.isArray(raw)) return;
+    const strings = raw
+      .map((v: unknown) => {
+        if (typeof v === 'string') return v;
+        if (typeof v === 'object' && v != null) {
+          const entry = v as { '@value'?: string; '@id'?: string };
+          return entry['@id'] ?? entry['@value'] ?? '';
+        }
+        return '';
+      })
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (strings.length === 0) return;
+    if (field.type === 'url') {
+      data[field.key] = strings[0];
+    } else if (field.type === 'text' || field.type === 'textarea') {
+      data[field.key] = strings.join('\n');
+    }
+  });
+}
+
+export function isUrlOmekaProperty(
+  omekaProperty: string,
+  formKey?: string,
+  fieldType?: string,
+): boolean {
+  return (
+    URL_OMEKA_PROPERTIES.has(omekaProperty) ||
+    fieldType === 'url' ||
+    formKey === 'fullUrl' ||
+    formKey === 'externalLink' ||
+    formKey === 'url'
+  );
+}
 
 /** Vues dont la propriété Omeka référence d'autres items (pas un champ texte / vocab). */
 function isLinkedResourceView(view: { renderType?: string }): boolean {
@@ -2105,13 +2152,7 @@ function isUrlOmekaField(
   omekaProperty: string,
   fieldTypeByKey: Record<string, FieldType>,
 ): boolean {
-  return (
-    fieldTypeByKey[formKey] === 'url' ||
-    URL_OMEKA_PROPERTIES.has(omekaProperty) ||
-    formKey === 'fullUrl' ||
-    formKey === 'externalLink' ||
-    formKey === 'url'
-  );
+  return isUrlOmekaProperty(omekaProperty, formKey, fieldTypeByKey[formKey]);
 }
 
 // ========================================
@@ -2296,6 +2337,8 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
         writtenOmekaProperties.add(omekaProperty);
       }
 
+      syncCategoryValuesToFormFields(data, fields.map((f) => ({ key: f.key, type: f.type, dataPath: f.property })));
+
       // 5b. Autres champs
       for (const [key, value] of Object.entries(data)) {
         if (ignoredKeys.has(key) || value === undefined || value === null) {
@@ -2388,13 +2431,13 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
           } else if (typeof value[0] === 'string') {
             // Tableau de strings (categories)
             const nonEmptyValues = value.filter((v: string) => v && v.trim() !== '');
+            const isUrlField = isUrlOmekaField(key, omekaProperty, fieldTypeByKey);
             if (nonEmptyValues.length > 0) {
-              updatedItem[omekaProperty] = nonEmptyValues.map((v: string) => ({
-                type: 'literal',
-                property_id: propertyId,
-                '@value': v,
-                is_public: true,
-              }));
+              updatedItem[omekaProperty] = nonEmptyValues.map((v: string) =>
+                isUrlField
+                  ? { type: 'uri', property_id: propertyId, '@id': v.trim(), is_public: true }
+                  : { type: 'literal', property_id: propertyId, '@value': v, is_public: true },
+              );
             } else {
               updatedItem[omekaProperty] = [];
             }
