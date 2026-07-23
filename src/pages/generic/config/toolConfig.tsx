@@ -7,6 +7,7 @@ import { getOmekaValue, getAllOmekaValues } from '../simplifiedConfigAdapter';
 import { Link } from '@heroui/react';
 import { FullCarrousel } from '@/components/ui/Carrousels';
 import { ResourceCard } from '@/components/features/shared/corpus/ResourceCard';
+import { mapToResourceCardItem } from '@/lib/resourceUtils';
 import { ThumbnailIcon } from '@/components/ui/icons';
 import MediaViewer from '@/components/features/resource-links/MediaViewer';
 import { MediaDropzone, MediaFile } from '@/components/features/forms/edit/MediaDropzone';
@@ -313,7 +314,11 @@ const CustomToolDetails: React.FC<ToolDetailsProps> = ({
               data={usedBy}
               perPage={2}
               perMove={1}
-              renderSlide={(resource: any) => <ResourceCard item={resource} className='h-full' key={resource.id} />}
+              renderSlide={(resource: any) => {
+                const item = mapToResourceCardItem(resource);
+                if (!item) return null;
+                return <ResourceCard item={item} className='h-full' key={String(item.id)} />;
+              }}
             />
           </div>
         </div>
@@ -539,7 +544,9 @@ const sharedToolConfigBase: Omit<SimplifiedDetailConfig, 'resourceType' | 'templ
     const fileRelease = getAllOmekaValues(itemDetails, 'DOAP:file-release');
     const programmingLanguages = getProgrammingLanguages(itemDetails);
     const itemId = itemDetails['o:id'] || null;
-    const usedBy = Array.isArray(itemDetails.usedBy) ? itemDetails.usedBy : [];
+    const usedBy = Array.isArray(itemDetails.usedBy)
+      ? itemDetails.usedBy.map(mapToResourceCardItem).filter(Boolean)
+      : [];
 
     return {
       description: typeof description === 'string' ? description : null,

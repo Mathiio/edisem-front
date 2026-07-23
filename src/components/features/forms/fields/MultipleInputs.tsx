@@ -3,6 +3,7 @@ import { Button } from '@heroui/react';
 import { Input, Select, SelectItem } from '@/theme/components';
 import { InputConfig } from '@/components/features/forms/fields/editModalTypes';
 import { AddIcon } from '@/components/ui/icons';
+import { formatEditAddButtonLabel } from '@/lib/editModeLabels';
 
 interface SelectionInputProps {
   col: InputConfig;
@@ -110,7 +111,7 @@ const MultipleInputs: React.FC<SelectionInputProps> = ({ col, actualData, handle
           startContent={<AddIcon size={16} />}
           className='px-[15px] py-2.5 min-h-[50px] flex gap-2.5 bg-c3 border-none rounded-lg w-full hover:text-action text-c6 font-medium'
           onClick={handleAddInput}>
-          Ajouter {col.label}
+          {formatEditAddButtonLabel(col.label)}
         </Button>
       )}
     </div>

@@ -33,6 +33,7 @@ import { shouldOpenInLinkedResourcePopup } from '@/config/linkedResourcePopupCon
 import { createItemPageDataFetcher, createProgressiveItemPageDataFetcher } from './itemPageFastFetcher';
 import { ReferenceAddButtons } from '@/components/features/forms/edit/AddResourceCard';
 import { outlineButtonClass } from '@/theme/components/button';
+import { formatEditAddButtonLabel } from '@/lib/editModeLabels';
 import { GenericDetailPage } from './GenericDetailPage';
 
 // ========================================
@@ -188,7 +189,7 @@ const InlineCitationForm: React.FC<{
       ))}
       <button type='button' onClick={add} className={outlineButtonClass}>
         <AddIcon size={14} className='text-c4' />
-        Ajouter une citation
+        {formatEditAddButtonLabel('Citation')}
       </button>
     </div>
   );
@@ -256,7 +257,7 @@ const InlineMicroresumeForm: React.FC<{
       ))}
       <button type='button' onClick={add} className={outlineButtonClass}>
         <AddIcon size={14} className='text-c4' />
-        Ajouter un micro-résumé
+        {formatEditAddButtonLabel('Micro-résumé')}
       </button>
     </div>
   );
@@ -1699,7 +1700,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                                     onItemsChange?.(subcategory.property, [...displayValues, '']);
                                   }}>
                                   <AddIcon size={14} className='text-c4' />
-                                  Ajouter
+                                  {formatEditAddButtonLabel(subcategory.label)}
                                 </button>
                               )}
                             </div>

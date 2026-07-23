@@ -103,11 +103,35 @@ type LongCarrouselProps = {
   perMove: number;
   autowidth: boolean;
   renderSlide: (item: any, index: number) => React.ReactNode;
+  getItemKey?: (item: any, index: number) => string | number;
+  /** Recalcule les largeurs au montage / changement de data (ex. ajout/retrait de mots-clés). */
+  refreshOnDataChange?: boolean;
 };
 
-export const LongCarrousel: React.FC<LongCarrouselProps> = ({ data, autowidth, perPage, perMove, renderSlide }) => {
+export const LongCarrousel: React.FC<LongCarrouselProps> = ({
+  data,
+  autowidth,
+  perPage,
+  perMove,
+  renderSlide,
+  getItemKey,
+  refreshOnDataChange = false,
+}) => {
+  const splideRef = useRef<SplideInstance | null>(null);
+
+  useEffect(() => {
+    if (!refreshOnDataChange) return;
+    const frame = requestAnimationFrame(() => splideRef.current?.refresh());
+    return () => cancelAnimationFrame(frame);
+  }, [data.length, refreshOnDataChange]);
+
   return (
     <Splide
+      ref={splideRef}
+      onMounted={(splide: SplideInstance) => {
+        splideRef.current = splide;
+        if (refreshOnDataChange) splide.refresh();
+      }}
       options={{
         perPage: perPage,
         gap: '8px',
@@ -119,9 +143,9 @@ export const LongCarrousel: React.FC<LongCarrouselProps> = ({ data, autowidth, p
       hasTrack={false}
       aria-label='...'
       className='flex w-full justify-between items-center gap-6'>
-      <SplideTrack className='w-full'>
+      <SplideTrack className='w-full min-w-0'>
         {data.map((item, index) => (
-          <SplideSlide key={index}>{renderSlide(item, index)}</SplideSlide>
+          <SplideSlide key={getItemKey?.(item, index) ?? index}>{renderSlide(item, index)}</SplideSlide>
         ))}
       </SplideTrack>
       <div className=' flex justify-between items-center'>

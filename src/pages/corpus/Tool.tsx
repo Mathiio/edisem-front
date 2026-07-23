@@ -8,8 +8,7 @@ import {
   ItemPageData,
   ItemPageView,
 } from '@/services/itemPage';
-import { getResourceTypeFromTemplate } from '@/pages/generic/simplifiedConfigAdapter';
-import { resolveOmekaThumbnail } from '@/lib/resourceUtils';
+import { resolveOmekaThumbnail, mapToResourceCardItem } from '@/lib/resourceUtils';
 import { Layouts } from '@/components/layout/Layouts';
 import { DynamicBreadcrumbs } from '@/components/layout/DynamicBreadcrumbs';
 import { Link, Skeleton } from '@heroui/react';
@@ -47,17 +46,7 @@ function categoryValues(view: ItemPageView | undefined, key: string): string[] {
 }
 
 function mapUsedByCard(card: ItemPageCard) {
-  if (card.id == null) return null;
-  const thumb = resolveOmekaThumbnail(card.thumbnail ?? undefined) ?? undefined;
-  const templateId = card.resource_template_id ?? undefined;
-  return {
-    id: card.id,
-    title: card.title,
-    thumbnail: thumb,
-    thumbnailUrl: thumb,
-    resource_template_id: templateId,
-    type: card.type || getResourceTypeFromTemplate(templateId),
-  };
+  return mapToResourceCardItem(card);
 }
 
 function mapItemPageToToolDetails(page: ItemPageData): ToolDetails {

@@ -1,4 +1,4 @@
-import { getResourceUrl, isFormOnlyResourceType } from '@/config/resourceConfig';
+import { getResourceUrl, isFormOnlyResourceType, TEMPLATE_ID_TO_TYPE } from '@/config/resourceConfig';
 import { formatFlexibleDateDisplay } from '@/lib/flexibleDate';
 
 export function isHttpUrl(value: unknown): value is string {
@@ -131,6 +131,63 @@ export const getResourceSubtitle = (item: any) => {
 
     return uniqueUnivs.join(' - ');
 };
+
+/** Forme attendue par ResourceCard — ItemPageCard, cache resourceCache ou carte Query. */
+export function mapToResourceCardItem(card: {
+  id?: number | string | null;
+  title?: string | null;
+  name?: string | null;
+  thumbnail?: string | null;
+  thumbnailUrl?: string | null;
+  picture?: string | null;
+  resource_template_id?: number | null;
+  template?: number | null;
+  class?: number | null;
+  type?: string | null;
+  url?: string | null;
+  externalLink?: string | null;
+  actants?: unknown[];
+  personnes?: unknown[];
+  date?: string | null;
+  owner_id?: number | null;
+  ownerId?: number | null;
+} | null | undefined): Record<string, unknown> | null {
+  if (!card || card.id == null) return null;
+
+  const templateId =
+    card.resource_template_id ??
+    (typeof card.template === 'number' ? card.template : undefined) ??
+    (typeof card.class === 'number' ? card.class : undefined);
+
+  const thumb =
+    resolveOmekaThumbnail(card.thumbnail ?? card.thumbnailUrl ?? card.picture ?? undefined) ?? undefined;
+
+  const resourceType =
+    card.type ??
+    (templateId != null ? TEMPLATE_ID_TO_TYPE[Number(templateId)] : undefined) ??
+    undefined;
+
+  const actants = card.actants ?? card.personnes ?? [];
+
+  return {
+    id: card.id,
+    title: card.title ?? card.name ?? '',
+    name: card.title ?? card.name ?? '',
+    thumbnail: thumb,
+    thumbnailUrl: thumb,
+    picture: thumb,
+    resource_template_id: templateId ?? null,
+    template: templateId,
+    class: templateId,
+    type: resourceType,
+    url: card.url ?? card.externalLink ?? undefined,
+    externalLink: card.externalLink ?? card.url ?? undefined,
+    actants,
+    personnes: actants,
+    date: card.date ?? undefined,
+    ownerId: card.ownerId ?? card.owner_id ?? undefined,
+  };
+}
 
 /**
  * Get standardized resource URL for navigation.

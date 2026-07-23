@@ -3,6 +3,7 @@ import { Button } from '@heroui/react';
 import { AddIcon } from '@/components/ui/icons';
 import { outlineButtonClass } from '@/theme/components/button';
 import { splitBibliographyMediagraphyTemplateIds } from '@/config/resourceConfig';
+import { formatEditAddButtonLabel } from '@/lib/editModeLabels';
 import type { LinkExistingOptions } from '@/pages/generic/config';
 
 export interface AddResourceCardProps {
@@ -82,7 +83,7 @@ export const AddResourceCard: React.FC<AddResourceCardProps> = ({
   fullWidth = true,
   className = '',
 }) => {
-  const label = resourceLabel ? `Ajouter ${resourceLabel}` : 'Ajouter';
+  const label = formatEditAddButtonLabel(resourceLabel);
 
   return (
     <button
@@ -173,7 +174,7 @@ export const AddButton: React.FC<AddButtonProps> = ({
         flex items-center gap-px
       `}
       startContent={<AddIcon size={size === 'sm' ? 12 : 14} />}>
-      {label || 'Ajouter'}
+      {formatEditAddButtonLabel(label)}
     </Button>
   );
 };

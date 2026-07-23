@@ -20,9 +20,11 @@ import {
 import { Select, SelectItem } from '@/theme/components/select';
 import { FormTextInput, FormAutoResizeTextareaInput, FormDateInput, formFieldLabelClass } from '@/components/features/forms/edit/FormFields';
 import { KeywordsCarouselSkeleton } from '@/components/features/resource-links/KeywordsCards';
+import { LongCarrousel } from '@/components/ui/Carrousels';
 import { Layouts } from '@/components/layout/Layouts';
 import { SearchModal, SearchModalRef } from '@/components/features/shared/search/SearchModal';
 import { ArrowIcon, AddIcon } from '@/components/ui/icons';
+import { formatEditAddButtonLabel } from '@/lib/editModeLabels';
 import { AlertModal } from '@/components/ui/AlertModal';
 import { EditSaveBar } from '@/components/ui/EditSaveBar';
 import { EditModeBanner } from '@/components/ui/EditModeBanner';
@@ -99,6 +101,39 @@ const selectedResourceRemoveButtonClass = [
   'inline-flex items-center justify-center shrink-0 p-1 text-sm',
 ].join(' ');
 
+/** Rangée compacte : chips scrollables + boutons d'ajout à droite (mode édition). */
+const EditResourceChipsCarousel: React.FC<{
+  items: unknown[];
+  getItemKey?: (item: unknown, index: number) => string | number;
+  renderChip: (item: unknown, index: number) => React.ReactNode;
+  trailing?: React.ReactNode;
+  className?: string;
+}> = ({ items, getItemKey, renderChip, trailing, className = '' }) => (
+  <div className={`flex w-full items-center gap-3 ${className}`}>
+    {items.length > 0 && (
+      <div className='flex-1 min-w-0'>
+        <LongCarrousel
+          data={items}
+          perPage={3}
+          perMove={1}
+          autowidth
+          refreshOnDataChange
+          getItemKey={(item, index) => {
+            if (getItemKey) return getItemKey(item, index);
+            const entry = item as Record<string, unknown>;
+            const linkedId = getLinkedResourceId(entry);
+            if (linkedId != null) return String(linkedId);
+            if (entry.id != null) return String(entry.id);
+            return index;
+          }}
+          renderSlide={renderChip}
+        />
+      </div>
+    )}
+    {trailing}
+  </div>
+);
+
 // ================================
 // Composant local: sélecteur depuis un item set Omeka
 // ================================
@@ -132,40 +167,47 @@ const ItemSetFormField: React.FC<{
     return (
       <div className='w-full flex flex-col gap-2'>
         <label className={formFieldLabelClass}>{label}</label>
-        <div className='flex flex-wrap gap-2 items-center'>
-          {selected.map((item) => (
-            <div key={item.id} className={selectedResourceChipClass}>
-              <span>{item.title || `Item ${item.id}`}</span>
-              <button
-                type='button'
-                onClick={() => onChange(selected.filter((s) => s.id !== item.id))}
-                className={selectedResourceRemoveButtonClass}
-                aria-label='Retirer'>
-                <ModalCloseIcon />
-              </button>
-            </div>
-          ))}
-          {available.length > 0 && (
-            <Dropdown classNames={dropdownContentClassNames}>
-              <DropdownTrigger>
-                <button type='button' className={dropdownTriggerButtonClass}>
-                  <AddIcon size={14} className='text-c4 shrink-0' />
-                  Ajouter
+        <EditResourceChipsCarousel
+          items={selected}
+          getItemKey={(item) => String((item as { id: number }).id)}
+          renderChip={(item) => {
+            const entry = item as { id: number; title: string };
+            return (
+              <div className={`${selectedResourceChipClass} shrink-0 whitespace-nowrap`}>
+                <span>{entry.title || `Item ${entry.id}`}</span>
+                <button
+                  type='button'
+                  onClick={() => onChange(selected.filter((s) => s.id !== entry.id))}
+                  className={selectedResourceRemoveButtonClass}
+                  aria-label='Retirer'>
+                  <ModalCloseIcon />
                 </button>
-              </DropdownTrigger>
-              <DropdownMenu aria-label={label} className='p-2 max-h-64 overflow-auto' classNames={dropdownMenuClassNames}>
-                {available.map((item) => (
-                  <DropdownItem
-                    key={String(item.id)}
-                    className={dropdownMenuItemClass}
-                    onPress={() => onChange([...selected, item])}>
-                    <div className={`${dropdownItemInnerPadding} rounded-lg text-c6`}>{item.title}</div>
-                  </DropdownItem>
-                ))}
-              </DropdownMenu>
-            </Dropdown>
-          )}
-        </div>
+              </div>
+            );
+          }}
+          trailing={
+            available.length > 0 ? (
+              <Dropdown classNames={dropdownContentClassNames}>
+                <DropdownTrigger>
+                  <button type='button' className={`${dropdownTriggerButtonClass} shrink-0`}>
+                    <AddIcon size={14} className='text-c4 shrink-0' />
+                    {formatEditAddButtonLabel(label)}
+                  </button>
+                </DropdownTrigger>
+                <DropdownMenu aria-label={label} className='p-2 max-h-64 overflow-auto' classNames={dropdownMenuClassNames}>
+                  {available.map((item) => (
+                    <DropdownItem
+                      key={String(item.id)}
+                      className={dropdownMenuItemClass}
+                      onPress={() => onChange([...selected, item])}>
+                      <div className={`${dropdownItemInnerPadding} rounded-lg text-c6`}>{item.title}</div>
+                    </DropdownItem>
+                  ))}
+                </DropdownMenu>
+              </Dropdown>
+            ) : undefined
+          }
+        />
       </div>
     );
   }
@@ -1931,39 +1973,48 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     return (
       <div key={field.key} className='flex flex-col gap-2'>
         <label className={formFieldLabelClass}>{field.label}</label>
-        <div className='flex flex-wrap gap-2 items-center'>
-          {fieldSelected.map((item: any, idx: number) => {
-            const itemId = getLinkedResourceId(item);
+        <EditResourceChipsCarousel
+          items={fieldSelected}
+          renderChip={(item) => {
+            const entry = item as Record<string, unknown>;
+            const itemId = getLinkedResourceId(entry);
             return (
-              <div key={itemId ?? idx} className={selectedResourceChipClass}>
-                <span>{getLinkedResourceTitle(item, field.selectionConfig?.templateId)}</span>
+              <div className={`${selectedResourceChipClass} shrink-0 whitespace-nowrap`}>
+                <span>{getLinkedResourceTitle(entry, field.selectionConfig?.templateId)}</span>
                 <button
                   type='button'
-                  onClick={() => setValue(field.key, fieldSelected.filter((s: any) => String(getLinkedResourceId(s)) !== String(itemId)))}
+                  onClick={() =>
+                    setValue(
+                      field.key,
+                      fieldSelected.filter((s: any) => String(getLinkedResourceId(s)) !== String(itemId)),
+                    )
+                  }
                   className={selectedResourceRemoveButtonClass}
                   aria-label='Retirer'>
                   <ModalCloseIcon />
                 </button>
               </div>
             );
-          })}
-          <button
-            type='button'
-            onClick={() =>
-              setActiveResourceField({
-                key: field.key,
-                label: field.label,
-                templateId: field.selectionConfig?.templateId,
-                templateIds: field.selectionConfig?.templateIds,
-                pickerVariant: field.selectionConfig?.pickerVariant,
-                displayMode: config.resourcePickerDisplay,
-              })
-            }
-            className={dropdownTriggerButtonClass}>
-            <AddIcon size={14} className='text-c4 shrink-0' />
-            Ajouter
-          </button>
-        </div>
+          }}
+          trailing={
+            <button
+              type='button'
+              onClick={() =>
+                setActiveResourceField({
+                  key: field.key,
+                  label: field.label,
+                  templateId: field.selectionConfig?.templateId,
+                  templateIds: field.selectionConfig?.templateIds,
+                  pickerVariant: field.selectionConfig?.pickerVariant,
+                  displayMode: config.resourcePickerDisplay,
+                })
+              }
+              className={`${dropdownTriggerButtonClass} shrink-0`}>
+              <AddIcon size={14} className='text-c4 shrink-0' />
+              {formatEditAddButtonLabel(field.label)}
+            </button>
+          }
+        />
       </div>
     );
   };
@@ -1985,42 +2036,58 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
               loadingKeywords ? (
                 <KeywordsCarouselSkeleton />
               ) : (
-                <div className='flex flex-col gap-2'>
-                  <div className='flex flex-wrap gap-2 items-center w-full'>
-                    {sortedKeywords?.map((keyword: any) => {
-                      const canEditKeyword =
-                        isGlobalAdminEdit ||
-                        userCreatedResourceIds?.has(String(keyword.id)) ||
-                        String(keyword.ownerId) === String(currentOmekaUserId);
-                      return (
-                        <div
-                          key={keyword.id || keyword.title}
-                          className={canEditKeyword ? selectedResourceChipEditableClass : selectedResourceChipClass}
-                          onClick={() => { if (canEditKeyword) handleEditLinkedResource('jdc:hasConcept', keyword.id, 34); }}>
-                          <span>{keyword.title}</span>
-                          <button
-                            type='button'
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const current = formData.keywords || [];
-                              setValue('keywords', current.filter((k: any) => k.id !== keyword.id));
-                            }}
-                            className={selectedResourceRemoveButtonClass}
-                            aria-label='Retirer le mot-clé'>
-                            <ModalCloseIcon />
-                          </button>
-                        </div>
-                      );
-                    })}
+                <EditResourceChipsCarousel
+                  items={sortedKeywords}
+                  getItemKey={(keyword) => {
+                    const entry = keyword as { id?: string | number; title?: string };
+                    return entry.id || entry.title || '';
+                  }}
+                  renderChip={(keyword) => {
+                    const entry = keyword as {
+                      id?: string | number;
+                      title?: string;
+                      ownerId?: string | number;
+                    };
+                    const canEditKeyword =
+                      isGlobalAdminEdit ||
+                      userCreatedResourceIds?.has(String(entry.id)) ||
+                      String(entry.ownerId) === String(currentOmekaUserId);
+                    return (
+                      <div
+                        className={`${canEditKeyword ? selectedResourceChipEditableClass : selectedResourceChipClass} shrink-0 whitespace-nowrap`}
+                        onClick={() => {
+                          if (canEditKeyword && entry.id != null) {
+                            handleEditLinkedResource('jdc:hasConcept', entry.id, 34);
+                          }
+                        }}>
+                        <span>{entry.title}</span>
+                        <button
+                          type='button'
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const current = formData.keywords || [];
+                            setValue(
+                              'keywords',
+                              current.filter((k: any) => k.id !== entry.id),
+                            );
+                          }}
+                          className={selectedResourceRemoveButtonClass}
+                          aria-label='Retirer le mot-clé'>
+                          <ModalCloseIcon />
+                        </button>
+                      </div>
+                    );
+                  }}
+                  trailing={
                     <button
                       type='button'
                       onClick={() => handleLinkExisting('keywords')}
-                      className={dropdownTriggerButtonClass}>
+                      className={`${dropdownTriggerButtonClass} shrink-0`}>
                       <AddIcon size={14} className='text-c4 shrink-0' />
-                      Ajouter un mot-clé
+                      {formatEditAddButtonLabel('Mot-clé')}
                     </button>
-                  </div>
-                </div>
+                  }
+                />
               )
             )}
 
@@ -2068,30 +2135,42 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
                   });
                 });
                 return (
-                  <div className='flex flex-wrap gap-2 items-center w-full'>
-                    {allContributors.map((item: any, idx: number) => {
+                  <EditResourceChipsCarousel
+                    items={allContributors}
+                    getItemKey={(item) => String(getLinkedResourceId(item as Record<string, unknown>) ?? (item as { id?: unknown }).id ?? '')}
+                    renderChip={(item) => {
+                      const entry = item as Record<string, unknown> & {
+                        id?: string | number;
+                        title?: string;
+                        name?: string;
+                        _property?: string;
+                        ownerId?: unknown;
+                      };
                       const isUserCreated =
                         isGlobalAdminEdit ||
-                        userCreatedResourceIds?.has(String(item.id)) ||
-                        String(item.ownerId) === String(currentOmekaUserId);
+                        userCreatedResourceIds?.has(String(entry.id)) ||
+                        String(entry.ownerId) === String(currentOmekaUserId);
                       const canEditChip = isUserCreated && effectiveOnEditResource;
-                      const btn = config.contributorButtons!.find((b) => b.property === item._property);
+                      const btn = config.contributorButtons!.find((b) => b.property === entry._property);
                       return (
                         <div
-                          key={item.id || idx}
-                          className={canEditChip ? selectedResourceChipEditableClass : selectedResourceChipClass}
-                          onClick={() => { if (canEditChip && btn) effectiveOnEditResource(item._property, item.id, btn.templateId); }}>
-                          <span>{item.title || item.name}</span>
+                          className={`${canEditChip ? selectedResourceChipEditableClass : selectedResourceChipClass} shrink-0 whitespace-nowrap`}
+                          onClick={() => {
+                            if (canEditChip && btn && entry.id != null && entry._property) {
+                              effectiveOnEditResource(entry._property, entry.id, btn.templateId);
+                            }
+                          }}>
+                          <span>{entry.title || entry.name}</span>
                           <button
                             type='button'
                             onClick={(e) => {
                               e.stopPropagation();
-                              const prop = item._property;
-                              const current: any[] = Array.isArray(formData[prop]) ? formData[prop] : [];
-                              setValue(prop, current.filter((c: any) => String(getLinkedResourceId(c)) !== String(item.id)));
+                              const prop = entry._property;
+                              const current: any[] = Array.isArray(formData[prop!]) ? formData[prop!] : [];
+                              setValue(prop!, current.filter((c: any) => String(getLinkedResourceId(c)) !== String(entry.id)));
                               const legacy: any[] = Array.isArray(formData['personnes']) ? formData['personnes'] : [];
-                              if (legacy.some((c: any) => String(getLinkedResourceId(c)) === String(item.id))) {
-                                setValue('personnes', legacy.filter((c: any) => String(getLinkedResourceId(c)) !== String(item.id)));
+                              if (legacy.some((c: any) => String(getLinkedResourceId(c)) === String(entry.id))) {
+                                setValue('personnes', legacy.filter((c: any) => String(getLinkedResourceId(c)) !== String(entry.id)));
                               }
                             }}
                             className={selectedResourceRemoveButtonClass}
@@ -2100,18 +2179,22 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
                           </button>
                         </div>
                       );
-                    })}
-                    {config.contributorButtons!.map((btn) => (
-                      <button
-                        key={`${btn.property}-${btn.templateId}`}
-                        type='button'
-                        onClick={() => setActiveResourceField({ key: btn.property, label: btn.label, templateId: btn.templateId })}
-                        className={dropdownTriggerButtonClass}>
-                        <AddIcon size={14} className='text-c4 shrink-0' />
-                        {btn.label}
-                      </button>
-                    ))}
-                  </div>
+                    }}
+                    trailing={
+                      <div className='flex flex-wrap gap-2 shrink-0 items-center'>
+                        {config.contributorButtons!.map((btn) => (
+                          <button
+                            key={`${btn.property}-${btn.templateId}`}
+                            type='button'
+                            onClick={() => setActiveResourceField({ key: btn.property, label: btn.label, templateId: btn.templateId })}
+                            className={`${dropdownTriggerButtonClass} shrink-0`}>
+                            <AddIcon size={14} className='text-c4 shrink-0' />
+                            {formatEditAddButtonLabel(btn.label)}
+                          </button>
+                        ))}
+                      </div>
+                    }
+                  />
                 );
               })()}
 
