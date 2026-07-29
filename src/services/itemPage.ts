@@ -33,6 +33,7 @@ export interface ItemPageCard {
   resource_template_id: number | null;
   owner_id?: number | null;
   url?: string | null;
+  externalUrl?: string | null;
   actants?: ItemPageCardActant[];
   /** Type front (seminaire, recit_artistique…) — fourni par QueryCardHelper pour les contenus associés. */
   type?: string | null;

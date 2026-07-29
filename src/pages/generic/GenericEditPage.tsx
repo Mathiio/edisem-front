@@ -379,17 +379,23 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     () => getAutoContributorConfig(config.resourceTemplateId),
     [config.resourceTemplateId],
   );
-  const prevIsDirtyRef = useRef(isDirty);
-  useEffect(() => {
-    if (prevIsDirtyRef.current !== isDirty) {
-      prevIsDirtyRef.current = isDirty;
-      onDirtyChangeRef.current?.(isDirty);
-    }
-  }, [isDirty]);
+  const prevIsDirtyRef = useRef(false);
 
-  // ================================
-  // Data loading (for form initialization)
-  // ================================
+  // Media state
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
+  const [youtubeUrls, setYoutubeUrls] = useState<string[]>([]);
+  const [removedMediaIndexes, setRemovedMediaIndexes] = useState<number[]>([]);
+
+  const hasMediaChanges =
+    mediaFiles.length > 0 || removedMediaIndexes.length > 0 || youtubeUrls.length > 0;
+  const isFormDirty = isDirty || hasMediaChanges;
+
+  useEffect(() => {
+    if (prevIsDirtyRef.current !== isFormDirty) {
+      prevIsDirtyRef.current = isFormDirty;
+      onDirtyChangeRef.current?.(isFormDirty);
+    }
+  }, [isFormDirty]);
   const [itemDetails, setItemDetails] = useState<any>(mode === 'create' || isDraft ? {} : null);
   const [keywords, setKeywords] = useState<any[]>([]);
   const [viewData, setViewData] = useState<Record<string, any>>({});
@@ -397,10 +403,6 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
   const [loadingKeywords, setLoadingKeywords] = useState(mode !== 'create' && !isDraft);
   const [selected, setSelected] = useState(config.defaultView || config.viewOptions[0]?.key || '');
 
-  // Media state
-  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
-  const [youtubeUrls, setYoutubeUrls] = useState<string[]>([]);
-  const [removedMediaIndexes, setRemovedMediaIndexes] = useState<number[]>([]);
   const [propertiesMap, setPropertiesMap] = useState<Record<string, number>>({});
 
   // Auto-save refs
@@ -463,8 +465,8 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
   // ================================
   const blocker = useBlocker(
     useCallback(
-      () => !bypassBlockerRef.current && (isDraft || isDirty),
-      [isDirty, isDraft],
+      () => !bypassBlockerRef.current && (isDraft || isFormDirty),
+      [isFormDirty, isDraft],
     ),
   );
 
@@ -1575,7 +1577,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
 
     if (isDraft) { setDraftDeleteConfirmOpen(true); return; }
     if (hadPendingAutoSave && userCreatedResourceIds.size > 0) { setOrphanWarningOpen(true); return; }
-    if (isDirty) { setUnsavedChangesWarningOpen(true); return; }
+    if (isFormDirty) { setUnsavedChangesWarningOpen(true); return; }
     performCancel();
   };
 
@@ -2647,7 +2649,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
         onSave={handleSave}
         onCancel={handleCancelEdit}
         isSubmitting={isSubmitting}
-        isDirty={isDirty}
+        isDirty={isFormDirty}
         mode={mode}
         isDraft={isDraft}
         saveLabel={saveLabel}

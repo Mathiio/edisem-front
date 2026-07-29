@@ -31,7 +31,7 @@ import {
 import { getResourceUrl } from '@/config/resourceConfig';
 import { enrichItemWithResourceOwner } from '@/lib/resourceOwner';
 import { getResourceOwnerId } from '@/lib/resourceEditHelpers';
-import { resolveOmekaThumbnail } from '@/lib/resourceUtils';
+import { resolveOmekaThumbnail, isHttpUrl, buildCachedResourceUrl } from '@/lib/resourceUtils';
 import { OMEKA_API_BASE as API_BASE } from '@/utils/omekaApi';
 
 // ========================================================================
@@ -86,7 +86,16 @@ function cardToResourceCacheEntry(card: ItemPageCard, contributorFieldKey?: stri
   const contributorType = contributorFieldKey ? getContributorDisplayType(templateId) : undefined;
   const resourceType = card.type || contributorType || getResourceTypeFromTemplate(templateId);
   const thumb = resolveOmekaThumbnail(card.thumbnail ?? undefined) ?? undefined;
-  const externalUrl = card.url ?? undefined;
+  const externalUrl =
+    card.externalUrl ??
+    (isHttpUrl(card.url ?? undefined) ? card.url! : undefined);
+  const cachedUrl =
+    externalUrl ??
+    (card.id != null && resourceType
+      ? buildCachedResourceUrl(resourceType, card.id, {
+          'foaf:page': externalUrl ? [{ '@id': externalUrl }] : undefined,
+        })
+      : undefined);
   return {
     id: card.id,
     title: card.title,
@@ -99,7 +108,8 @@ function cardToResourceCacheEntry(card: ItemPageCard, contributorFieldKey?: stri
     resource_template_id: templateId,
     type: resourceType,
     date: card.date ?? undefined,
-    url: cardResourceUrl(card) ?? externalUrl,
+    url: cachedUrl,
+    uri: externalUrl,
     externalLink: externalUrl,
     actants: card.actants?.map((actant) => ({
       ...actant,

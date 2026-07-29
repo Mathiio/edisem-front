@@ -21,8 +21,8 @@ import { InternalFieldConfig, getOverviewFields, getDetailsFields, getHeaderFiel
 import { fetchCustomVocabTerms } from '@/utils/customVocab';
 import { getOmekaValue, getResourceIds } from './simplifiedConfigAdapter';
 import { isValidYouTubeUrl, getYouTubeThumbnailUrl } from '@/lib/utils';
-import { getFormOnlyExternalUrl } from '@/lib/resourceUtils';
-import { isFormOnlyResourceType } from '@/config/resourceConfig';
+import { getResourceLinkHref } from '@/lib/resourceUtils';
+import { getContributorDisplayType } from './simplifiedConfigAdapter';
 import { Select, SelectItem } from '@/theme/components/select';
 import {
   Dropdown as ThemeDropdown,
@@ -115,27 +115,16 @@ interface SimpleDetailsProps {
 // Helper functions
 // ========================================
 
-const getPersonRoute = (person: any): string => {
-  if (!person?.type) {
-    return `/conferencier/${person?.id}`;
-  }
-  switch (person.type) {
-    case 'actant':
-    case 'student':
-      return `/intervenant/${person.id}`;
-    case 'personne':
-      return `/personne/${person.id}`;
-    default:
-      return `/conferencier/${person?.id}`;
-  }
+const normalizeContributorResourceType = (type: string | undefined, templateId?: number): string | undefined => {
+  const resolved = type ?? getContributorDisplayType(templateId);
+  if (resolved === 'actant' || resolved === 'student') return 'intervenant';
+  return resolved;
 };
 
 const getPersonLinkHref = (person: any): string | null => {
-  if (isFormOnlyResourceType(person?.type)) {
-    return getFormOnlyExternalUrl(person);
-  }
-  if (!person?.id) return null;
-  return getPersonRoute(person);
+  const templateId = person?.template ?? person?.resource_template_id ?? person?.class;
+  const type = normalizeContributorResourceType(person?.type, templateId);
+  return getResourceLinkHref({ ...person, type });
 };
 
 const PersonLink: React.FC<{ person: any; className?: string; children: React.ReactNode }> = ({ person, className, children }) => {
@@ -475,13 +464,13 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
                             key={person.id || `person-${index}`}
                             className={dropdownMenuItemClass}
                             href={personHref?.startsWith('http') ? personHref : personHref || undefined}>
-                            <div className={`flex items-center gap-4 w-full ${dropdownItemInnerPadding} rounded-lg hover:bg-c3 text-c6`}>
+                            <div className={`flex items-center gap-2 w-full ${dropdownItemInnerPadding} rounded-lg hover:bg-c3 text-c6`}>
                               {getPersonPicture(person) ? (
-                                <img src={getPersonPicture(person) ?? ''} alt='Avatar' className='w-9 h-9 rounded-lg object-cover' />
+                                <img src={getPersonPicture(person) ?? ''} alt='Avatar' className='w-7 h-7 rounded-lg object-cover' />
                               ) : (
                                 <UserIcon size={18} className='text-c4' />
                               )}
-                              <span className='text-base'>{getPersonDisplayName(person)}</span>
+                              <span className='text-sm'>{getPersonDisplayName(person)}</span>
                             </div>
                           </ThemeDropdownItem>
                         );
