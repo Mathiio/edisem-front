@@ -12,6 +12,7 @@ export const elementEsthetiqueConfigSimplified: SimplifiedDetailConfig = {
 
   fields: {
     title: { property: 'dcterms:title', type: 'title', zone: 'header' },
+    description: { property: 'dcterms:description', type: 'textarea', label: 'Description', zone: 'details' },
     date: { property: 'schema:eventDate', type: 'date', label: 'Date de production', zone: 'details' },
     contributors: {
       property: 'dcterms:creator',

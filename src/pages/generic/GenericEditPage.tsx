@@ -59,7 +59,7 @@ import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '
 import { resolveOmekaPropertyId, deleteMedia, syncCategoryValuesToFormFields, isUrlOmekaProperty } from './simplifiedConfigAdapter';
 import { invalidateItemPageCache } from '@/services/itemPage';
 import { MediaFile, DEFAULT_AUTHOR_TEMPLATE_IDS } from '@/components/features/forms/edit/MediaDropzone';
-import { GenericDetailPageConfig, PageMode } from './config';
+import { GenericDetailPageConfig, PageMode, FetchResult } from './config';
 
 // ================================
 // Re-export de l'interface des props partagées
@@ -1494,10 +1494,6 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
         });
       }
 
-      setYoutubeUrls([]);
-      setMediaFiles([]);
-      setRemovedMediaIndexes([]);
-
       if (!isAutoSave && isDraft) {
         // Silent fetch so the form doesn't flash a spinner when publishing the draft
         silentFetchRef.current = true;
@@ -1510,7 +1506,35 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
         setTimeout(() => { bypassBlockerRef.current = false; }, 100);
         // fetchData() will be triggered automatically via the useEffect
         // when isDraft becomes false after the URL change re-render
+        setYoutubeUrls([]);
+        setMediaFiles([]);
+        setRemovedMediaIndexes([]);
       } else if (!isDraft) {
+        const hadMediaChanges =
+          mediaFiles.length > 0 || removedMediaIndexes.length > 0 || youtubeUrls.length > 0;
+
+        if (mode === 'edit' && id && hadMediaChanges) {
+          silentFetchRef.current = true;
+          try {
+            // Pas de fetchData() ici : on évite un rendu intermédiaire où removedMediaIndexes
+            // masquerait la nouvelle image avant d'être réinitialisé.
+            let result: FetchResult;
+            if ((config as any).progressiveDataFetcher) {
+              result = await (config as any).progressiveDataFetcher(id, () => {});
+            } else {
+              result = await config.dataFetcher(id);
+            }
+            setItemDetails(result.itemDetails);
+            setKeywords(result.keywords || []);
+            setViewData(result.viewData || {});
+          } catch (error) {
+            console.error('GenericEditPage: Error refreshing after media save:', error);
+          }
+        }
+
+        setYoutubeUrls([]);
+        setMediaFiles([]);
+        setRemovedMediaIndexes([]);
         reset(formData);
       }
       onDirtyChange?.(false);

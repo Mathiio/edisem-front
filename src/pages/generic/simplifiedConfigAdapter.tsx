@@ -263,7 +263,8 @@ const InlineMicroresumeForm: React.FC<{
   );
 };
 import { getResourceConfigByTemplateId, isFormOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
-import { buildCachedResourceUrl, extractExternalUrlFromOmekaItem, getResourceThumbnail, getYouTubeThumbnail, pickOmekaDisplayThumbnail, pickOmekaMediaThumbnail, resolveOmekaThumbnail } from '@/lib/resourceUtils';
+import { buildCachedResourceUrl, extractExternalUrlFromOmekaItem, getResourceThumbnail, getYouTubeThumbnail, isOverviewMediaUrl, pickOmekaDisplayThumbnail, pickOmekaMediaThumbnail, resolveOmekaThumbnail } from '@/lib/resourceUtils';
+import { isValidYouTubeUrl } from '@/lib/utils';
 import { enrichItemWithResourceOwner } from '@/lib/resourceOwner';
 import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/ui/form/AutoResizingTextarea';
 import {
@@ -475,7 +476,7 @@ function sortAssociatedMediaEntries(entries: AssociatedMediaEntry[]): Associated
 }
 
 function applyAssociatedMediaToItem(enrichedData: Record<string, unknown>, entries: AssociatedMediaEntry[]) {
-  const sorted = sortAssociatedMediaEntries(entries);
+  const sorted = sortAssociatedMediaEntries(entries).filter((entry) => isOverviewMediaUrl(entry.url));
   enrichedData.associatedMedia = sorted.map((entry) => entry.url);
   enrichedData.associatedMediaIds = sorted.map((entry) => entry.mediaId ?? null);
 }
@@ -787,12 +788,13 @@ async function loadLinkedAssociatedMediaEntries(data: any): Promise<AssociatedMe
           const mediaId = mediaRef['o:id'];
           if (mediaId) {
             const linkedUrl = await fetchOmekaMediaUrl(mediaId);
-            if (linkedUrl) return linkedUrl;
+            if (linkedUrl && isOverviewMediaUrl(linkedUrl)) return linkedUrl;
           }
         }
       }
-      const linkedUrl = itemData['schema:url']?.[0]?.['@id'] || biboUri;
-      if (linkedUrl) return linkedUrl;
+      const schemaUrl = itemData['schema:url']?.[0]?.['@id'];
+      if (schemaUrl && isValidYouTubeUrl(schemaUrl)) return schemaUrl;
+      if (biboUri && isValidYouTubeUrl(biboUri)) return biboUri;
     } catch (err) {
       console.error(`Erreur chargement item média ${itemId}:`, err);
     }
@@ -824,7 +826,7 @@ async function loadOverviewMediaEntries(
     mediaEntries.push(...(await loadLinkedAssociatedMediaEntries(data)));
   }
 
-  if (mediaEntries.length === 0 && directVideoUrl) {
+  if (mediaEntries.length === 0 && directVideoUrl && isValidYouTubeUrl(directVideoUrl)) {
     mediaEntries.push({ url: directVideoUrl });
   }
 

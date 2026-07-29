@@ -7,13 +7,14 @@ import {
   ModalHeader,
   modalCloseButtonClasses,
 } from '@/theme/components';
-import { ScrollFadeArea } from '@/components/ui/ScrollFadeArea';
 import {
   FEEDBACK_POPUP_CATEGORY_VIEWS,
+  isElementsPopupViewKey,
   isFeedbackPopupViewKey,
   LinkedResourcePopupState,
 } from '@/config/linkedResourcePopupConfig';
 import { fieldValue, flattenMediaUrls, getChildItem, ItemPageData, viewCategoryEntries } from '@/services/itemPage';
+import { OMEKA_API_BASE } from '@/utils/omekaApi';
 import { PopupMediaGallery } from './PopupMediaGallery';
 
 interface LinkedResourcePopupModalProps {
@@ -36,13 +37,52 @@ const CategoryFields: React.FC<{
   </div>
 );
 
-const renderCategoryPopupContent = (item: ItemPageData, viewKey: string) => {
-  if (viewKey === 'AnalyseCritique') {
-    const argument = fieldValue(item.fields.argument);
-    if (argument) {
-      return <p className='text-c6 text-base whitespace-pre-line leading-relaxed'>{argument}</p>;
+const DescriptionBlock: React.FC<{ text: string }> = ({ text }) => (
+  <p className='text-c6 text-base whitespace-pre-line leading-relaxed'>{text}</p>
+);
+
+/** Complète getChildItem lorsque le backend n'expose pas description (ex. éléments esthétiques). */
+async function fetchChildItemFallbackText(
+  resourceId: string | number,
+  viewKey: string,
+): Promise<string | null> {
+  try {
+    const response = await fetch(`${OMEKA_API_BASE}items/${resourceId}`);
+    if (!response.ok) return null;
+    const data = await response.json();
+
+    if (viewKey === 'AnalyseCritique') {
+      return data['dcterms:description']?.[0]?.['@value'] ?? null;
     }
+
+    if (isElementsPopupViewKey(viewKey)) {
+      return (
+        data['dcterms:description']?.[0]?.['@value'] ??
+        data['fiafcore:hasImageCharacteristic']?.[0]?.['@value'] ??
+        null
+      );
+    }
+
     return null;
+  } catch {
+    return null;
+  }
+}
+
+const renderCategoryPopupContent = (
+  item: ItemPageData,
+  viewKey: string,
+  fallbackText?: string | null,
+) => {
+  if (viewKey === 'AnalyseCritique') {
+    const argument = fieldValue(item.fields.argument) ?? fallbackText;
+    if (argument) return <DescriptionBlock text={argument} />;
+    return null;
+  }
+
+  if (isElementsPopupViewKey(viewKey)) {
+    const description = fieldValue(item.fields.description) ?? fallbackText;
+    if (description) return <DescriptionBlock text={description} />;
   }
 
   if (isFeedbackPopupViewKey(viewKey)) {
@@ -71,12 +111,17 @@ const renderCategoryPopupContent = (item: ItemPageData, viewKey: string) => {
     return <CategoryFields entries={filledFields} />;
   }
 
+  if (fallbackText) {
+    return <DescriptionBlock text={fallbackText} />;
+  }
+
   return null;
 };
 
 export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> = ({ popup, onClose }) => {
   const { isOpen, onOpen, onClose: closeModal } = useDisclosure();
   const [item, setItem] = useState<ItemPageData | null>(null);
+  const [fallbackText, setFallbackText] = useState<string | null>(null);
   const [medias, setMedias] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -91,6 +136,7 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
   useEffect(() => {
     if (!popup) {
       setItem(null);
+      setFallbackText(null);
       setMedias([]);
       return;
     }
@@ -98,18 +144,38 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
     let cancelled = false;
     setLoading(true);
     setItem(null);
+    setFallbackText(null);
     setMedias([]);
 
     getChildItem(popup.resourceId)
-      .then((result) => {
+      .then(async (result) => {
+        if (cancelled) return;
+
+        let supplemental: string | null = null;
+        if (result && popup.viewKey) {
+          const primaryText =
+            popup.viewKey === 'AnalyseCritique'
+              ? fieldValue(result.fields.argument)
+              : isElementsPopupViewKey(popup.viewKey)
+                ? fieldValue(result.fields.description)
+                : null;
+          const categoryFields = viewCategoryEntries(result.views.Analyse);
+
+          if (!primaryText && categoryFields.length === 0) {
+            supplemental = await fetchChildItemFallbackText(popup.resourceId, popup.viewKey);
+          }
+        }
+
         if (cancelled) return;
         setItem(result);
+        setFallbackText(supplemental);
         setMedias(result ? flattenMediaUrls(result.associatedMedia) : []);
         setLoading(false);
       })
       .catch(() => {
         if (cancelled) return;
         setItem(null);
+        setFallbackText(null);
         setMedias([]);
         setLoading(false);
       });
@@ -129,7 +195,7 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
   const renderTextContent = () => {
     if (loading) {
       return (
-        <div className='flex flex-col items-center justify-center gap-2 py-16'>
+        <div className='flex flex-col items-center justify-center gap-2 py-8'>
           <Spinner color='current' className='text-c6' size='md' />
           <p className='text-c5 text-sm'>Chargement...</p>
         </div>
@@ -138,17 +204,17 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
 
     if (!item) {
       return (
-        <div className='flex flex-col items-center justify-center gap-1 py-16 text-center'>
+        <div className='flex flex-col items-center justify-center gap-1 py-8 text-center'>
           <p className='text-c5 text-base font-medium'>Impossible de charger cette ressource.</p>
         </div>
       );
     }
 
-    const content = popup?.viewKey ? renderCategoryPopupContent(item, popup.viewKey) : null;
+    const content = popup?.viewKey ? renderCategoryPopupContent(item, popup.viewKey, fallbackText) : null;
     if (content) return content;
 
     return !medias.length ? (
-      <p className='text-c4 text-sm italic text-center py-8'>Aucun contenu renseigné.</p>
+      <p className='text-c4 text-sm italic text-center py-4'>Aucun contenu renseigné.</p>
     ) : null;
   };
 
@@ -160,11 +226,12 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
       onClose={handleClose}
       size='3xl'
       backdrop='blur'
-      scrollBehavior='normal'
+      scrollBehavior='inside'
       placement='center'
       classNames={{
         closeButton: modalCloseButtonClasses,
-        body: 'overflow-hidden',
+        base: 'max-h-[85vh]',
+        body: 'py-0',
       }}
       motionProps={{
         variants: {
@@ -172,23 +239,21 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
           exit: { y: -20, opacity: 0, transition: { duration: 0.2, ease: 'easeIn' } },
         },
       }}>
-      <ModalContent className='flex h-[85vh] max-h-[85vh] flex-col bg-c1 border-2 border-c3'>
+      <ModalContent className='flex max-h-[85vh] flex-col bg-c1 border-2 border-c3'>
         <ModalHeader className='flex shrink-0 flex-col gap-px py-4 border-b border-c3'>
           <h2 className='text-c6 text-xl font-semibold leading-tight'>
             {loading ? 'Chargement...' : title || 'Sans titre'}
           </h2>
         </ModalHeader>
 
-        <ModalBody className='flex min-h-0 flex-1 flex-col gap-4 overflow-hidden py-4 pb-6'>
+        <ModalBody className='flex flex-col gap-4 overflow-y-auto py-4 pb-6'>
           {showMediaGallery && (
             <div className='shrink-0 px-1'>
               <PopupMediaGallery key={String(popup?.resourceId)} medias={medias} />
             </div>
           )}
 
-          <ScrollFadeArea contentClassName='px-1'>
-            {renderTextContent()}
-          </ScrollFadeArea>
+          <div className='px-1'>{renderTextContent()}</div>
         </ModalBody>
       </ModalContent>
     </Modal>

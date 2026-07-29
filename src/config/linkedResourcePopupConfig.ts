@@ -35,3 +35,7 @@ export const FEEDBACK_POPUP_CATEGORY_VIEWS: { key: string; title: string }[] = [
 export function isFeedbackPopupViewKey(viewKey: string): boolean {
   return viewKey === 'Feedbacks' || viewKey === 'schema:description';
 }
+
+export function isElementsPopupViewKey(viewKey: string): boolean {
+  return viewKey === 'ElementsNarratifs' || viewKey === 'ElementsEsthetiques';
+}

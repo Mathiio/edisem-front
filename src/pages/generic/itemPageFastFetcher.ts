@@ -31,7 +31,7 @@ import {
 import { getResourceUrl } from '@/config/resourceConfig';
 import { enrichItemWithResourceOwner } from '@/lib/resourceOwner';
 import { getResourceOwnerId } from '@/lib/resourceEditHelpers';
-import { resolveOmekaThumbnail, isHttpUrl, buildCachedResourceUrl } from '@/lib/resourceUtils';
+import { resolveOmekaThumbnail, isHttpUrl, buildCachedResourceUrl, isOverviewMediaUrl } from '@/lib/resourceUtils';
 import { OMEKA_API_BASE as API_BASE } from '@/utils/omekaApi';
 
 // ========================================================================
@@ -373,10 +373,10 @@ function buildItemDetailsFromItemPage(
         );
       }
     } else {
-      itemDetails.associatedMedia = flattenMediaUrls(page.associatedMedia);
+      itemDetails.associatedMedia = flattenMediaUrls(page.associatedMedia).filter(isOverviewMediaUrl);
     }
   } else {
-    itemDetails.associatedMedia = flattenMediaUrls(page.associatedMedia);
+    itemDetails.associatedMedia = flattenMediaUrls(page.associatedMedia).filter(isOverviewMediaUrl);
   }
 
   // --- Mots-clés (jdc:hasConcept) ---

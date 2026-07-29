@@ -1,8 +1,20 @@
 import { getResourceUrl, isFormOnlyResourceType, TEMPLATE_ID_TO_TYPE } from '@/config/resourceConfig';
 import { formatFlexibleDateDisplay } from '@/lib/flexibleDate';
+import { isValidYouTubeUrl } from '@/lib/utils';
 
 export function isHttpUrl(value: unknown): value is string {
   return typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://'));
+}
+
+/** URL affichable comme média d'aperçu (fichier Omeka, image directe ou YouTube) — pas un lien de fiche. */
+export function isOverviewMediaUrl(url: string): boolean {
+  if (!url?.trim()) return false;
+  if (isValidYouTubeUrl(url)) return true;
+  if (url.includes('/files/original/') || url.includes('/files/medium/') || url.includes('/files/square/')) {
+    return true;
+  }
+  if (isHttpUrl(url) && /\.(jpe?g|png|gif|webp|avif|svg|bmp)(\?|#|$)/i.test(url)) return true;
+  return false;
 }
 
 /** Extrait l'URL externe depuis une réponse Omeka brute */
