@@ -82,7 +82,16 @@ const renderCategoryPopupContent = (
 
   if (isElementsPopupViewKey(viewKey)) {
     const description = fieldValue(item.fields.description) ?? fallbackText;
-    if (description) return <DescriptionBlock text={description} />;
+    const analyseFields = viewCategoryEntries(item.views.Analyse);
+
+    if (!description && analyseFields.length === 0) return null;
+
+    return (
+      <div className='flex flex-col gap-5'>
+        {description && <DescriptionBlock text={description} />}
+        {analyseFields.length > 0 && <CategoryFields entries={analyseFields} />}
+      </div>
+    );
   }
 
   if (isFeedbackPopupViewKey(viewKey)) {
@@ -161,6 +170,7 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
                 : null;
           const categoryFields = viewCategoryEntries(result.views.Analyse);
 
+          // Fetch fallback only when both primary text and Analyse categories are missing
           if (!primaryText && categoryFields.length === 0) {
             supplemental = await fetchChildItemFallbackText(popup.resourceId, popup.viewKey);
           }
@@ -246,13 +256,13 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
           </h2>
         </ModalHeader>
 
-        <ModalBody className='flex flex-col gap-4 overflow-y-auto py-4 pb-6'>
-          {showMediaGallery && (
-            <div className='shrink-0 px-1'>
-              <PopupMediaGallery key={String(popup?.resourceId)} medias={medias} />
-            </div>
-          )}
+        {showMediaGallery && (
+          <div className='shrink-0 px-5 pt-4 border-b border-c3 pb-4'>
+            <PopupMediaGallery key={String(popup?.resourceId)} medias={medias} />
+          </div>
+        )}
 
+        <ModalBody className='flex flex-col gap-4 overflow-y-auto py-4 pb-6'>
           <div className='px-1'>{renderTextContent()}</div>
         </ModalBody>
       </ModalContent>

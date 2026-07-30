@@ -44,7 +44,7 @@ export const useGetDataByClassDetails = (ItemUrl: string | null) => {
     setLoading(true);
     setError(null);
     try {
-      if (ItemUrl !== null) {
+      if (ItemUrl) {
         const fetchedData = await getDataByUrl(ItemUrl);
         setData(Array.isArray(fetchedData) ? fetchedData : [fetchedData]);
       } else {
