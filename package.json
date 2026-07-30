@@ -18,7 +18,8 @@
     "generate:service": "node resource-system/dist/resourceGenerator.js",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "create:recit": "node scripts/create-recit.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
