@@ -180,7 +180,7 @@ export const PickerSuggestionsPanel: React.FC<PickerSuggestionsPanelProps> = ({
           initial='hidden'
           animate='visible'
           exit='exit'
-          className='mb-5 rounded-2xl border-2 border-action/20 bg-c2/40 p-4 overflow-hidden relative isolate'>
+          className='mb-5 rounded-2xl border-2 border-action/20 bg-c2/40 py-2 px-3 overflow-hidden relative isolate'>
           <AnimatedPanelBackground />
 
           <div className='relative z-[1]'>
@@ -212,15 +212,15 @@ export const PickerSuggestionsPanel: React.FC<PickerSuggestionsPanelProps> = ({
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.2, ease: 'easeOut' }}
-                  className='overflow-hidden'>
+                  className='overflow-y-visible pb-1'>
                   {loading ? (
-                    <div className='grid grid-cols-4 gap-3 pb-1'>
+                    <div className='grid w-full grid-cols-2 gap-3 sm:grid-cols-4'>
                       {Array.from({ length: MAX_SUGGESTIONS }).map((_, i) => (
                         <SuggestionSkeletonCard key={i} index={i} />
                       ))}
                     </div>
                   ) : (
-                    <div className='grid grid-cols-4 gap-3 pb-1'>
+                    <div className='grid w-full grid-cols-2 gap-3 sm:grid-cols-4'>
                       {visibleItems.map((resource) => (
                         <SuggestionCard
                           key={getResourceId(resource)}

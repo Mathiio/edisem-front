@@ -2524,6 +2524,25 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
         }
       }
 
+      const youtubeUrlsToCreate: string[] = data.youtubeUrls || [];
+      for (const ytUrl of youtubeUrlsToCreate) {
+        try {
+          const videoIdMatch = ytUrl.match(/(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+          const videoId = videoIdMatch ? videoIdMatch[1] : null;
+          if (!videoId) continue;
+          const ytResponse = await fetch(omekaApiUrl(`${API_BASE}media`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 'o:ingester': 'youtube', 'o:renderer': 'youtube', 'o:source': ytUrl, 'o:item': { 'o:id': itemId }, data: { id: videoId }, is_public: true }),
+          });
+          if (!ytResponse.ok) {
+            mediaErrors.push(`Erreur ajout YouTube ${ytUrl}`);
+          }
+        } catch (err) {
+          mediaErrors.push(`Erreur YouTube ${ytUrl}`);
+        }
+      }
+
       if (mediaErrors.length > 0) {
         console.warn('[handleSave] Erreurs médias:', mediaErrors);
       }

@@ -160,7 +160,7 @@ const loadResourcesByMultipleTemplateIds = async (templateIds: number[]): Promis
 };
 
 const PickerScrollArea: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <ScrollFadeArea fill={false} contentClassName='max-h-[450px] pr-px'>
+  <ScrollFadeArea fill={false} contentClassName='max-h-[min(450px,calc(92vh-22rem))] pr-px'>
     {children}
   </ScrollFadeArea>
 );
@@ -620,8 +620,12 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
       size='4xl'
       backdrop='blur'
       scrollBehavior='inside'
-      classNames={{ closeButton: modalCloseButtonClasses }}>
-      <ModalContent>
+      classNames={{
+        closeButton: modalCloseButtonClasses,
+        base: 'max-h-[92vh]',
+        body: 'overflow-y-auto',
+      }}>
+      <ModalContent className='max-h-[92vh]'>
         <ModalHeader className='flex flex-col gap-px'>
           <h2 className='text-c6 text-xl font-semibold'>{title}</h2>
           <p className='text-c4 text-sm font-normal'>

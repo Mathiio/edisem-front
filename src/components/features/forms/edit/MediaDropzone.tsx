@@ -247,7 +247,14 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
     const mediaWithYoutube = mediaToDelete as MediaFile & { isYouTube?: boolean; youtubeUrl?: string };
 
     if (mediaWithYoutube.isYouTube) {
-      if (onYouTubeUrlsChange && mediaWithYoutube.youtubeUrl) {
+      if (mediaWithYoutube.isExisting) {
+        // URL YouTube déjà sauvegardée dans existingMedias — on cherche par l'URL originale
+        const existingIndex = existingMedias.findIndex((url) => url === mediaWithYoutube.youtubeUrl);
+        if (existingIndex !== -1 && onRemoveExisting) {
+          onRemoveExisting(existingIndex);
+        }
+      } else if (onYouTubeUrlsChange && mediaWithYoutube.youtubeUrl) {
+        // Nouvelle URL YouTube (non encore sauvegardée) — on retire du state local
         onYouTubeUrlsChange(youtubeUrls.filter((u) => u !== mediaWithYoutube.youtubeUrl));
       }
     } else if (mediaToDelete.isExisting) {
@@ -408,9 +415,6 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
                 <img src={media.url || media.preview} alt={media.name} className='w-full h-full object-cover' />
               )}
             </button>
-            {media.isYouTube && (
-              <span className='absolute bottom-px right-px bg-red-600 text-white text-[8px] px-px rounded z-10'>YT</span>
-            )}
           </div>
         ))}
 
