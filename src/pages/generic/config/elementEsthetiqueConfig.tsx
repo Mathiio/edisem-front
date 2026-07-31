@@ -5,6 +5,8 @@ import { convertToGenericConfig } from '../simplifiedConfigAdapter';
 /**
  * Configuration simplifiée pour les éléments esthétiques
  * Template 118 - Edisem (éléments esthétiques)
+ *
+ * Propriétés Omeka alignées sur ItemPageConfig.php (template 118).
  */
 export const elementEsthetiqueConfigSimplified: SimplifiedDetailConfig = {
   resourceType: RESOURCE_TYPES.element_esthetique.type,
@@ -13,7 +15,7 @@ export const elementEsthetiqueConfigSimplified: SimplifiedDetailConfig = {
   fields: {
     title: { property: 'dcterms:title', type: 'title', zone: 'header' },
     description: { property: 'dcterms:description', type: 'textarea', label: 'Description', zone: 'details' },
-    date: { property: 'schema:eventDate', type: 'date', label: 'Date de production', zone: 'details' },
+    date: { property: 'fiafcore:hasEventDate', type: 'date', label: 'Date de production', zone: 'details' },
     contributors: {
       property: 'dcterms:creator',
       type: 'resource',
@@ -35,12 +37,12 @@ export const elementEsthetiqueConfigSimplified: SimplifiedDetailConfig = {
           key: 'characteristics',
           title: 'Caractéristiques',
           subcategories: [
-            { key: 'genre', label: "Genre de l'œuvre", property: 'schema:genre', allowMultipleInputs: false  },
-            { key: 'duration', label: "Durée de l'œuvre", property: 'schema:duration', allowMultipleInputs: false },
-            { key: 'imageCharacteristic', label: 'Style visuel', property: 'schema:imageCharacteristic', allowMultipleInputs: false },
-            { key: 'colorCharacteristic', label: 'Esthétique chromatique dominante', property: 'schema:colorCharacteristic', allowMultipleInputs: false },
-            { key: 'formCharacteristic', label: 'Textures dominantes', property: 'schema:formCharacteristic', allowMultipleInputs: false },
-            { key: 'soundCharacteristic', label: 'Style sonore', property: 'schema:soundCharacteristic', allowMultipleInputs: false },
+            { key: 'genre', label: "Genre de l'œuvre", property: 'fiafcore:hasGenre', allowMultipleInputs: false },
+            { key: 'duration', label: "Durée de l'œuvre", property: 'ma:duration', allowMultipleInputs: false },
+            { key: 'imageCharacteristic', label: 'Style visuel', property: 'fiafcore:hasImageCharacteristic', allowMultipleInputs: false },
+            { key: 'colorCharacteristic', label: 'Esthétique chromatique dominante', property: 'fiafcore:hasColourCharacteristic', allowMultipleInputs: false },
+            { key: 'formCharacteristic', label: 'Textures dominantes', property: 'fiafcore:hasForm', allowMultipleInputs: false },
+            { key: 'soundCharacteristic', label: 'Style sonore', property: 'fiafcore:hasSoundCharacteristic', allowMultipleInputs: false },
             { key: 'language', label: 'Présence/Absence de texte', property: 'dcterms:language', allowMultipleInputs: false },
             { key: 'audience', label: 'Relation aux spectateur·ices', property: 'dcterms:audience', allowMultipleInputs: false },
             { key: 'temporal', label: "Temporalité de l'œuvre", property: 'schema:temporal', allowMultipleInputs: false },

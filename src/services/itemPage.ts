@@ -15,7 +15,14 @@ export interface ItemPageMediaVideo {
   type: 'video';
 }
 
-export type ItemPageMedia = string | ItemPageMediaVideo;
+export interface ItemPageMediaImage {
+  id: number;
+  title: string;
+  url: string;
+  type: 'image';
+}
+
+export type ItemPageMedia = string | ItemPageMediaVideo | ItemPageMediaImage;
 
 export interface ItemPageCardActant {
   id?: string | number;

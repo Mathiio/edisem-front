@@ -1640,11 +1640,19 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                       {category.subcategories.map((subcategory) => {
                         const allValues = getAllOmekaValues(itemDetails, subcategory.property);
 
+                        const rawEditSource =
+                          canEdit && formData?.[subcategory.property] !== undefined
+                            ? formData[subcategory.property]
+                            : itemDetails[subcategory.property];
+
                         let editValues: string[] = allValues;
-                        if (canEdit && itemDetails[subcategory.property] !== undefined) {
-                          const formValue = itemDetails[subcategory.property];
-                          if (Array.isArray(formValue)) {
-                            editValues = formValue.map((v: any) => (typeof v === 'string' ? v : v['@value'] ?? ''));
+                        if (canEdit && rawEditSource !== undefined) {
+                          if (Array.isArray(rawEditSource)) {
+                            editValues = rawEditSource.map((v: any) =>
+                              typeof v === 'string' ? v : (v['@value'] ?? v['@id'] ?? ''),
+                            );
+                          } else if (typeof rawEditSource === 'string') {
+                            editValues = [rawEditSource];
                           }
                         }
 

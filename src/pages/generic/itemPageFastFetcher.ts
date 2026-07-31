@@ -25,14 +25,101 @@ import {
   ItemPageReferenceCard,
   ItemPageField,
   ItemPageView,
-  flattenMediaUrls,
+  ItemPageMedia,
   fieldValue,
 } from '@/services/itemPage';
 import { getResourceUrl } from '@/config/resourceConfig';
 import { enrichItemWithResourceOwner } from '@/lib/resourceOwner';
 import { getResourceOwnerId } from '@/lib/resourceEditHelpers';
 import { resolveOmekaThumbnail, isHttpUrl, buildCachedResourceUrl, isOverviewMediaUrl } from '@/lib/resourceUtils';
+import { isValidYouTubeUrl } from '@/lib/utils';
 import { OMEKA_API_BASE as API_BASE } from '@/utils/omekaApi';
+
+interface AssociatedMediaEntry {
+  url: string;
+  mediaId: number | null;
+}
+
+function mediaUrlKey(url: string): string {
+  return url.split('/').pop()?.split('?')[0]?.split('#')[0] ?? url;
+}
+
+function sortMediaEntries(entries: AssociatedMediaEntry[]): AssociatedMediaEntry[] {
+  return [...entries].sort((a, b) => {
+    const aIsYT = isValidYouTubeUrl(a.url) ? 0 : 1;
+    const bIsYT = isValidYouTubeUrl(b.url) ? 0 : 1;
+    return aIsYT - bIsYT;
+  });
+}
+
+function parseItemPageMediaEntries(media: ItemPageMedia[]): AssociatedMediaEntry[] {
+  return media
+    .map((entry) => {
+      if (typeof entry === 'string') {
+        return isOverviewMediaUrl(entry) ? { url: entry, mediaId: null } : null;
+      }
+      if (entry.url && isOverviewMediaUrl(entry.url)) {
+        return { url: entry.url, mediaId: entry.id ?? null };
+      }
+      return null;
+    })
+    .filter(Boolean) as AssociatedMediaEntry[];
+}
+
+function applyMediaEntriesToItemDetails(itemDetails: Record<string, unknown>, entries: AssociatedMediaEntry[]): void {
+  const sorted = sortMediaEntries(entries);
+  itemDetails.associatedMedia = sorted.map((entry) => entry.url);
+  itemDetails.associatedMediaIds = sorted.map((entry) => entry.mediaId);
+}
+
+/** Le moteur Item Page ne renvoie pas toujours les ids Omeka — nécessaire pour supprimer un média en édition. */
+async function hydrateMediaIdsFromOmekaApi(
+  itemDetails: Record<string, unknown>,
+  itemId: number,
+  entries: AssociatedMediaEntry[],
+): Promise<void> {
+  if (entries.length === 0) {
+    itemDetails.associatedMedia = [];
+    itemDetails.associatedMediaIds = [];
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}items/${itemId}`);
+    if (response.ok) {
+      const data = await response.json();
+      itemDetails['o:media'] = data['o:media'] ?? [];
+
+      const idByUrlKey = new Map<string, number>();
+      for (const mediaRef of data['o:media'] ?? []) {
+        const mediaId = mediaRef?.['o:id'];
+        if (!mediaId) continue;
+
+        const mediaRes = await fetch(`${API_BASE}media/${mediaId}`);
+        if (!mediaRes.ok) continue;
+
+        const mediaData = await mediaRes.json();
+        const url =
+          mediaData['o:ingester'] === 'youtube' && mediaData['o:source']
+            ? mediaData['o:source']
+            : mediaData['o:original_url'];
+
+        if (url && isOverviewMediaUrl(url)) {
+          idByUrlKey.set(mediaUrlKey(url), Number(mediaId));
+        }
+      }
+
+      for (const entry of entries) {
+        if (entry.mediaId != null) continue;
+        entry.mediaId = idByUrlKey.get(mediaUrlKey(entry.url)) ?? null;
+      }
+    }
+  } catch {
+    // silencieux — on garde les URLs sans ids
+  }
+
+  applyMediaEntriesToItemDetails(itemDetails, entries);
+}
 
 // ========================================================================
 // Reconstruction de valeurs "façon Omeka S" à partir des fiches du backend
@@ -170,6 +257,7 @@ interface BuiltItemDetails {
   itemDetails: Record<string, unknown>;
   resourceCache: Record<number, unknown>;
   keywords: { id: number; title: string; short_resume: string }[];
+  mediaEntries: AssociatedMediaEntry[];
 }
 
 function buildItemDetailsFromItemPage(
@@ -354,8 +442,9 @@ function buildItemDetailsFromItemPage(
     }
   });
 
-  // --- Médias (associatedMedia) ---
+  // --- Médias (associatedMedia) — ids Omeka hydratés après coup dans hydrateMediaIdsFromOmekaApi ---
   // Conférences : schema:url prime sur tout autre média (vidéo de session en colonne gauche)
+  let mediaEntries = parseItemPageMediaEntries(page.associatedMedia);
   if (config.templateId === 71) {
     const schemaUrlEntries = itemDetails['schema:url'];
     const firstSchemaUrlEntry = Array.isArray(schemaUrlEntries) ? schemaUrlEntries[0] : undefined;
@@ -365,19 +454,16 @@ function buildItemDetailsFromItemPage(
         ? (firstSchemaUrlEntry as { '@id'?: string })['@id']
         : null);
     if (sessionUrl) {
-      itemDetails.associatedMedia = [sessionUrl];
+      mediaEntries = isOverviewMediaUrl(sessionUrl) ? [{ url: sessionUrl, mediaId: null }] : [];
       if (!Array.isArray(schemaUrlEntries) || schemaUrlEntries.length === 0) {
         itemDetails['schema:url'] = scalarToOmekaEntries(
           { property: 'schema:url', type: 'url' } as InternalFieldConfig,
           sessionUrl,
         );
       }
-    } else {
-      itemDetails.associatedMedia = flattenMediaUrls(page.associatedMedia).filter(isOverviewMediaUrl);
     }
-  } else {
-    itemDetails.associatedMedia = flattenMediaUrls(page.associatedMedia).filter(isOverviewMediaUrl);
   }
+  applyMediaEntriesToItemDetails(itemDetails, mediaEntries);
 
   // --- Mots-clés (jdc:hasConcept) ---
   const keywordsField = page.fields.keywords;
@@ -388,7 +474,7 @@ function buildItemDetailsFromItemPage(
           .map((item) => ({ id: item.id as number, title: item.title, short_resume: '' }))
       : [];
 
-  return { itemDetails, resourceCache, keywords };
+  return { itemDetails, resourceCache, keywords, mediaEntries };
 }
 
 /** Repli si le backend SQL ne renvoie pas owner_id (colonne vide) alors que l'API Omeka l'a. */
@@ -429,9 +515,10 @@ export function createItemPageDataFetcher(
         return fallback(id);
       }
 
-      const { itemDetails, resourceCache, keywords } = buildItemDetailsFromItemPage(page, config, fields);
+      const { itemDetails, resourceCache, keywords, mediaEntries } = buildItemDetailsFromItemPage(page, config, fields);
       itemDetails.resourceCache = resourceCache;
       await hydrateOwnerFromOmekaApi(itemDetails, page.id);
+      await hydrateMediaIdsFromOmekaApi(itemDetails, page.id, mediaEntries);
       await enrichItemWithResourceOwner(itemDetails);
 
       return {
@@ -464,9 +551,10 @@ export function createProgressiveItemPageDataFetcher(
         return fallback(id, onProgress);
       }
 
-      const { itemDetails, resourceCache, keywords } = buildItemDetailsFromItemPage(page, config, fields);
+      const { itemDetails, resourceCache, keywords, mediaEntries } = buildItemDetailsFromItemPage(page, config, fields);
       itemDetails.resourceCache = resourceCache;
       await hydrateOwnerFromOmekaApi(itemDetails, page.id);
+      await hydrateMediaIdsFromOmekaApi(itemDetails, page.id, mediaEntries);
       await enrichItemWithResourceOwner(itemDetails);
 
       const result: FetchResult = {

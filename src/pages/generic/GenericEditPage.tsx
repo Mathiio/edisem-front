@@ -58,8 +58,77 @@ import { useAuth } from '@/hooks/useAuth';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '@/utils/omekaApi';
 import { resolveOmekaPropertyId, deleteMedia, syncCategoryValuesToFormFields, isUrlOmekaProperty } from './simplifiedConfigAdapter';
 import { invalidateItemPageCache } from '@/services/itemPage';
+import { isOverviewMediaUrl } from '@/lib/resourceUtils';
 import { MediaFile, DEFAULT_AUTHOR_TEMPLATE_IDS } from '@/components/features/forms/edit/MediaDropzone';
 import { GenericDetailPageConfig, PageMode, FetchResult } from './config';
+
+function mediaUrlKey(url: string): string {
+  return url.split('/').pop()?.split('?')[0]?.split('#')[0] ?? url;
+}
+
+async function resolveMediaIdsForDeletion(
+  itemDetails: Record<string, unknown> | undefined,
+  removedIndexes: number[],
+  itemId: string,
+): Promise<number[]> {
+  const mediaToDelete: number[] = [];
+  const unresolvedIndexes: number[] = [];
+  const associatedMedia = (itemDetails?.associatedMedia as string[] | undefined) ?? [];
+
+  removedIndexes.forEach((index) => {
+    const associatedMediaIds = itemDetails?.associatedMediaIds as Array<number | null> | undefined;
+    const idFromMeta = associatedMediaIds?.[index];
+    if (typeof idFromMeta === 'number') {
+      mediaToDelete.push(idFromMeta);
+      return;
+    }
+    const oMedia = itemDetails?.['o:media'] as Array<{ 'o:id'?: number }> | undefined;
+    const mediaRef = oMedia?.[index];
+    if (mediaRef?.['o:id']) {
+      mediaToDelete.push(mediaRef['o:id']);
+      return;
+    }
+    unresolvedIndexes.push(index);
+  });
+
+  if (unresolvedIndexes.length === 0) return mediaToDelete;
+
+  try {
+    const response = await fetch(omekaApiUrl(`${API_BASE}items/${itemId}`));
+    if (!response.ok) return mediaToDelete;
+    const data = await response.json();
+
+    const idByUrlKey = new Map<string, number>();
+    for (const mediaRef of data['o:media'] ?? []) {
+      const mediaId = mediaRef?.['o:id'];
+      if (!mediaId) continue;
+
+      const mediaRes = await fetch(omekaApiUrl(`${API_BASE}media/${mediaId}`));
+      if (!mediaRes.ok) continue;
+
+      const mediaData = await mediaRes.json();
+      const url =
+        mediaData['o:ingester'] === 'youtube' && mediaData['o:source']
+          ? mediaData['o:source']
+          : mediaData['o:original_url'];
+
+      if (url && isOverviewMediaUrl(url)) {
+        idByUrlKey.set(mediaUrlKey(url), Number(mediaId));
+      }
+    }
+
+    unresolvedIndexes.forEach((index) => {
+      const targetUrl = associatedMedia[index];
+      if (!targetUrl) return;
+      const mediaId = idByUrlKey.get(mediaUrlKey(targetUrl));
+      if (mediaId != null) mediaToDelete.push(mediaId);
+    });
+  } catch (error) {
+    console.error('GenericEditPage: failed to resolve media ids for deletion', error);
+  }
+
+  return mediaToDelete;
+}
 
 // ================================
 // Re-export de l'interface des props partagées
@@ -1444,14 +1513,8 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       if (isAutoSave) changedData.__isAutoSave = true;
       if (isDraft && !isAutoSave) changedData.__publishDraft = true;
 
-      if (removedMediaIndexes.length > 0) {
-        const mediaToDelete: number[] = [];
-        removedMediaIndexes.forEach((index) => {
-          const idFromMeta = itemDetails?.associatedMediaIds?.[index];
-          if (typeof idFromMeta === 'number') { mediaToDelete.push(idFromMeta); return; }
-          const mediaRef = itemDetails?.['o:media']?.[index];
-          if (mediaRef?.['o:id']) mediaToDelete.push(mediaRef['o:id']);
-        });
+      if (removedMediaIndexes.length > 0 && mode === 'edit' && id) {
+        const mediaToDelete = await resolveMediaIdsForDeletion(itemDetails, removedMediaIndexes, id);
         if (mediaToDelete.length > 0) changedData.mediaToDelete = mediaToDelete;
       }
 
