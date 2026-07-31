@@ -19,7 +19,7 @@ import { AddIcon } from '@/components/ui/icons';
 import { modalCloseButtonClasses, ModalCloseIcon } from '@/theme/components/modal';
 import { getTemplatePropertiesMap } from '@/services/Items';
 import { OMEKA_PROPERTY_IDS } from '@/config/resourceConfig';
-import { OMEKA_API_BASE as API_BASE, omekaApiUrl } from '@/utils/omekaApi';
+import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '@/utils/omekaApi';
 import { GenericDetailPageConfig, FetchResult, ViewOption, ProgressiveDataFetcher, ProgressCallback, FormFieldConfig, FormFieldType } from './config';
 import { SimplifiedDetailConfig, SimplifiedViewConfig, InternalFieldConfig, FieldType, extractFieldsFromConfig } from './simplifiedConfig';
 import { SimpleOverviewCard, SimpleDetailsCard, SimpleOverviewSkeleton, SimpleDetailsSkeleton, VocabGroupRenderer } from './SimpleComponents';
@@ -2205,10 +2205,10 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
     }
 
     try {
-      // 1. Récupérer l'item existant
-      const response = await fetch(`${API_BASE}items/${itemId}`);
+      // 1. Récupérer l'item existant (auth requise en dev local — cf. omekaApiUrl)
+      const response = await fetch(omekaApiUrl(`${API_BASE}items/${itemId}`));
       if (!response.ok) {
-        throw new Error(`Erreur ${response.status}: Item non trouvé`);
+        throw new Error(omekaAuthErrorMessage(response.status) || `Erreur ${response.status}: Item non trouvé`);
       }
       const itemData = await response.json();
 
