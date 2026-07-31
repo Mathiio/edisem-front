@@ -19,6 +19,7 @@ export interface ItemPageMediaImage {
   id: number;
   title: string;
   url: string;
+  thumbnail?: string | null;
   type: 'image';
 }
 
