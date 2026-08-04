@@ -10,7 +10,8 @@ import { ResourceCard } from '@/components/features/shared/corpus/ResourceCard';
 import { mapToResourceCardItem } from '@/lib/resourceUtils';
 import { ThumbnailIcon } from '@/components/ui/icons';
 import MediaViewer from '@/components/features/resource-links/MediaViewer';
-import { MediaDropzone, MediaFile } from '@/components/features/forms/edit/MediaDropzone';
+import { MediaDropzone } from '@/components/features/forms/edit/MediaDropzone';
+import type { MediaGalleryItem } from '@/lib/mediaGallery';
 import * as Items from '@/services/Items';
 
 // ========================================
@@ -28,38 +29,25 @@ interface ToolOverviewProps {
   usageCount?: number;
   isEditing?: boolean;
   loadingMedia?: boolean;
-  mediaFiles?: MediaFile[];
-  onMediasChange?: (files: MediaFile[]) => void;
-  youtubeUrls?: string[];
-  onYouTubeUrlsChange?: (urls: string[]) => void;
-  removedMediaIndexes?: number[];
-  onRemoveExistingMedia?: (index: number) => void;
+  mediaGalleryItems?: MediaGalleryItem[];
+  onMediaGalleryChange?: (items: MediaGalleryItem[]) => void;
+  onRemoveExistingMedia?: (item: MediaGalleryItem) => void;
 }
 
 const CustomToolOverview: React.FC<ToolOverviewProps> = ({
   title,
   logo,
   medias,
-  allMedias,
   release,
   homepage,
   usageCount: usageCountProp = 0,
   isEditing = false,
   loadingMedia = false,
-  mediaFiles = [],
-  onMediasChange,
-  youtubeUrls = [],
-  onYouTubeUrlsChange,
-  removedMediaIndexes = [],
+  mediaGalleryItems = [],
+  onMediaGalleryChange,
   onRemoveExistingMedia,
 }) => {
   const usageCount = usageCountProp;
-
-  const existingMedias = allMedias.filter((_, i) => !removedMediaIndexes.includes(i));
-  const handleRemove = (index: number) => {
-    const originalIndex = allMedias.indexOf(existingMedias[index]);
-    if (originalIndex !== -1) onRemoveExistingMedia?.(originalIndex);
-  };
 
   // Mode édition : zone médias uniquement (titre, date, lien → formulaire unifié)
   if (isEditing) {
@@ -73,15 +61,13 @@ const CustomToolOverview: React.FC<ToolOverviewProps> = ({
           <Skeleton className='w-full h-[350px] rounded-2xl bg-c3' />
         ) : (
           <MediaDropzone
-            value={mediaFiles}
-            onChange={(files) => onMediasChange?.(files)}
-            youtubeUrls={youtubeUrls}
-            onYouTubeUrlsChange={onYouTubeUrlsChange}
+            items={mediaGalleryItems}
+            onItemsChange={(items) => onMediaGalleryChange?.(items)}
+            onRemoveExistingMedia={onRemoveExistingMedia}
+            allowYoutube
             height='350px'
             maxFiles={10}
             acceptedTypes={['image/*', 'video/*']}
-            existingMedias={existingMedias}
-            onRemoveExisting={handleRemove}
             disabled={false}
             className='w-full'
           />

@@ -16,7 +16,8 @@ import { carouselArrowButtonClass } from '@/components/ui/Carrousels';
 import { EmptyStateCard } from '@/components/ui/EmptyStateCard';
 import { UserIcon, ShareIcon, MovieIcon, ArrowIcon, AddIcon } from '@/components/ui/icons';
 import MediaViewer from '@/components/features/resource-links/MediaViewer';
-import { MediaDropzone, MediaFile } from '@/components/features/forms/edit/MediaDropzone';
+import { MediaDropzone } from '@/components/features/forms/edit/MediaDropzone';
+import type { MediaGalleryItem } from '@/lib/mediaGallery';
 import { InternalFieldConfig, getOverviewFields, getDetailsFields, getHeaderFields, VocabGroupField } from './simplifiedConfig';
 import { fetchCustomVocabTerms } from '@/utils/customVocab';
 import { getOmekaValue, getResourceIds } from './simplifiedConfigAdapter';
@@ -87,14 +88,11 @@ interface SimpleOverviewProps {
   /** Propriétés Omeka des contributeurs (ex. depuis contributorButtons) pour le mode lecture */
   contributorProperties?: string[];
   isEditing?: boolean;
-  onMediasChange?: (files: MediaFile[]) => void;
-  youtubeUrls?: string[];
-  onYouTubeUrlsChange?: (urls: string[]) => void;
-  mediaFiles?: MediaFile[];
-  type?: string;
+  mediaGalleryItems?: MediaGalleryItem[];
+  onMediaGalleryChange?: (items: MediaGalleryItem[]) => void;
+  onRemoveExistingMedia?: (item: MediaGalleryItem) => void;
   loadingMedia?: boolean;
-  removedMediaIndexes?: number[];
-  onRemoveExistingMedia?: (index: number) => void;
+  type?: string;
   currentVideoTime?: number;
   videoSeek?: { time: number; id: number } | null;
   mediaUploadMode?: 'gallery' | 'photo' | 'none';
@@ -230,13 +228,10 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
   resourceCache: propResourceCache,
   contributorProperties,
   isEditing = false,
-  onMediasChange,
-  youtubeUrls = [],
-  onYouTubeUrlsChange,
-  mediaFiles = [],
-  loadingMedia = false,
-  removedMediaIndexes = [],
+  mediaGalleryItems = [],
+  onMediaGalleryChange,
   onRemoveExistingMedia,
+  loadingMedia = false,
   currentVideoTime: _currentVideoTime,
   videoSeek,
   mediaUploadMode = 'gallery',
@@ -314,21 +309,13 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
           <div className='flex flex-col gap-2'>
             {isPhotoMode && <label className='text-sm text-c5 font-medium'>Photo</label>}
             <MediaDropzone
-              value={mediaFiles}
-              onChange={(files) => onMediasChange?.(files)}
-              youtubeUrls={isGalleryMode ? youtubeUrls : []}
-              onYouTubeUrlsChange={isGalleryMode ? onYouTubeUrlsChange : undefined}
+              items={mediaGalleryItems}
+              onItemsChange={(items) => onMediaGalleryChange?.(items)}
+              onRemoveExistingMedia={onRemoveExistingMedia}
+              allowYoutube={isGalleryMode}
               height={isPhotoMode ? '220px' : '450px'}
               maxFiles={isPhotoMode ? 1 : 10}
               acceptedTypes={isPhotoMode ? ['image/*'] : ['image/*', 'video/*']}
-              existingMedias={medias.filter((_, i) => !removedMediaIndexes.includes(i))}
-              onRemoveExisting={(index) => {
-                const filteredMedias = medias.filter((_, i) => !removedMediaIndexes.includes(i));
-                const originalIndex = medias.indexOf(filteredMedias[index]);
-                if (originalIndex !== -1) {
-                  onRemoveExistingMedia?.(originalIndex);
-                }
-              }}
               disabled={!isEditing}
               className={
                 isPhotoMode
@@ -374,7 +361,7 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
                       <SplideSlide key={index}>
                         <button
                           onClick={() => setCurrentMediaIndex(index)}
-                          className={`flex-shrink-0 w-[136px] h-[70px] rounded-xl overflow-hidden cursor-pointer transition-all duration-200 ${
+                          className={`flex-shrink-0 w-28 h-16 rounded-xl overflow-hidden cursor-pointer transition-all duration-200 ${
                             index === currentMediaIndex ? 'border-2 border-c5' : 'border-2 border-transparent hover:border-c3'
                           }`}>
                           {isVideoFile ? (

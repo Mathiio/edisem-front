@@ -32,8 +32,7 @@ import { getResourceUrl } from '@/config/resourceConfig';
 import { enrichItemWithResourceOwner } from '@/lib/resourceOwner';
 import { getResourceOwnerId } from '@/lib/resourceEditHelpers';
 import { resolveOmekaThumbnail, isHttpUrl, buildCachedResourceUrl, isOverviewMediaUrl } from '@/lib/resourceUtils';
-import { isValidYouTubeUrl } from '@/lib/utils';
-import { OMEKA_API_BASE as API_BASE } from '@/utils/omekaApi';
+import { OMEKA_API_BASE as API_BASE, omekaApiUrl } from '@/utils/omekaApi';
 
 interface AssociatedMediaEntry {
   url: string;
@@ -44,12 +43,9 @@ function mediaUrlKey(url: string): string {
   return url.split('/').pop()?.split('?')[0]?.split('#')[0] ?? url;
 }
 
+/** Conserve l'ordre renvoyé par le backend (position Omeka). */
 function sortMediaEntries(entries: AssociatedMediaEntry[]): AssociatedMediaEntry[] {
-  return [...entries].sort((a, b) => {
-    const aIsYT = isValidYouTubeUrl(a.url) ? 0 : 1;
-    const bIsYT = isValidYouTubeUrl(b.url) ? 0 : 1;
-    return aIsYT - bIsYT;
-  });
+  return [...entries];
 }
 
 function parseItemPageMediaEntries(media: ItemPageMedia[]): AssociatedMediaEntry[] {
@@ -85,7 +81,7 @@ async function hydrateMediaIdsFromOmekaApi(
   }
 
   try {
-    const response = await fetch(`${API_BASE}items/${itemId}`);
+    const response = await fetch(omekaApiUrl(`${API_BASE}items/${itemId}`));
     if (response.ok) {
       const data = await response.json();
       itemDetails['o:media'] = data['o:media'] ?? [];
@@ -95,7 +91,7 @@ async function hydrateMediaIdsFromOmekaApi(
         const mediaId = mediaRef?.['o:id'];
         if (!mediaId) continue;
 
-        const mediaRes = await fetch(`${API_BASE}media/${mediaId}`);
+        const mediaRes = await fetch(omekaApiUrl(`${API_BASE}media/${mediaId}`));
         if (!mediaRes.ok) continue;
 
         const mediaData = await mediaRes.json();

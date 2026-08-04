@@ -56,79 +56,16 @@ import { deleteUserResource } from '@/services/UserSpace';
 import { useFormState } from '@/hooks/useFormState';
 import { useAuth } from '@/hooks/useAuth';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '@/utils/omekaApi';
-import { resolveOmekaPropertyId, deleteMedia, syncCategoryValuesToFormFields, isUrlOmekaProperty } from './simplifiedConfigAdapter';
+import { resolveOmekaPropertyId, deleteMedia, syncCategoryValuesToFormFields, isUrlOmekaProperty, persistMediaGallery } from './simplifiedConfigAdapter';
 import { invalidateItemPageCache } from '@/services/itemPage';
-import { isOverviewMediaUrl } from '@/lib/resourceUtils';
-import { MediaFile, DEFAULT_AUTHOR_TEMPLATE_IDS } from '@/components/features/forms/edit/MediaDropzone';
+import { DEFAULT_AUTHOR_TEMPLATE_IDS } from '@/components/features/forms/edit/MediaDropzone';
+import {
+  type MediaGalleryItem,
+  buildMediaGalleryFromAssociatedMedia,
+  buildMediaGallerySavePayload,
+  getMediaGalleryOrderSignature,
+} from '@/lib/mediaGallery';
 import { GenericDetailPageConfig, PageMode, FetchResult } from './config';
-
-function mediaUrlKey(url: string): string {
-  return url.split('/').pop()?.split('?')[0]?.split('#')[0] ?? url;
-}
-
-async function resolveMediaIdsForDeletion(
-  itemDetails: Record<string, unknown> | undefined,
-  removedIndexes: number[],
-  itemId: string,
-): Promise<number[]> {
-  const mediaToDelete: number[] = [];
-  const unresolvedIndexes: number[] = [];
-  const associatedMedia = (itemDetails?.associatedMedia as string[] | undefined) ?? [];
-
-  removedIndexes.forEach((index) => {
-    const associatedMediaIds = itemDetails?.associatedMediaIds as Array<number | null> | undefined;
-    const idFromMeta = associatedMediaIds?.[index];
-    if (typeof idFromMeta === 'number') {
-      mediaToDelete.push(idFromMeta);
-      return;
-    }
-    const oMedia = itemDetails?.['o:media'] as Array<{ 'o:id'?: number }> | undefined;
-    const mediaRef = oMedia?.[index];
-    if (mediaRef?.['o:id']) {
-      mediaToDelete.push(mediaRef['o:id']);
-      return;
-    }
-    unresolvedIndexes.push(index);
-  });
-
-  if (unresolvedIndexes.length === 0) return mediaToDelete;
-
-  try {
-    const response = await fetch(omekaApiUrl(`${API_BASE}items/${itemId}`));
-    if (!response.ok) return mediaToDelete;
-    const data = await response.json();
-
-    const idByUrlKey = new Map<string, number>();
-    for (const mediaRef of data['o:media'] ?? []) {
-      const mediaId = mediaRef?.['o:id'];
-      if (!mediaId) continue;
-
-      const mediaRes = await fetch(omekaApiUrl(`${API_BASE}media/${mediaId}`));
-      if (!mediaRes.ok) continue;
-
-      const mediaData = await mediaRes.json();
-      const url =
-        mediaData['o:ingester'] === 'youtube' && mediaData['o:source']
-          ? mediaData['o:source']
-          : mediaData['o:original_url'];
-
-      if (url && isOverviewMediaUrl(url)) {
-        idByUrlKey.set(mediaUrlKey(url), Number(mediaId));
-      }
-    }
-
-    unresolvedIndexes.forEach((index) => {
-      const targetUrl = associatedMedia[index];
-      if (!targetUrl) return;
-      const mediaId = idByUrlKey.get(mediaUrlKey(targetUrl));
-      if (mediaId != null) mediaToDelete.push(mediaId);
-    });
-  } catch (error) {
-    console.error('GenericEditPage: failed to resolve media ids for deletion', error);
-  }
-
-  return mediaToDelete;
-}
 
 // ================================
 // Re-export de l'interface des props partagées
@@ -454,12 +391,14 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
   const prevIsDirtyRef = useRef(false);
 
   // Media state
-  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
-  const [youtubeUrls, setYoutubeUrls] = useState<string[]>([]);
-  const [removedMediaIndexes, setRemovedMediaIndexes] = useState<number[]>([]);
+  const [mediaGalleryItems, setMediaGalleryItems] = useState<MediaGalleryItem[]>([]);
+  const [removedOmekaMediaIds, setRemovedOmekaMediaIds] = useState<number[]>([]);
+  const initialMediaOrderRef = useRef('');
 
-  const hasMediaChanges =
-    mediaFiles.length > 0 || removedMediaIndexes.length > 0 || youtubeUrls.length > 0;
+  const mediaOrderChanged = getMediaGalleryOrderSignature(mediaGalleryItems) !== initialMediaOrderRef.current;
+  const hasNewOrRemovedMedia =
+    removedOmekaMediaIds.length > 0 || mediaGalleryItems.some((item) => !item.isExisting);
+  const hasMediaChanges = mediaOrderChanged || hasNewOrRemovedMedia;
   const isFormDirty = isDirty || hasMediaChanges;
 
   useEffect(() => {
@@ -642,8 +581,9 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     if (mode !== 'edit') {
       if (mode === 'view') {
         formInitializedRef.current = false;
-        setMediaFiles([]);
-        setRemovedMediaIndexes([]);
+        setMediaGalleryItems([]);
+        setRemovedOmekaMediaIds([]);
+        initialMediaOrderRef.current = '';
       }
       return;
     }
@@ -779,9 +719,14 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       }
 
       if (!formInitializedRef.current) {
+        const gallery = buildMediaGalleryFromAssociatedMedia(
+          (itemDetails.associatedMedia as string[] | undefined) ?? [],
+          (itemDetails.associatedMediaIds as Array<number | null> | undefined) ?? [],
+        );
+        setMediaGalleryItems(gallery);
+        setRemovedOmekaMediaIds([]);
+        initialMediaOrderRef.current = getMediaGalleryOrderSignature(gallery);
         reset(extractedData);
-        setMediaFiles([]);
-        setRemovedMediaIndexes([]);
         formInitializedRef.current = true;
       } else {
         const updates: Record<string, any> = {};
@@ -1256,43 +1201,50 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     }
     const result = await saveResponse.json();
 
-    // Supprimer les médias marqués
-    const mediaIdsToDelete = data.mediaToDelete || [];
-    if (Array.isArray(mediaIdsToDelete) && mediaIdsToDelete.length > 0) {
-      for (const mediaId of mediaIdsToDelete) {
-        await deleteMedia(Number(mediaId));
+    // Supprimer les médias marqués + appliquer ordre / uploads
+    if (data.mediaOrder && Array.isArray(data.mediaOrder) && id) {
+      await persistMediaGallery(id, {
+        mediaToDelete: Array.isArray(data.mediaToDelete) ? data.mediaToDelete : [],
+        mediaOrder: data.mediaOrder,
+        mediaFiles: [],
+        youtubeUrls: [],
+      });
+    } else {
+      const mediaIdsToDelete = data.mediaToDelete || [];
+      if (Array.isArray(mediaIdsToDelete) && mediaIdsToDelete.length > 0) {
+        for (const mediaId of mediaIdsToDelete) {
+          await deleteMedia(Number(mediaId));
+        }
       }
-    }
 
-    // Créer les médias YouTube
-    const youtubeUrlsToCreate = data.youtubeUrls || [];
-    for (const ytUrl of youtubeUrlsToCreate) {
-      try {
-        const videoIdMatch = ytUrl.match(/(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-        const videoId = videoIdMatch ? videoIdMatch[1] : null;
-        if (!videoId) continue;
-        await fetch(omekaApiUrl(`${API_BASE}media`), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 'o:ingester': 'youtube', 'o:renderer': 'youtube', 'o:source': ytUrl, 'o:item': { 'o:id': id }, data: { id: videoId }, is_public: true }),
-        });
-      } catch (err) {
-        console.error('[saveToOmekaS] YouTube error:', err);
-      }
-    }
-
-    // Upload fichiers médias
-    const mediaFilesToUpload = data.mediaFiles || [];
-    for (const mediaFile of mediaFilesToUpload) {
-      const file = mediaFile.file || mediaFile;
-      if (file instanceof File) {
+      const youtubeUrlsToCreate = data.youtubeUrls || [];
+      for (const ytUrl of youtubeUrlsToCreate) {
         try {
-          const formDataUpload = new FormData();
-          formDataUpload.append('data', JSON.stringify({ 'o:ingester': 'upload', 'o:item': { 'o:id': id }, file_index: '0' }));
-          formDataUpload.append('file[0]', file);
-          await fetch(omekaApiUrl(`${API_BASE}media`), { method: 'POST', body: formDataUpload });
+          const videoIdMatch = ytUrl.match(/(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+          const videoId = videoIdMatch ? videoIdMatch[1] : null;
+          if (!videoId) continue;
+          await fetch(omekaApiUrl(`${API_BASE}media`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 'o:ingester': 'youtube', 'o:renderer': 'youtube', 'o:source': ytUrl, 'o:item': { 'o:id': id }, data: { id: videoId }, is_public: true }),
+          });
         } catch (err) {
-          console.error('[saveToOmekaS] Media upload error:', err);
+          console.error('[saveToOmekaS] YouTube error:', err);
+        }
+      }
+
+      const mediaFilesToUpload = data.mediaFiles || [];
+      for (const mediaFile of mediaFilesToUpload) {
+        const file = mediaFile.file || mediaFile;
+        if (file instanceof File) {
+          try {
+            const formDataUpload = new FormData();
+            formDataUpload.append('data', JSON.stringify({ 'o:ingester': 'upload', 'o:item': { 'o:id': id }, file_index: '0' }));
+            formDataUpload.append('file[0]', file);
+            await fetch(omekaApiUrl(`${API_BASE}media`), { method: 'POST', body: formDataUpload });
+          } catch (err) {
+            console.error('[saveToOmekaS] Media upload error:', err);
+          }
         }
       }
     }
@@ -1421,32 +1373,39 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     const result = await response.json();
     const newItemId = result['o:id'];
 
-    // Upload media
-    const mediaFilesToUpload = data.mediaFiles || [];
-    for (const mediaFile of mediaFilesToUpload) {
-      const file = mediaFile.file || mediaFile;
-      if (file instanceof File) {
-        try {
-          const formDataUpload = new FormData();
-          formDataUpload.append('data', JSON.stringify({ 'o:ingester': 'upload', 'o:item': { 'o:id': newItemId }, file_index: '0' }));
-          formDataUpload.append('file[0]', file);
-          await fetch(omekaApiUrl(`${API_BASE}media`), { method: 'POST', body: formDataUpload });
-        } catch (err) { console.error('[createInOmekaS] Media error:', err); }
+    if (data.mediaOrder && Array.isArray(data.mediaOrder) && data.mediaOrder.length > 0) {
+      await persistMediaGallery(newItemId, {
+        mediaToDelete: [],
+        mediaOrder: data.mediaOrder,
+        mediaFiles: [],
+        youtubeUrls: [],
+      });
+    } else {
+      const mediaFilesToUpload = data.mediaFiles || [];
+      for (const mediaFile of mediaFilesToUpload) {
+        const file = mediaFile.file || mediaFile;
+        if (file instanceof File) {
+          try {
+            const formDataUpload = new FormData();
+            formDataUpload.append('data', JSON.stringify({ 'o:ingester': 'upload', 'o:item': { 'o:id': newItemId }, file_index: '0' }));
+            formDataUpload.append('file[0]', file);
+            await fetch(omekaApiUrl(`${API_BASE}media`), { method: 'POST', body: formDataUpload });
+          } catch (err) { console.error('[createInOmekaS] Media error:', err); }
+        }
       }
-    }
 
-    // YouTube media
-    for (const ytUrl of data.youtubeUrls || []) {
-      try {
-        const videoIdMatch = ytUrl.match(/(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-        const videoId = videoIdMatch ? videoIdMatch[1] : null;
-        if (!videoId) continue;
-        await fetch(omekaApiUrl(`${API_BASE}media`), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 'o:ingester': 'youtube', 'o:renderer': 'youtube', 'o:source': ytUrl, 'o:item': { 'o:id': newItemId }, data: { id: videoId }, is_public: true }),
-        });
-      } catch (err) { console.error('[createInOmekaS] YouTube error:', err); }
+      for (const ytUrl of data.youtubeUrls || []) {
+        try {
+          const videoIdMatch = ytUrl.match(/(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+          const videoId = videoIdMatch ? videoIdMatch[1] : null;
+          if (!videoId) continue;
+          await fetch(omekaApiUrl(`${API_BASE}media`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 'o:ingester': 'youtube', 'o:renderer': 'youtube', 'o:source': ytUrl, 'o:item': { 'o:id': newItemId }, data: { id: videoId }, is_public: true }),
+          });
+        } catch (err) { console.error('[createInOmekaS] YouTube error:', err); }
+      }
     }
 
     const savedTitle = data.title || result?.['o:title'] || result?.['dcterms:title']?.[0]?.['@value'];
@@ -1510,16 +1469,12 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
         });
       }
 
-      changedData.mediaFiles = mediaFiles;
-      changedData.youtubeUrls = youtubeUrls;
+      const mediaPayload = buildMediaGallerySavePayload(mediaGalleryItems, removedOmekaMediaIds);
+      changedData.mediaOrder = mediaPayload.mediaOrder;
+      changedData.mediaToDelete = mediaPayload.mediaToDelete;
 
       if (isAutoSave) changedData.__isAutoSave = true;
       if (isDraft && !isAutoSave) changedData.__publishDraft = true;
-
-      if (removedMediaIndexes.length > 0 && mode === 'edit' && id) {
-        const mediaToDelete = await resolveMediaIdsForDeletion(itemDetails, removedMediaIndexes, id);
-        if (mediaToDelete.length > 0) changedData.mediaToDelete = mediaToDelete;
-      }
 
       if (mode === 'create') {
         await createInOmekaS(changedData);
@@ -1572,18 +1527,15 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
         setTimeout(() => { bypassBlockerRef.current = false; }, 100);
         // fetchData() will be triggered automatically via the useEffect
         // when isDraft becomes false after the URL change re-render
-        setYoutubeUrls([]);
-        setMediaFiles([]);
-        setRemovedMediaIndexes([]);
+        setMediaGalleryItems([]);
+        setRemovedOmekaMediaIds([]);
+        initialMediaOrderRef.current = '';
       } else if (!isDraft) {
-        const hadMediaChanges =
-          mediaFiles.length > 0 || removedMediaIndexes.length > 0 || youtubeUrls.length > 0;
+        const hadMediaChanges = hasMediaChanges;
 
         if (mode === 'edit' && id && hadMediaChanges) {
           silentFetchRef.current = true;
           try {
-            // Pas de fetchData() ici : on évite un rendu intermédiaire où removedMediaIndexes
-            // masquerait la nouvelle image avant d'être réinitialisé.
             let result: FetchResult;
             if ((config as any).progressiveDataFetcher) {
               result = await (config as any).progressiveDataFetcher(id, () => {});
@@ -1593,14 +1545,21 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
             setItemDetails(result.itemDetails);
             setKeywords(result.keywords || []);
             setViewData(result.viewData || {});
+            const refreshedGallery = buildMediaGalleryFromAssociatedMedia(
+              (result.itemDetails?.associatedMedia as string[] | undefined) ?? [],
+              (result.itemDetails?.associatedMediaIds as Array<number | null> | undefined) ?? [],
+            );
+            setMediaGalleryItems(refreshedGallery);
+            setRemovedOmekaMediaIds([]);
+            initialMediaOrderRef.current = getMediaGalleryOrderSignature(refreshedGallery);
           } catch (error) {
             console.error('GenericEditPage: Error refreshing after media save:', error);
           }
+        } else if (hadMediaChanges) {
+          initialMediaOrderRef.current = getMediaGalleryOrderSignature(mediaGalleryItems);
+          setRemovedOmekaMediaIds([]);
         }
 
-        setYoutubeUrls([]);
-        setMediaFiles([]);
-        setRemovedMediaIndexes([]);
         reset(formData);
       }
       onDirtyChange?.(false);
@@ -1899,8 +1858,10 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     }
   };
 
-  const handleRemoveExistingMedia = (index: number) => {
-    setRemovedMediaIndexes((prev) => [...prev, index]);
+  const handleRemoveExistingMedia = (item: MediaGalleryItem) => {
+    if (item.omekaMediaId) {
+      setRemovedOmekaMediaIds((prev) => [...prev, item.omekaMediaId!]);
+    }
   };
 
   // ================================
@@ -2216,14 +2177,9 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
                     loadingMedia={false}
                     mediaUploadMode={config.mediaUploadMode}
                     onTitleChange={(value: string) => setValue('title', value)}
-                    onMediasChange={(files: MediaFile[]) => setMediaFiles(files)}
                     onLinkChange={(value: string) => setValue('fullUrl', value)}
-                    youtubeUrls={config.mediaUploadMode === 'gallery' ? youtubeUrls : []}
-                    onYouTubeUrlsChange={
-                      config.mediaUploadMode === 'gallery' ? (urls: string[]) => setYoutubeUrls(urls) : undefined
-                    }
-                    mediaFiles={mediaFiles}
-                    removedMediaIndexes={removedMediaIndexes}
+                    onMediaGalleryChange={setMediaGalleryItems}
+                    mediaGalleryItems={mediaGalleryItems}
                     onRemoveExistingMedia={handleRemoveExistingMedia}
                   />
                 </div>

@@ -15,6 +15,11 @@ import { AlertModal } from '@/components/ui/AlertModal';
 import { FormTextInput } from '@/components/features/forms/edit/FormFields';
 import { CrossIcon, UploadIcon, AddIcon, MovieIcon } from '@/components/ui/icons';
 import { isValidYouTubeUrl } from '@/lib/utils';
+import {
+  type MediaGalleryItem,
+  createUploadGalleryItem,
+  createYoutubeGalleryItem,
+} from '@/lib/mediaGallery';
 
 export interface MediaAuthor {
   id: number | string;
@@ -26,9 +31,7 @@ export interface MediaAuthor {
   type?: string;
 }
 
-/** Actant (72), Personne (33), Organisation (104), Étudiant (96) */
-export const DEFAULT_AUTHOR_TEMPLATE_IDS = [72, 33, 104, 96] as const;
-
+/** @deprecated Utiliser MediaGalleryItem */
 export interface MediaFile {
   id: string;
   file?: File;
@@ -39,31 +42,22 @@ export interface MediaFile {
   isExisting?: boolean;
 }
 
+/** Actant (72), Personne (33), Organisation (104), Étudiant (96) */
+export const DEFAULT_AUTHOR_TEMPLATE_IDS = [72, 33, 104, 96] as const;
+
 export interface MediaDropzoneProps {
-  value: MediaFile[];
-  onChange: (files: MediaFile[]) => void;
-  existingMedias?: string[];
-  onRemoveExisting?: (index: number) => void;
-  youtubeUrls?: string[];
-  onYouTubeUrlsChange?: (urls: string[]) => void;
+  items: MediaGalleryItem[];
+  onItemsChange: (items: MediaGalleryItem[]) => void;
+  /** Appelé quand un média Omeka existant est retiré (pour tracking suppression) */
+  onRemoveExistingMedia?: (item: MediaGalleryItem) => void;
   maxFiles?: number;
   acceptedTypes?: string[];
   disabled?: boolean;
   className?: string;
   height?: string;
+  /** Affiche l'onglet YouTube dans la modale d'ajout */
+  allowYoutube?: boolean;
 }
-
-const getYouTubeThumbnail = (url: string): string => {
-  const match = url.match(/(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-  const videoId = match ? match[1] : null;
-  return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : '';
-};
-
-const getYouTubeEmbedUrl = (url: string): string => {
-  const match = url.match(/(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-  const videoId = match ? match[1] : null;
-  return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
-};
 
 const REJECTED_MIME_TYPES = ['image/webp'] as const;
 const REJECTED_FILE_EXTENSIONS = ['.webp'] as const;
@@ -76,69 +70,31 @@ const MODAL_TAB_CLASS_NAMES = {
   tabContent: 'group-data-[selected=true]:text-white',
 };
 
-const generateId = () => `media-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-
-const isVideo = (file: File | string): boolean => {
-  if (typeof file === 'string') {
-    return file.includes('.mov') || file.includes('.mp4') || file.includes('.webm');
-  }
-  return file.type.startsWith('video/');
-};
-
 export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
-  value = [],
-  onChange,
-  existingMedias = [],
-  onRemoveExisting,
-  youtubeUrls = [],
-  onYouTubeUrlsChange,
+  items = [],
+  onItemsChange,
+  onRemoveExistingMedia,
   maxFiles = 10,
   acceptedTypes = ['image/*', 'video/*'],
   disabled = false,
   className = '',
   height = '450px',
+  allowYoutube = true,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalTab, setModalTab] = useState<string>('media');
-  const [isDragging, setIsDragging] = useState(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [dragReorderIndex, setDragReorderIndex] = useState<number | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [mediaToDelete, setMediaToDelete] = useState<MediaFile | null>(null);
+  const [mediaToDelete, setMediaToDelete] = useState<MediaGalleryItem | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [pendingFiles, setPendingFiles] = useState<MediaFile[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<MediaGalleryItem[]>([]);
   const [youtubeDraft, setYoutubeDraft] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const allMediaItems: (MediaFile & { isYouTube?: boolean; youtubeUrl?: string })[] = [
-    ...existingMedias.map((url, index) => {
-      const isYouTubeMedia = isValidYouTubeUrl(url);
-      return {
-        id: `existing-${index}`,
-        url: isYouTubeMedia ? getYouTubeEmbedUrl(url) : url,
-        preview: isYouTubeMedia ? getYouTubeThumbnail(url) : url,
-        type: (isVideo(url) || isYouTubeMedia ? 'video' : 'image') as 'video' | 'image',
-        name: isYouTubeMedia ? `Vidéo YouTube ${index + 1}` : `Média existant ${index + 1}`,
-        isExisting: true,
-        isYouTube: isYouTubeMedia,
-        youtubeUrl: isYouTubeMedia ? url : undefined,
-      };
-    }),
-    ...value.map((file) => ({ ...file, isExisting: false, isYouTube: false })),
-    ...youtubeUrls.map((ytUrl, index) => ({
-      id: `youtube-${index}`,
-      url: getYouTubeEmbedUrl(ytUrl),
-      preview: getYouTubeThumbnail(ytUrl),
-      type: 'video' as 'video' | 'image',
-      name: `Vidéo YouTube ${index + 1}`,
-      isExisting: false,
-      isYouTube: true,
-      youtubeUrl: ytUrl,
-    })),
-  ];
-
-  const currentMedia = allMediaItems[currentIndex];
-  const canAddMore = allMediaItems.length < maxFiles;
-  const showYoutubeTab = !!onYouTubeUrlsChange;
+  const currentMedia = items[currentIndex];
+  const canAddMore = items.length < maxFiles;
+  const showYoutubeTab = allowYoutube;
 
   const openModal = (tab: 'media' | 'youtube' = 'media') => {
     if (disabled || !canAddMore) return;
@@ -157,7 +113,7 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
     }
     setPendingFiles([]);
     setYoutubeDraft('');
-    setIsDragging(false);
+    setIsDraggingFile(false);
     setIsModalOpen(false);
   };
 
@@ -165,9 +121,9 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
     (files: FileList | null, target: 'pending' | 'immediate' = 'pending') => {
       if (!files || disabled) return;
 
-      const newMediaFiles: MediaFile[] = [];
+      const newMediaFiles: MediaGalleryItem[] = [];
       const rejectedFiles: string[] = [];
-      const baseCount = allMediaItems.length + (target === 'pending' ? pendingFiles.length : 0);
+      const baseCount = items.length + (target === 'pending' ? pendingFiles.length : 0);
       const remainingSlots = maxFiles - baseCount;
 
       Array.from(files)
@@ -181,14 +137,7 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
             return;
           }
 
-          newMediaFiles.push({
-            id: generateId(),
-            file,
-            preview: URL.createObjectURL(file),
-            type: isVideo(file) ? 'video' : 'image',
-            name: file.name,
-            isExisting: false,
-          });
+          newMediaFiles.push(createUploadGalleryItem(file));
         });
 
       if (rejectedFiles.length > 0) {
@@ -204,39 +153,40 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
       if (target === 'pending') {
         setPendingFiles((prev) => [...prev, ...newMediaFiles]);
       } else {
-        onChange([...value, ...newMediaFiles]);
+        onItemsChange([...items, ...newMediaFiles]);
       }
     },
-    [disabled, allMediaItems.length, pendingFiles.length, maxFiles, onChange, value],
+    [disabled, items, pendingFiles.length, maxFiles, onItemsChange],
   );
 
   const handleModalSave = () => {
     if (modalTab === 'youtube') {
       if (!isValidYouTubeUrl(youtubeDraft)) return;
-      onYouTubeUrlsChange?.([...youtubeUrls, youtubeDraft]);
-      setCurrentIndex(allMediaItems.length);
+      const newItem = createYoutubeGalleryItem(youtubeDraft, items.length);
+      onItemsChange([...items, newItem]);
+      setCurrentIndex(items.length);
       closeModal();
       return;
     }
 
     if (pendingFiles.length > 0) {
-      onChange([...value, ...pendingFiles]);
-      setCurrentIndex(allMediaItems.length);
+      onItemsChange([...items, ...pendingFiles]);
+      setCurrentIndex(items.length);
       closeModal({ revokePending: false });
       return;
     }
     closeModal();
   };
 
-  const removePendingFile = (id: string) => {
+  const removePendingFile = (key: string) => {
     setPendingFiles((prev) => {
-      const removed = prev.find((f) => f.id === id);
+      const removed = prev.find((f) => f.key === key);
       if (removed?.file) URL.revokeObjectURL(removed.preview);
-      return prev.filter((f) => f.id !== id);
+      return prev.filter((f) => f.key !== key);
     });
   };
 
-  const handleRemoveClick = (media: MediaFile) => {
+  const handleRemoveClick = (media: MediaGalleryItem) => {
     setMediaToDelete(media);
     setIsDeleteModalOpen(true);
   };
@@ -244,40 +194,70 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
   const handleConfirmRemove = () => {
     if (!mediaToDelete) return;
 
-    const mediaWithYoutube = mediaToDelete as MediaFile & { isYouTube?: boolean; youtubeUrl?: string };
-
-    if (mediaWithYoutube.isYouTube) {
-      if (mediaWithYoutube.isExisting) {
-        // URL YouTube déjà sauvegardée dans existingMedias — on cherche par l'URL originale
-        const existingIndex = existingMedias.findIndex((url) => url === mediaWithYoutube.youtubeUrl);
-        if (existingIndex !== -1 && onRemoveExisting) {
-          onRemoveExisting(existingIndex);
-        }
-      } else if (onYouTubeUrlsChange && mediaWithYoutube.youtubeUrl) {
-        // Nouvelle URL YouTube (non encore sauvegardée) — on retire du state local
-        onYouTubeUrlsChange(youtubeUrls.filter((u) => u !== mediaWithYoutube.youtubeUrl));
-      }
-    } else if (mediaToDelete.isExisting) {
-      const existingIndex = existingMedias.findIndex((url) => url === mediaToDelete.url);
-      if (existingIndex !== -1 && onRemoveExisting) {
-        onRemoveExisting(existingIndex);
-      }
-    } else {
-      const mediaToRemoveFile = value.find((m) => m.id === mediaToDelete.id);
-      if (mediaToRemoveFile?.file) {
-        URL.revokeObjectURL(mediaToRemoveFile.preview);
-      }
-      onChange(value.filter((m) => m.id !== mediaToDelete.id));
+    if (mediaToDelete.isExisting) {
+      onRemoveExistingMedia?.(mediaToDelete);
+    } else if (mediaToDelete.file) {
+      URL.revokeObjectURL(mediaToDelete.preview);
     }
 
-    if (currentIndex >= allMediaItems.length - 1 && currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    } else if (allMediaItems.length <= 1) {
-      setCurrentIndex(0);
+    const removeIndex = items.findIndex((item) => item.key === mediaToDelete.key);
+    onItemsChange(items.filter((item) => item.key !== mediaToDelete.key));
+
+    if (removeIndex !== -1) {
+      if (currentIndex >= items.length - 1 && currentIndex > 0) {
+        setCurrentIndex(currentIndex - 1);
+      } else if (removeIndex < currentIndex) {
+        setCurrentIndex(currentIndex - 1);
+      } else if (items.length <= 1) {
+        setCurrentIndex(0);
+      }
     }
 
     setIsDeleteModalOpen(false);
     setMediaToDelete(null);
+  };
+
+  const reorderItems = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    const reordered = [...items];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    onItemsChange(reordered);
+
+    if (currentIndex === fromIndex) {
+      setCurrentIndex(toIndex);
+    } else if (fromIndex < currentIndex && toIndex >= currentIndex) {
+      setCurrentIndex(currentIndex - 1);
+    } else if (fromIndex > currentIndex && toIndex <= currentIndex) {
+      setCurrentIndex(currentIndex + 1);
+    }
+  };
+
+  const handleThumbnailDragStart = (index: number) => (event: React.DragEvent) => {
+    if (disabled) return;
+    setDragReorderIndex(index);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(index));
+  };
+
+  const handleThumbnailDragOver = (event: React.DragEvent) => {
+    if (disabled || dragReorderIndex === null) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleThumbnailDrop = (dropIndex: number) => (event: React.DragEvent) => {
+    event.preventDefault();
+    if (dragReorderIndex === null || dragReorderIndex === dropIndex) {
+      setDragReorderIndex(null);
+      return;
+    }
+    reorderItems(dragReorderIndex, dropIndex);
+    setDragReorderIndex(null);
+  };
+
+  const handleThumbnailDragEnd = () => {
+    setDragReorderIndex(null);
   };
 
   const canSaveModal =
@@ -291,15 +271,15 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
         flex flex-col items-center justify-center w-full
         ${compact ? 'min-h-[220px] py-8' : 'h-full min-h-[280px]'}
         bg-c2/50 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200
-        ${isDragging ? 'border-action bg-c3' : 'border-c4/50 hover:border-c4/75 hover:bg-c2'}
+        ${isDraggingFile ? 'border-action bg-c3' : 'border-c4/50 hover:border-c4/75 hover:bg-c2'}
       `}
-      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); if (!disabled) setIsDragging(true); }}
-      onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
+      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); if (!disabled) setIsDraggingFile(true); }}
+      onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingFile(false); }}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDrop={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        setIsDragging(false);
+        setIsDraggingFile(false);
         if (!disabled) processFiles(e.dataTransfer.files);
       }}
       onClick={() => fileInputRef.current?.click()}
@@ -313,8 +293,8 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
     </div>
   );
 
-  const renderPendingFileThumbnail = (file: MediaFile) => (
-    <div key={file.id} className='group relative w-24 h-16 rounded-lg overflow-hidden border-2 border-c3'>
+  const renderPendingFileThumbnail = (file: MediaGalleryItem) => (
+    <div key={file.key} className='group relative w-24 h-16 rounded-lg overflow-hidden border-2 border-c3'>
       {file.type === 'video' ? (
         <video src={file.preview} className='w-full h-full object-cover' />
       ) : (
@@ -322,7 +302,7 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
       )}
       <button
         type='button'
-        onClick={() => removePendingFile(file.id)}
+        onClick={() => removePendingFile(file.key)}
         aria-label={`Retirer ${file.name}`}
         className='absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer'>
         <span className='absolute inset-0 bg-black/55' aria-hidden='true' />
@@ -333,23 +313,22 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
 
   return (
     <div className='flex flex-col gap-2'>
-      {/* Zone principale */}
       <div className={`relative rounded-xl overflow-hidden ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ height }}>
-        {allMediaItems.length > 0 && currentMedia ? (
+        {items.length > 0 && currentMedia ? (
           <div className={`relative w-full h-full flex flex-col ${className}`}>
             <div className='relative flex-1 min-h-0'>
               {currentMedia.isYouTube ? (
                 <iframe
-                  src={currentMedia.url}
+                  src={currentMedia.displayUrl}
                   className='w-full h-full rounded-xl'
                   allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
                   allowFullScreen
                   title={currentMedia.name}
                 />
               ) : currentMedia.type === 'video' ? (
-                <video src={currentMedia.url || currentMedia.preview} className='w-full h-full object-cover rounded-xl' controls />
+                <video src={currentMedia.displayUrl || currentMedia.preview} className='w-full h-full object-cover rounded-xl' controls />
               ) : (
-                <img src={currentMedia.url || currentMedia.preview} alt={currentMedia.name} className='w-full h-full object-cover rounded-xl' />
+                <img src={currentMedia.displayUrl || currentMedia.preview} alt={currentMedia.name} className='w-full h-full object-cover rounded-xl' />
               )}
 
               {!disabled && (
@@ -390,44 +369,51 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
         )}
       </div>
 
-      {/* Vignettes */}
-      <div className='flex w-full justify-start items-center gap-2.5 flex-wrap'>
-        {allMediaItems.map((media, index) => (
-          <div key={media.id} className='relative'>
+
+      <div className='flex w-full justify-start items-center gap-2 flex-wrap'>
+        {items.map((media, index) => (
+          <div
+            key={media.key}
+            className={`relative ${dragReorderIndex === index ? 'opacity-60 scale-95' : ''}`}
+            draggable={!disabled && items.length > 1}
+            onDragStart={handleThumbnailDragStart(index)}
+            onDragOver={handleThumbnailDragOver}
+            onDrop={handleThumbnailDrop(index)}
+            onDragEnd={handleThumbnailDragEnd}>
             <button
               type='button'
               onClick={() => setCurrentIndex(index)}
               className={`
-                flex-shrink-0 w-[136px] h-[70px] rounded-lg overflow-hidden
-                transition-all duration-200 cursor-pointer
+                flex-shrink-0 w-28 h-16 rounded-xl overflow-hidden
+                transition-all duration-200
+                ${disabled ? 'cursor-default' : items.length > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
                 ${index === currentIndex ? 'border-2 border-c5' : 'border-2 border-transparent hover:border-c4'}
               `}>
               {media.isYouTube ? (
                 <div className='relative w-full h-full'>
-                  <img src={media.preview} alt={media.name} className='w-full h-full object-cover' />
+                  <img src={media.preview} alt={media.name} className='w-full h-full object-cover' draggable={false} />
                   <div className='absolute inset-0 flex items-center justify-center bg-black/30'>
                     <MovieIcon size={20} className='text-white' />
                   </div>
                 </div>
               ) : media.type === 'video' ? (
-                <video src={media.url || media.preview} className='w-full h-full object-cover' />
+                <video src={media.displayUrl || media.preview} className='w-full h-full object-cover' draggable={false} />
               ) : (
-                <img src={media.url || media.preview} alt={media.name} className='w-full h-full object-cover' />
+                <img src={media.displayUrl || media.preview} alt={media.name} className='w-full h-full object-cover' draggable={false} />
               )}
             </button>
           </div>
         ))}
 
-        {!disabled && canAddMore && allMediaItems.length > 0 && (
+        {!disabled && canAddMore && items.length > 0 && (
           <button
             type='button'
             onClick={() => openModal('media')}
-            className='flex-shrink-0 w-[136px] h-[70px] rounded-lg border-2 cursor-pointer border-c3 bg-c2 hover:bg-c3 flex items-center justify-center transition-all duration-200'>
+            className='flex-shrink-0 w-28 h-16 rounded-xl border-2 cursor-pointer border-c3 bg-c2 hover:bg-c3 flex items-center justify-center transition-all duration-200'>
             <AddIcon size={16} className='text-c4' />
           </button>
         )}
       </div>
-
 
       <input
         ref={fileInputRef}
@@ -441,7 +427,6 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
         className='hidden'
       />
 
-      {/* Modal d'ajout */}
       <Modal
         isOpen={isModalOpen}
         onClose={closeModal}
@@ -518,7 +503,6 @@ export const MediaDropzone: React.FC<MediaDropzoneProps> = ({
           )}
         </ModalContent>
       </Modal>
-
 
       <AlertModal
         isOpen={isDeleteModalOpen}

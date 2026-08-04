@@ -28,12 +28,14 @@ import { Bibliographies } from '@/components/features/resource-links/Bibliograph
 import { Mediagraphies } from '@/components/features/resource-links/MediagraphyCards';
 import { Citations } from '@/components/features/resource-links/CitationsCards';
 import { Microresumes } from '@/components/features/resource-links/MicroresumesCards';
-import { getItemPage, invalidateItemPageCache } from '@/services/itemPage';
+import { getItemPage, invalidateItemPageCache, reorderItemMedia } from '@/services/itemPage';
 import { shouldOpenInLinkedResourcePopup } from '@/config/linkedResourcePopupConfig';
 import { createItemPageDataFetcher, createProgressiveItemPageDataFetcher } from './itemPageFastFetcher';
 import { ReferenceAddButtons } from '@/components/features/forms/edit/AddResourceCard';
 import { outlineButtonClass } from '@/theme/components/button';
 import { formatEditAddButtonLabel } from '@/lib/editModeLabels';
+import type { MediaGalleryOrderEntry, MediaGallerySavePayload } from '@/lib/mediaGallery';
+import { mediaUrlKey } from '@/lib/mediaGallery';
 import { GenericDetailPage } from './GenericDetailPage';
 
 // ========================================
@@ -467,12 +469,9 @@ async function loadDirectOmekaMediaEntries(mediaRefs: any[]): Promise<Associated
   return results.filter(Boolean) as AssociatedMediaEntry[];
 }
 
+/** Conserve l'ordre Omeka (position). */
 function sortAssociatedMediaEntries(entries: AssociatedMediaEntry[]): AssociatedMediaEntry[] {
-  return [...entries].sort((a, b) => {
-    const aIsYT = a.url.includes('youtube.com') || a.url.includes('youtu.be') ? 0 : 1;
-    const bIsYT = b.url.includes('youtube.com') || b.url.includes('youtu.be') ? 0 : 1;
-    return aIsYT - bIsYT;
-  });
+  return [...entries];
 }
 
 function applyAssociatedMediaToItem(enrichedData: Record<string, unknown>, entries: AssociatedMediaEntry[]) {
@@ -488,13 +487,13 @@ function applyAssociatedMediaToItem(enrichedData: Record<string, unknown>, entri
 /**
  * Uploader un nouveau média vers Omeka S
  */
-export const uploadMedia = async (file: File, itemId: string): Promise<boolean> => {
+export const uploadMediaReturningId = async (file: File, itemId: string): Promise<number | null> => {
   const url = omekaApiUrl(`${API_BASE}media`);
 
   const formData = new FormData();
   const mediaData = {
     'o:ingester': 'upload',
-    'o:item': { 'o:id': parseInt(itemId) },
+    'o:item': { 'o:id': parseInt(itemId, 10) },
     file_index: '0',
   };
   formData.append('data', JSON.stringify(mediaData));
@@ -505,11 +504,230 @@ export const uploadMedia = async (file: File, itemId: string): Promise<boolean> 
       method: 'POST',
       body: formData,
     });
-    return response.ok;
+    if (!response.ok) return null;
+    const data = await response.json();
+    const mediaId = data['o:id'];
+    return typeof mediaId === 'number' ? mediaId : null;
   } catch (err) {
     console.error('Erreur upload média:', err);
+    return null;
+  }
+};
+
+export const uploadMedia = async (file: File, itemId: string): Promise<boolean> => {
+  const mediaId = await uploadMediaReturningId(file, itemId);
+  return mediaId != null;
+};
+
+export const createYoutubeMediaReturningId = async (
+  ytUrl: string,
+  itemId: string | number,
+): Promise<number | null> => {
+  const videoIdMatch = ytUrl.match(/(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  const videoId = videoIdMatch ? videoIdMatch[1] : null;
+  if (!videoId) return null;
+
+  try {
+    const ytResponse = await fetch(omekaApiUrl(`${API_BASE}media`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        'o:ingester': 'youtube',
+        'o:renderer': 'youtube',
+        'o:source': ytUrl,
+        'o:item': { 'o:id': itemId },
+        data: { id: videoId },
+        is_public: true,
+      }),
+    });
+    if (!ytResponse.ok) return null;
+    const data = await ytResponse.json();
+    const mediaId = data['o:id'];
+    return typeof mediaId === 'number' ? mediaId : null;
+  } catch (err) {
+    console.error('Erreur ajout YouTube:', err);
+    return null;
+  }
+};
+
+export const updateMediaPosition = async (mediaId: number, position: number): Promise<boolean> => {
+  const url = omekaApiUrl(`${API_BASE}media/${mediaId}`);
+  try {
+    // o:position est un champ top-level : PATCH suffit (pas une propriété RDF).
+    let response = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 'o:position': position }),
+    });
+
+    if (!response.ok) {
+      const getRes = await fetch(url);
+      if (!getRes.ok) {
+        console.error(`updateMediaPosition: impossible de lire le média #${mediaId}`, getRes.status);
+        return false;
+      }
+      const media = await getRes.json();
+      media['o:position'] = position;
+      response = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(media),
+      });
+    }
+
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => '');
+      console.error(`updateMediaPosition: échec média #${mediaId} position ${position}`, response.status, errBody);
+    }
+    return response.ok;
+  } catch (err) {
+    console.error(`Erreur position média #${mediaId}:`, err);
     return false;
   }
+};
+
+function extractYoutubeVideoId(url: string): string | null {
+  const match = url.match(/(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
+}
+
+function registerMediaLookupKeys(map: Map<string, number>, mediaId: number, urls: Array<string | null | undefined>): void {
+  urls.filter(Boolean).forEach((raw) => map.set(mediaUrlKey(raw!), mediaId));
+  for (const raw of urls) {
+    if (!raw) continue;
+    const videoId = extractYoutubeVideoId(raw);
+    if (videoId) map.set(`yt:${videoId}`, mediaId);
+  }
+}
+
+function lookupMediaIdFromMap(map: Map<string, number>, sourceUrl: string): number | null {
+  const direct = map.get(mediaUrlKey(sourceUrl));
+  if (direct) return direct;
+  const videoId = extractYoutubeVideoId(sourceUrl);
+  if (videoId) {
+    const byVideo = map.get(`yt:${videoId}`);
+    if (byVideo) return byVideo;
+  }
+  return null;
+}
+
+/** Charge les médias directs de l'item (table media.item_id) indexés par URL. */
+async function fetchItemDirectMediaLookup(itemId: string | number): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  const listUrl = omekaApiUrl(`${API_BASE}media?item_id=${itemId}&per_page=100`);
+  const listRes = await fetch(listUrl);
+  if (!listRes.ok) return map;
+
+  const mediaList = await listRes.json();
+  if (!Array.isArray(mediaList)) return map;
+
+  await Promise.all(
+    mediaList.map(async (summary: Record<string, unknown>) => {
+      const mediaId = summary['o:id'];
+      if (typeof mediaId !== 'number') return;
+
+      const detailUrl = omekaApiUrl(`${API_BASE}media/${mediaId}`);
+      const detailRes = await fetch(detailUrl);
+      if (!detailRes.ok) return;
+
+      const detail = await detailRes.json();
+      const source = typeof detail['o:source'] === 'string' ? detail['o:source'] : null;
+      const original = typeof detail['o:original_url'] === 'string' ? detail['o:original_url'] : null;
+      registerMediaLookupKeys(map, mediaId, [source, original]);
+    }),
+  );
+
+  return map;
+}
+
+function resolveOrderEntryMediaId(
+  entry: MediaGalleryOrderEntry,
+  urlLookup: Map<string, number>,
+  deletedSet: Set<number>,
+): number | null {
+  if (entry.omekaMediaId && !deletedSet.has(entry.omekaMediaId)) {
+    return entry.omekaMediaId;
+  }
+  const matched = lookupMediaIdFromMap(urlLookup, entry.sourceUrl);
+  if (matched && !deletedSet.has(matched)) return matched;
+  return null;
+}
+
+/** Applique suppressions, créations et ordre final des médias (position Omeka). */
+export const persistMediaGallery = async (
+  itemId: string | number,
+  payload: MediaGallerySavePayload,
+): Promise<string[]> => {
+  const mediaErrors: string[] = [];
+  const deletedSet = new Set(payload.mediaToDelete);
+
+  for (const mediaId of payload.mediaToDelete) {
+    const deleted = await deleteMedia(mediaId);
+    if (!deleted) {
+      mediaErrors.push(`Erreur suppression média #${mediaId}`);
+    }
+  }
+
+  const urlLookup = await fetchItemDirectMediaLookup(itemId);
+  const directMediaIdSet = new Set(urlLookup.values());
+  const directMediaIds: number[] = [];
+  const linkedResourceIds: number[] = [];
+
+  for (const entry of payload.mediaOrder) {
+    const existingId = resolveOrderEntryMediaId(entry, urlLookup, deletedSet);
+    if (existingId) {
+      if (directMediaIdSet.has(existingId)) {
+        directMediaIds.push(existingId);
+      } else {
+        linkedResourceIds.push(existingId);
+      }
+      continue;
+    }
+    if (entry.file) {
+      const uploadedId = await uploadMediaReturningId(entry.file, String(itemId));
+      if (uploadedId) {
+        directMediaIds.push(uploadedId);
+        registerMediaLookupKeys(urlLookup, uploadedId, [entry.sourceUrl]);
+        directMediaIdSet.add(uploadedId);
+      } else {
+        mediaErrors.push(`Erreur upload ${entry.file.name}`);
+      }
+      continue;
+    }
+    if (entry.isYouTube) {
+      const youtubeId = await createYoutubeMediaReturningId(entry.sourceUrl, itemId);
+      if (youtubeId) {
+        directMediaIds.push(youtubeId);
+        registerMediaLookupKeys(urlLookup, youtubeId, [entry.sourceUrl]);
+        directMediaIdSet.add(youtubeId);
+      } else {
+        mediaErrors.push(`Erreur ajout YouTube ${entry.sourceUrl}`);
+      }
+      continue;
+    }
+
+    mediaErrors.push(`Média introuvable pour réordonnancement (${entry.sourceUrl})`);
+  }
+
+  if (directMediaIds.length > 0 || linkedResourceIds.length > 0) {
+    const reorderResult = await reorderItemMedia(itemId, directMediaIds, linkedResourceIds);
+    if (!reorderResult.success) {
+      mediaErrors.push(reorderResult.message ?? 'Erreur réordonnancement médias');
+
+      // Repli REST (dev local avec VITE_API_KEY)
+      if (directMediaIds.length > 0) {
+        await Promise.all(
+          directMediaIds.map((mediaId, index) =>
+            updateMediaPosition(mediaId, index + 1).then((ok) => {
+              if (!ok) mediaErrors.push(`Erreur position média #${mediaId}`);
+            }),
+          ),
+        );
+      }
+    }
+  }
+
+  return mediaErrors;
 };
 
 /**
@@ -2499,52 +2717,53 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
       await saveResponse.json();
       console.log('[handleSave] Item saved successfully');
 
-      // 8. Gérer les médias
-      const mediaErrors: string[] = [];
-
-      if (data.mediaToDelete && Array.isArray(data.mediaToDelete)) {
-        for (const mediaId of data.mediaToDelete) {
-          const deleted = await deleteMedia(mediaId);
-          if (!deleted) {
-            mediaErrors.push(`Erreur suppression média #${mediaId}`);
-          }
+      // 8. Gérer les médias (ordre, upload, suppression)
+      if (data.mediaOrder && Array.isArray(data.mediaOrder)) {
+        const mediaErrors = await persistMediaGallery(itemId, {
+          mediaToDelete: Array.isArray(data.mediaToDelete) ? data.mediaToDelete : [],
+          mediaOrder: data.mediaOrder,
+          mediaFiles: [],
+          youtubeUrls: [],
+        });
+        if (mediaErrors.length > 0) {
+          console.warn('[handleSave] Erreurs médias:', mediaErrors);
         }
-      }
+      } else {
+        const mediaErrors: string[] = [];
 
-      const mediaFilesToUpload = data.mediaFiles || data.newMediaFiles || [];
-      if (Array.isArray(mediaFilesToUpload) && mediaFilesToUpload.length > 0) {
-        for (const file of mediaFilesToUpload) {
-          const actualFile = file.file || file;
-          if (actualFile instanceof File) {
-            const uploaded = await uploadMedia(actualFile, String(itemId));
-            if (!uploaded) {
-              mediaErrors.push(`Erreur upload ${actualFile.name}`);
+        if (data.mediaToDelete && Array.isArray(data.mediaToDelete)) {
+          for (const mediaId of data.mediaToDelete) {
+            const deleted = await deleteMedia(mediaId);
+            if (!deleted) {
+              mediaErrors.push(`Erreur suppression média #${mediaId}`);
             }
           }
         }
-      }
 
-      const youtubeUrlsToCreate: string[] = data.youtubeUrls || [];
-      for (const ytUrl of youtubeUrlsToCreate) {
-        try {
-          const videoIdMatch = ytUrl.match(/(?:youtube\.com\/(?:embed\/|v\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-          const videoId = videoIdMatch ? videoIdMatch[1] : null;
-          if (!videoId) continue;
-          const ytResponse = await fetch(omekaApiUrl(`${API_BASE}media`), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 'o:ingester': 'youtube', 'o:renderer': 'youtube', 'o:source': ytUrl, 'o:item': { 'o:id': itemId }, data: { id: videoId }, is_public: true }),
-          });
-          if (!ytResponse.ok) {
+        const mediaFilesToUpload = data.mediaFiles || data.newMediaFiles || [];
+        if (Array.isArray(mediaFilesToUpload) && mediaFilesToUpload.length > 0) {
+          for (const file of mediaFilesToUpload) {
+            const actualFile = file.file || file;
+            if (actualFile instanceof File) {
+              const uploaded = await uploadMedia(actualFile, String(itemId));
+              if (!uploaded) {
+                mediaErrors.push(`Erreur upload ${actualFile.name}`);
+              }
+            }
+          }
+        }
+
+        const youtubeUrlsToCreate: string[] = data.youtubeUrls || [];
+        for (const ytUrl of youtubeUrlsToCreate) {
+          const youtubeId = await createYoutubeMediaReturningId(ytUrl, itemId);
+          if (!youtubeId) {
             mediaErrors.push(`Erreur ajout YouTube ${ytUrl}`);
           }
-        } catch (err) {
-          mediaErrors.push(`Erreur YouTube ${ytUrl}`);
         }
-      }
 
-      if (mediaErrors.length > 0) {
-        console.warn('[handleSave] Erreurs médias:', mediaErrors);
+        if (mediaErrors.length > 0) {
+          console.warn('[handleSave] Erreurs médias:', mediaErrors);
+        }
       }
 
       invalidateItemPageCache(itemId);

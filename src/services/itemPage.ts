@@ -230,6 +230,54 @@ export function invalidateItemPageCache(id: string | number): void {
   itemPageCache.delete(`getChildItem:${key}`);
 }
 
+export interface ReorderItemMediaResult {
+  success: boolean;
+  message?: string;
+  direct?: { success: boolean; updated?: number; message?: string };
+  linked?: { success: boolean; updated?: number; message?: string };
+}
+
+/**
+ * Persiste l'ordre des médias via SQL backend (contourne PATCH /api/media souvent 403 en prod).
+ */
+export async function reorderItemMedia(
+  itemId: string | number,
+  directMediaIds: number[],
+  linkedResourceIds: number[] = [],
+): Promise<ReorderItemMediaResult> {
+  if (directMediaIds.length === 0 && linkedResourceIds.length === 0) {
+    return { success: true };
+  }
+
+  try {
+    const params = new URLSearchParams({
+      helper: 'Query',
+      action: 'reorderItemMedia',
+      json: '1',
+      item_id: String(itemId),
+      direct_media_ids: JSON.stringify(directMediaIds),
+      linked_resource_ids: JSON.stringify(linkedResourceIds),
+    });
+
+    const response = await fetch(`${QUERY_API_URL}?${params.toString()}`);
+    if (!response.ok) {
+      return { success: false, message: `HTTP ${response.status}` };
+    }
+
+    const result = (await response.json()) as ReorderItemMediaResult;
+    if (result?.success === false) {
+      return {
+        ...result,
+        message: result.message ?? 'Échec réordonnancement médias',
+      };
+    }
+    return { success: true, direct: result.direct, linked: result.linked, message: result.message };
+  } catch (error) {
+    console.error('reorderItemMedia error:', error);
+    return { success: false, message: error instanceof Error ? error.message : 'Erreur réseau' };
+  }
+}
+
 // --- Petits helpers de lecture, pour éviter de répéter les vérifications de type partout ---
 
 export function fieldValue(field: ItemPageField | undefined): string | null {
