@@ -351,6 +351,7 @@ function hydrateContributorResources(
         title: cached?.title || getLinkedResourceTitle(ref),
         name: getLinkedResourceTitle(ref),
         display_title: ref.display_title,
+        ownerId: cached?.ownerId ?? getResourceOwnerId(cached) ?? getResourceOwnerId(ref),
       });
     }
   }
@@ -420,7 +421,9 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     [onEditResource, isGlobalAdminEdit, navigate],
   );
 
-  const effectiveOnEditResource = onEditResource ?? (isGlobalAdminEdit ? handleEditLinkedResource : undefined);
+  // handleEditLinkedResource est disponible pour tous les utilisateurs (admin ou owner).
+  // La restriction d'accès se fait au niveau du chip (canEditChip) via isUserCreated.
+  const effectiveOnEditResource = onEditResource ?? handleEditLinkedResource;
 
   // ================================
   // Form state
