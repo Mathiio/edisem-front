@@ -6,6 +6,7 @@ import { advancedSearch } from '@/services/Items';
 import { WideResourceCard } from '@/components/features/shared/search/WideResourceCard';
 import { RESOURCE_TYPES, ResourceType } from '@/config/resourceConfig';
 import { Modal, ModalBody, ModalContent, ModalHeader, modalCloseButtonClasses } from '@/theme/components';
+import { outlineIconButtonClass } from '@/theme/components/button';
 import { ScrollFadeArea } from '@/components/ui/ScrollFadeArea';
 
 export interface SearchModalRef {
@@ -91,10 +92,12 @@ export const SearchModal = forwardRef<SearchModalRef, SearchModalProps>(
       <>
         {!notrigger && (
           <button
-            className='focus:outline-none focus-visible:outline-none hover:bg-c3 cursor-pointer bg-c2 text-base p-4 border-c3 border-2 rounded-xl text-c6 transition-colors ease-in-out duration-200'
+            type='button'
+            className={outlineIconButtonClass}
             onClick={onOpen}
-            title='Rechercher'>
-            <SearchIcon size={13} className='text-c6' />
+            title='Rechercher'
+            aria-label='Rechercher'>
+            <SearchIcon size={14} className='text-c6 shrink-0' />
           </button>
         )}
 

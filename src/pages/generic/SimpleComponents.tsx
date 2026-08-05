@@ -382,7 +382,7 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
                   })}
                 </SplideTrack>
                 <div className='flex justify-between items-center'>
-                  <div className='splide__arrows relative flex gap-2.5'>
+                  <div className='splide__arrows relative flex gap-2'>
                     <Button
                       isIconOnly
                       className={`${carouselArrowButtonClass} splide__arrow--prev`}

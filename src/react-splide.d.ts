@@ -5,3 +5,5 @@ declare module '@splidejs/react-splide' {
     export const SplideSlide: React.ComponentType<any>;
     export const SplideTrack: React.ComponentType<any>;
   }
+
+declare module '@splidejs/react-splide/css';

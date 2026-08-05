@@ -45,7 +45,7 @@ export const IntervenantsSection: React.FC = () => {
         </p>
         <Link 
           to="/intervenants" 
-          className="hover:bg-c3 bg-c2 border-c3 shadow-[inset_0_0px_10px_rgba(255,255,255,0.05)] w-fit cursor-pointer px-4 py-2.5 text-base gap-2.5 text-c6 rounded-lg border-2 transition-all ease-in-out duration-200"
+          className="hover:bg-c3 bg-c2 border-c3 shadow-[inset_0_0px_10px_rgba(255,255,255,0.05)] w-fit cursor-pointer px-3 py-2 text-base gap-2 min-h-11 text-c6 rounded-lg border-2 transition-all ease-in-out duration-200"
         >
           <div className="font-medium">Voir plus</div>
         </Link>

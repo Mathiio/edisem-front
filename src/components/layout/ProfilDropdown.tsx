@@ -54,7 +54,7 @@ export const ProfilDropdown = () => {
   return (
     <Dropdown classNames={dropdownContentClassNames}>
       {/* Button trigger for opening the dropdown */}
-      <DropdownTrigger className='p-3'>
+      <DropdownTrigger>
         <div className={dropdownTriggerButtonClass}>
           {/* User avatar if authenticated, otherwise fallback icon */}
           {isAuthenticated && userData?.picture ? (

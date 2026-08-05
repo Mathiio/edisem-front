@@ -226,7 +226,7 @@ export const EspaceEtudiantPage: React.FC = () => {
                     onClick={() => setTeacherFilter(type)}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className={`px-4 py-2.5 rounded-lg border-2 transition-all ease-in-out duration-200 flex items-center gap-2.5
+                    className={`px-3 py-2 rounded-lg border-2 transition-all ease-in-out duration-200 flex items-center gap-2 min-h-11
                       ${isActive ? 'shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-action/50 bg-action/10 text-c6' : 'border-c3 text-c5 hover:bg-c2 hover:border-c4'}`}>
                     {Icon && <Icon className='w-[14px] h-[14px]' />}
                     <span className='text-base font-medium'>{type === 'all' ? 'Tout' : resourceTypeConfig[type].label}</span>
@@ -318,7 +318,7 @@ export const EspaceEtudiantPage: React.FC = () => {
                           onClick={() => setFilterForCourse(course.id, type)}
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
-                          className={`px-4 py-2.5 rounded-lg border-2 transition-all ease-in-out duration-200 flex items-center gap-2.5
+                          className={`px-3 py-2 rounded-lg border-2 transition-all ease-in-out duration-200 flex items-center gap-2 min-h-11
                             ${isActive ? 'shadow-[inset_0_0px_50px_rgba(255,255,255,0.06)] border-c4 bg-c2 text-c6' : 'border-c3 text-c5 hover:bg-c2 hover:border-c4'}`}>
                           {Icon && <Icon className='w-[14px] h-[14px]' />}
                           <span className='text-base font-medium'>{type === 'all' ? 'Tout' : resourceTypeConfig[type].label}</span>

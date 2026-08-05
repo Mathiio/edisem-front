@@ -100,7 +100,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onReady }) => {
   }, []);
 
   const linkBaseClass =
-    'cursor-pointer flex flex-row items-center justify-center px-4 py-2.5 text-base gap-2.5 text-c6 rounded-xl border-2 transition-all ease-in-out duration-200';
+    'cursor-pointer flex flex-row items-center justify-center px-3 py-2 text-base gap-2 min-h-11 text-c6 rounded-xl border-2 transition-all ease-in-out duration-200';
   const activeClass = 'bg-c2 border-c3';
   const hoverClass = 'hover:bg-c2 hover:border-c3 border-transparent';
 

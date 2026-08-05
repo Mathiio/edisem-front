@@ -107,38 +107,106 @@ const selectedResourceRemoveButtonClass = [
   'inline-flex items-center justify-center shrink-0 p-1 text-sm',
 ].join(' ');
 
-/** Rangée compacte : chips scrollables + boutons d'ajout à droite (mode édition). */
+/** Rangée compacte : chips scrollables + boutons d'ajout (mode édition). */
 const EditResourceChipsCarousel: React.FC<{
   items: unknown[];
   getItemKey?: (item: unknown, index: number) => string | number;
   renderChip: (item: unknown, index: number) => React.ReactNode;
   trailing?: React.ReactNode;
   className?: string;
-}> = ({ items, getItemKey, renderChip, trailing, className = '' }) => (
-  <div className={`flex w-full items-center gap-3 ${className}`}>
-    {items.length > 0 && (
-      <div className='flex-1 min-w-0'>
-        <LongCarrousel
-          data={items}
-          perPage={3}
-          perMove={1}
-          autowidth
-          refreshOnDataChange
-          getItemKey={(item, index) => {
-            if (getItemKey) return getItemKey(item, index);
-            const entry = item as Record<string, unknown>;
-            const linkedId = getLinkedResourceId(entry);
-            if (linkedId != null) return String(linkedId);
-            if (entry.id != null) return String(entry.id);
-            return index;
-          }}
-          renderSlide={renderChip}
-        />
-      </div>
-    )}
-    {trailing}
-  </div>
-);
+}> = ({ items, getItemKey, renderChip, trailing, className = '' }) => {
+  const rowRef = React.useRef<HTMLDivElement>(null);
+  const measureRef = React.useRef<HTMLDivElement>(null);
+  const trailingRef = React.useRef<HTMLDivElement>(null);
+  const [sliderActive, setSliderActive] = React.useState(false);
+
+  const resolveKey = React.useCallback(
+    (item: unknown, index: number) => {
+      if (getItemKey) return getItemKey(item, index);
+      const entry = item as Record<string, unknown>;
+      const linkedId = getLinkedResourceId(entry);
+      if (linkedId != null) return String(linkedId);
+      if (entry.id != null) return String(entry.id);
+      return index;
+    },
+    [getItemKey],
+  );
+
+  const checkOverflow = React.useCallback(() => {
+    const row = rowRef.current;
+    const measure = measureRef.current;
+    if (!row || !measure || items.length === 0) {
+      setSliderActive(false);
+      return;
+    }
+    const trailingWidth = trailingRef.current?.offsetWidth ?? 0;
+    const gap = trailing ? 12 : 0;
+    const available = row.clientWidth - trailingWidth - gap;
+    setSliderActive(measure.scrollWidth > available + 1);
+  }, [items.length, trailing]);
+
+  React.useEffect(() => {
+    const scheduleCheck = () => requestAnimationFrame(checkOverflow);
+    scheduleCheck();
+
+    const ro = new ResizeObserver(scheduleCheck);
+    if (rowRef.current) ro.observe(rowRef.current);
+    if (measureRef.current) ro.observe(measureRef.current);
+    if (trailingRef.current) ro.observe(trailingRef.current);
+    window.addEventListener('resize', scheduleCheck);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', scheduleCheck);
+    };
+  }, [checkOverflow, items, trailing, sliderActive]);
+
+  return (
+    <div ref={rowRef} className={`relative flex w-full items-center gap-3 ${className}`}>
+      {items.length > 0 && (
+        <div
+          ref={measureRef}
+          className='pointer-events-none absolute left-0 top-0 flex max-h-0 flex-nowrap gap-2 overflow-hidden opacity-0'
+          aria-hidden>
+          {items.map((item, index) => (
+            <div key={`measure-${resolveKey(item, index)}`} className='shrink-0'>
+              {renderChip(item, index)}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {items.length > 0 &&
+        (sliderActive ? (
+          <div className='min-w-0 flex-1'>
+            <LongCarrousel
+              data={items}
+              perPage={3}
+              perMove={1}
+              autowidth
+              refreshOnDataChange
+              getItemKey={resolveKey}
+              renderSlide={renderChip}
+            />
+          </div>
+        ) : (
+          <div className='flex flex-wrap items-center gap-2'>
+            {items.map((item, index) => (
+              <div key={resolveKey(item, index)} className='shrink-0'>
+                {renderChip(item, index)}
+              </div>
+            ))}
+          </div>
+        ))}
+
+      {trailing != null && (
+        <div ref={trailingRef} className='shrink-0'>
+          {trailing}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ================================
 // Composant local: sélecteur depuis un item set Omeka
