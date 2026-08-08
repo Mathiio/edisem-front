@@ -28,6 +28,7 @@ import { useResourceOwner } from '@/hooks/useResourceOwner';
 import { GenericDetailPageConfig, FetchResult, ViewOption } from './config';
 import { generateSmartRecommendations } from './helpers';
 import { getRessourceLabel } from '@/config/resourceConfig';
+import { exportRecitToPdf } from '@/lib/recitPdfExport';
 
 // ================================
 // Props (subset de GenericDetailPageProps — vue seule)
@@ -442,6 +443,19 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
   const resourceOwner = useResourceOwner(itemDetails);
   const resourceTypeLabel = config.resourceLabel || getRessourceLabel(config.resourceType || config.type || '') || null;
 
+  const handleExportPdf = useCallback(async () => {
+    if (!itemDetails || !config.pdfExport) return;
+    await exportRecitToPdf({
+      itemDetails,
+      keywords: sortedKeywords,
+      fields: config.pdfExport.fields,
+      views: config.pdfExport.views,
+      resourceType: config.resourceType || config.type,
+      resourceTypeLabel,
+      pageUrl: window.location.href,
+    });
+  }, [itemDetails, sortedKeywords, config.pdfExport, config.resourceType, config.type, resourceTypeLabel]);
+
   // ================================
   // Components from config
   // ================================
@@ -594,6 +608,7 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
                   type={config.type}
                   isEditing={false}
                   loadingMedia={loadingMedia}
+                  onExportPdf={config.pdfExport ? handleExportPdf : undefined}
                 />
               ) : null}
 
@@ -664,6 +679,7 @@ export const GenericViewPage: React.FC<GenericViewPageProps> = ({ config, itemId
                 type={config.type}
                 isEditing={false}
                 loadingMedia={loadingMedia}
+                onExportPdf={config.pdfExport ? handleExportPdf : undefined}
               />
             ) : null}
 

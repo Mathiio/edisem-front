@@ -21,6 +21,7 @@ import { getTemplatePropertiesMap } from '@/services/Items';
 import { OMEKA_PROPERTY_IDS } from '@/config/resourceConfig';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '@/utils/omekaApi';
 import { GenericDetailPageConfig, FetchResult, ViewOption, ProgressiveDataFetcher, ProgressCallback, FormFieldConfig, FormFieldType } from './config';
+import { isRecitPdfResourceType } from '@/lib/recitPdfExport';
 import { SimplifiedDetailConfig, SimplifiedViewConfig, InternalFieldConfig, FieldType, extractFieldsFromConfig } from './simplifiedConfig';
 import { SimpleOverviewCard, SimpleDetailsCard, SimpleOverviewSkeleton, SimpleDetailsSkeleton, VocabGroupRenderer } from './SimpleComponents';
 import { ItemsList, SimpleTextBlock } from './components';
@@ -2201,6 +2202,10 @@ export const convertToGenericConfig = (config: SimplifiedDetailConfig): GenericD
       }
       return map;
     }, {} as Record<string, string>),
+
+    pdfExport: isRecitPdfResourceType(config.resourceType)
+      ? { fields, views: config.views ?? [] }
+      : undefined,
   };
 };
 

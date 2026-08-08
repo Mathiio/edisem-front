@@ -14,7 +14,7 @@ import { formatFlexibleDateDisplay } from '@/lib/flexibleDate';
 import { Splide, SplideTrack, SplideSlide } from '@splidejs/react-splide';
 import { carouselArrowButtonClass } from '@/components/ui/Carrousels';
 import { EmptyStateCard } from '@/components/ui/EmptyStateCard';
-import { UserIcon, ShareIcon, MovieIcon, ArrowIcon, AddIcon } from '@/components/ui/icons';
+import { UserIcon, ShareIcon, MovieIcon, ArrowIcon, AddIcon, FileIcon } from '@/components/ui/icons';
 import MediaViewer from '@/components/features/resource-links/MediaViewer';
 import { MediaDropzone } from '@/components/features/forms/edit/MediaDropzone';
 import type { MediaGalleryItem } from '@/lib/mediaGallery';
@@ -96,6 +96,7 @@ interface SimpleOverviewProps {
   currentVideoTime?: number;
   videoSeek?: { time: number; id: number } | null;
   mediaUploadMode?: 'gallery' | 'photo' | 'none';
+  onExportPdf?: () => Promise<void>;
 }
 
 interface SimpleDetailsProps {
@@ -235,8 +236,10 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
   currentVideoTime: _currentVideoTime,
   videoSeek,
   mediaUploadMode = 'gallery',
+  onExportPdf,
 }) => {
   const [currentMediaIndex, setCurrentMediaIndex] = useState<number>(0);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   // Utiliser resourceCache depuis itemDetails si pas fourni en prop
   const resourceCache = propResourceCache || itemDetails?.resourceCache || {};
@@ -469,6 +472,35 @@ export const SimpleOverviewCard: React.FC<SimpleOverviewProps> = ({
 
               {/* Boutons d'action */}
               <div className='w-fit flex justify-between gap-2.5 items-center'>
+                {onExportPdf && (
+                  <button
+                    type='button'
+                    className={dropdownTriggerButtonClass}
+                    disabled={exportingPdf}
+                    onClick={async () => {
+                      setExportingPdf(true);
+                      try {
+                        await onExportPdf();
+                        addToast({
+                          title: 'PDF téléchargé',
+                          description: 'Le document a été généré avec succès.',
+                          classNames: { base: cn(['text-c6', 'mb-4']) },
+                        });
+                      } catch (error) {
+                        console.error('PDF export failed:', error);
+                        addToast({
+                          title: "Échec de l'export PDF",
+                          description: 'Une erreur est survenue. Réessayez ou consultez la console.',
+                          classNames: { base: cn(['text-c6', 'mb-4']) },
+                        });
+                      } finally {
+                        setExportingPdf(false);
+                      }
+                    }}>
+                    <FileIcon size={14} className='text-c4 shrink-0' />
+                    <span>{exportingPdf ? 'Exportation…' : 'Exporter'}</span>
+                  </button>
+                )}
                 <button
                   type='button'
                   className={dropdownTriggerButtonClass}

@@ -167,6 +167,12 @@ export interface GenericDetailPageConfig {
   /** Type de ressource (clé RESOURCE_TYPES) */
   resourceType?: string;
 
+  /** Export PDF (récits uniquement) */
+  pdfExport?: {
+    fields: import('./simplifiedConfig').InternalFieldConfig[];
+    views: import('./simplifiedConfig').SimplifiedViewConfig[];
+  };
+
   /** Pas de page vue — ouverture directe en formulaire si un :id est présent */
   formOnly?: boolean;
 }
