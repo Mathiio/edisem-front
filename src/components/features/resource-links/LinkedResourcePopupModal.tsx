@@ -13,8 +13,21 @@ import {
   isFeedbackPopupViewKey,
   LinkedResourcePopupState,
 } from '@/config/linkedResourcePopupConfig';
-import { fieldValue, flattenMediaUrls, getChildItem, ItemPageData, viewCategoryEntries } from '@/services/itemPage';
+import { getResourceTypeFromTemplate } from '@/pages/generic/simplifiedConfigAdapter';
+import {
+  fieldValue,
+  flattenMediaUrls,
+  getChildItem,
+  ItemPageData,
+  ItemPageReferenceCard,
+  ItemPageView,
+  viewCategoryEntries,
+  viewReferences,
+} from '@/services/itemPage';
+import { Bibliography, Mediagraphy } from '@/types/ui';
 import { OMEKA_API_BASE } from '@/utils/omekaApi';
+import { Bibliographies } from './BibliographyCards';
+import { Mediagraphies } from './MediagraphyCards';
 import { PopupMediaGallery } from './PopupMediaGallery';
 
 interface LinkedResourcePopupModalProps {
@@ -40,6 +53,91 @@ const CategoryFields: React.FC<{
 const DescriptionBlock: React.FC<{ text: string }> = ({ text }) => (
   <p className='text-c6 text-base whitespace-pre-line leading-relaxed'>{text}</p>
 );
+
+const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <h3 className='text-c5 text-sm font-medium uppercase tracking-wide'>{children}</h3>
+);
+
+function viewTextValue(view: ItemPageView | undefined): string | null {
+  if (!view || view.type !== 'text') return null;
+  const value = view.value?.trim();
+  return value || null;
+}
+
+function referenceCardToBibliography(ref: ItemPageReferenceCard): Bibliography {
+  const templateId = ref.resource_template_id ?? 0;
+  return {
+    id: ref.id ?? 0,
+    title: ref.title,
+    creator: ref.creator ?? [],
+    date: ref.date ?? '',
+    publisher: ref.publisher ?? undefined,
+    editor: ref.editor ?? undefined,
+    volume: ref.volume ?? undefined,
+    issue: ref.issue ?? undefined,
+    pages: ref.pages ?? undefined,
+    ispartof: ref.isPartOf ?? undefined,
+    source: ref.source ?? undefined,
+    number: ref.number ?? '',
+    url: ref.externalUrl ?? ref.url ?? undefined,
+    type: getResourceTypeFromTemplate(templateId) ?? 'bibliographie',
+    class: templateId,
+    resource_template_id: String(templateId),
+    thumbnail: ref.thumbnail ?? undefined,
+  };
+}
+
+function referenceCardToMediagraphy(ref: ItemPageReferenceCard): Mediagraphy {
+  const templateId = ref.resource_template_id ?? 0;
+  return {
+    id: ref.id ?? 0,
+    title: ref.title,
+    creator: ref.creator ?? [],
+    director: [],
+    date: ref.date ?? '',
+    publisher: ref.publisher ?? undefined,
+    uri: ref.externalUrl ?? ref.url ?? undefined,
+    class: String(templateId),
+    format: ref.mediagraphyType ?? '',
+    type: ref.mediagraphyType ?? undefined,
+    thumbnail: ref.thumbnail ?? undefined,
+    isPartOf: ref.isPartOf ?? undefined,
+    resource_template_id: String(templateId),
+  };
+}
+
+function partitionReferenceCards(refs: ItemPageReferenceCard[]): {
+  bibliographies: Bibliography[];
+  mediagraphies: Mediagraphy[];
+} {
+  const bibliographies: Bibliography[] = [];
+  const mediagraphies: Mediagraphy[] = [];
+
+  refs.forEach((ref) => {
+    if (isMediagraphyRef(ref)) {
+      mediagraphies.push(referenceCardToMediagraphy(ref));
+    } else {
+      bibliographies.push(referenceCardToBibliography(ref));
+    }
+  });
+
+  return { bibliographies, mediagraphies };
+}
+
+function isMediagraphyRef(ref: ItemPageReferenceCard): boolean {
+  if (ref.mediagraphyType) return true;
+  const templateId = ref.resource_template_id;
+  if (templateId == null) return false;
+  return getResourceTypeFromTemplate(templateId) === 'mediagraphie';
+}
+
+function elementNarratifHasPopupContent(item: ItemPageData, fallbackText?: string | null): boolean {
+  const description = fieldValue(item.fields.description) ?? fallbackText;
+  const analyseFields = viewCategoryEntries(item.views.Analyse);
+  const refs = viewReferences(item.views.References);
+  const adaptations = viewTextValue(item.views.Adaptations);
+  return Boolean(description?.trim()) || analyseFields.length > 0 || refs.length > 0 || Boolean(adaptations);
+}
 
 /** Complète getChildItem lorsque le backend n'expose pas description (ex. éléments esthétiques). */
 async function fetchChildItemFallbackText(
@@ -83,13 +181,36 @@ const renderCategoryPopupContent = (
   if (isElementsPopupViewKey(viewKey)) {
     const description = fieldValue(item.fields.description) ?? fallbackText;
     const analyseFields = viewCategoryEntries(item.views.Analyse);
+    const isNarratif = viewKey === 'ElementsNarratifs';
+    const refs = isNarratif ? viewReferences(item.views.References) : [];
+    const { bibliographies, mediagraphies } = isNarratif ? partitionReferenceCards(refs) : { bibliographies: [], mediagraphies: [] };
+    const adaptations = isNarratif ? viewTextValue(item.views.Adaptations) : null;
 
-    if (!description && analyseFields.length === 0) return null;
+    if (viewKey === 'ElementsEsthetiques' && !description && analyseFields.length === 0) {
+      return null;
+    }
+
+    if (viewKey === 'ElementsNarratifs' && !elementNarratifHasPopupContent(item, fallbackText)) {
+      return null;
+    }
 
     return (
       <div className='flex flex-col gap-5'>
         {description && <DescriptionBlock text={description} />}
         {analyseFields.length > 0 && <CategoryFields entries={analyseFields} />}
+        {isNarratif && (mediagraphies.length > 0 || bibliographies.length > 0) && (
+          <div className='flex flex-col gap-3'>
+            <SectionTitle>Contenus extérieurs</SectionTitle>
+            {mediagraphies.length > 0 && <Mediagraphies items={mediagraphies} notitle />}
+            {bibliographies.length > 0 && <Bibliographies bibliographies={bibliographies} notitle />}
+          </div>
+        )}
+        {isNarratif && adaptations && (
+          <div className='flex flex-col gap-3'>
+            <SectionTitle>Hypotextes et Adaptations</SectionTitle>
+            <DescriptionBlock text={adaptations} />
+          </div>
+        )}
       </div>
     );
   }
@@ -162,17 +283,22 @@ export const LinkedResourcePopupModal: React.FC<LinkedResourcePopupModalProps> =
 
         let supplemental: string | null = null;
         if (result && popup.viewKey) {
-          const primaryText =
-            popup.viewKey === 'AnalyseCritique'
-              ? fieldValue(result.fields.argument)
-              : isElementsPopupViewKey(popup.viewKey)
-                ? fieldValue(result.fields.description)
-                : null;
-          const categoryFields = viewCategoryEntries(result.views.Analyse);
+          if (popup.viewKey === 'ElementsNarratifs') {
+            if (!elementNarratifHasPopupContent(result, null)) {
+              supplemental = await fetchChildItemFallbackText(popup.resourceId, popup.viewKey);
+            }
+          } else {
+            const primaryText =
+              popup.viewKey === 'AnalyseCritique'
+                ? fieldValue(result.fields.argument)
+                : isElementsPopupViewKey(popup.viewKey)
+                  ? fieldValue(result.fields.description)
+                  : null;
+            const categoryFields = viewCategoryEntries(result.views.Analyse);
 
-          // Fetch fallback only when both primary text and Analyse categories are missing
-          if (!primaryText && categoryFields.length === 0) {
-            supplemental = await fetchChildItemFallbackText(popup.resourceId, popup.viewKey);
+            if (!primaryText && categoryFields.length === 0) {
+              supplemental = await fetchChildItemFallbackText(popup.resourceId, popup.viewKey);
+            }
           }
         }
 

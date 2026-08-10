@@ -2203,6 +2203,14 @@ export const convertToGenericConfig = (config: SimplifiedDetailConfig): GenericD
       return map;
     }, {} as Record<string, string>),
 
+    // property_id des champs vocabGroup (Imaginaire de l'IA…) pour la sauvegarde via GenericEditPage
+    vocabPropertyIds: config.views?.reduce((map, view) => {
+      view.vocabFields?.forEach((f) => {
+        if (f.propertyId) map[f.property] = f.propertyId;
+      });
+      return map;
+    }, {} as Record<string, number>),
+
     pdfExport: isRecitPdfResourceType(config.resourceType)
       ? { fields, views: config.views ?? [] }
       : undefined,
@@ -2369,7 +2377,7 @@ function buildOmekaValueEntries(
   return (value as any[])
     .map((v: any) => {
       if (typeof v === 'object' && v?.property_id && v?.type && v?.['@value'] !== undefined) return v;
-      const str = typeof v === 'string' ? v : String(v?.['@value'] ?? '');
+      const str = typeof v === 'string' ? v : String(v?.['@value'] ?? v?.value ?? '');
       if (!str.trim()) return null;
       return {
         type: v?.type ?? (vocabId ? `customvocab:${vocabId}` : 'literal'),

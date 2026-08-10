@@ -932,6 +932,7 @@ const getTextareaValue = (raw: any): string => {
     const first = raw[0];
     if (typeof first === 'string') return first;
     if (first?.['@value']) return String(first['@value']);
+    if (first?.value != null) return String(first.value);
   }
   return '';
 };
@@ -984,7 +985,20 @@ const VocabField: React.FC<{
           label={field.label}
           value={text}
           placeholder={field.placeholder}
-          onChange={(val) => onFieldChange?.(field.property, [{ value: val, dataPath: field.property }])}
+          onChange={(val) => {
+            const trimmed = val.trim();
+            if (!trimmed) {
+              onFieldChange?.(field.property, []);
+              return;
+            }
+            if (field.propertyId) {
+              onFieldChange?.(field.property, [
+                { type: 'literal', property_id: field.propertyId, '@value': trimmed, is_public: true },
+              ]);
+              return;
+            }
+            onFieldChange?.(field.property, trimmed);
+          }}
         />
       );
     }

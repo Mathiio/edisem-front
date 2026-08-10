@@ -5,6 +5,8 @@ import { GenericDetailPageConfig } from '@/pages/generic/config';
 import { feedbackStudentConfigSimplified } from '@/pages/generic/config/feedbackStudentConfig';
 import { bibliographyConfigSimplified } from '@/pages/generic/config/bibliographyConfig';
 import { mediagraphyConfigSimplified } from '@/pages/generic/config/mediagraphyConfig';
+import { elementNarratifConfigSimplified } from '@/pages/generic/config/elementNarratifConfig';
+import { elementEsthetiqueConfigSimplified } from '@/pages/generic/config/elementEsthetiqueConfig';
 import { SimplifiedDetailConfig } from '@/pages/generic/simplifiedConfig';
 import { createHandleSave } from '@/pages/generic/simplifiedConfigAdapter';
 import { resolveCreateTabConfig } from '@/pages/generic/createTabRegistry';
@@ -29,6 +31,8 @@ const TEMPLATE_ID_TO_SIMPLIFIED: Record<number, SimplifiedDetailConfig> = {
   [feedbackStudentConfigSimplified.templateId]: feedbackStudentConfigSimplified,
   [bibliographyConfigSimplified.templateId]: bibliographyConfigSimplified,
   [mediagraphyConfigSimplified.templateId]: mediagraphyConfigSimplified,
+  [elementNarratifConfigSimplified.templateId]: elementNarratifConfigSimplified,
+  [elementEsthetiqueConfigSimplified.templateId]: elementEsthetiqueConfigSimplified,
 };
 
 const getConfigForViewKey = (viewKey: string, templateId?: number): { config: GenericDetailPageConfig } | undefined => {
