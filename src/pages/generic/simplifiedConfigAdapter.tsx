@@ -1954,7 +1954,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                                         {val}
                                       </a>
                                     ) : (
-                                      <p className='text-c5 text-sm leading-snug'>{val}</p>
+                                      <p className='text-c5 text-sm leading-snug whitespace-pre-line'>{val}</p>
                                     )}
                                   </div>
                                 ),

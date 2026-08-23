@@ -18,6 +18,7 @@ import { MisesEnRecitsPage } from '@/pages/corpus/MisesEnRecitsPage';
 import { toolConfig, toolStudentConfig } from '@/pages/generic/config/toolConfig';
 import { ToolDetailPage } from '@/pages/generic/ToolDetailPage';
 import { RecitsByGenre } from '@/pages/corpus/RecitsByGenrePage';
+import { RecitsByDomain } from '@/pages/corpus/RecitsByDomainPage';
 import { RecitsByType } from '@/pages/corpus/RecitsByTypePage';
 import { ConfigurableDetailPage } from '@/pages/generic/ConfigurableDetailPage';
 import { conferenceConfig } from '@/pages/generic/config/conferenceConfig';
@@ -171,6 +172,7 @@ function App() {
 
             {/* Routes pour les items individuels */}
             <Route path='/corpus/genre/:slug' Component={RecitsByGenre} />
+            <Route path='/corpus/domaine/:slug' Component={RecitsByDomain} />
             <Route path='/corpus/experimentation/:id' element={<ConfigurableDetailPage config={experimentationConfig} />} />
             <Route path='/corpus/retour-experience/:id' element={<ConfigurableDetailPage config={feedbackConfig} />} />
             <Route path='/corpus/element-esthetique/:id' element={<ConfigurableDetailPage config={elementEsthetiqueConfig} />} />

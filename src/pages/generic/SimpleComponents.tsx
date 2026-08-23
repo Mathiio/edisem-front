@@ -634,18 +634,21 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
   const date = dateField ? (getOmekaValue(itemDetails, dateField.property) as string) : itemDetails?.date;
 
   const descriptionField = detailsFields.find((f) => f.type === 'textarea');
-  // Combine all textarea fields (purpose, application, description, etc.) into a single description
   const allTextareaFields = detailsFields.filter((f) => f.type === 'textarea');
-  const description = allTextareaFields.length > 1
-    ? allTextareaFields
-        .map((f) => {
-          const val = getOmekaValue(itemDetails, f.property) as string;
-          if (!val) return '';
-          return f.label ? `<strong>${f.label}:</strong> ${val}` : val;
-        })
-        .filter(Boolean)
-        .join('<br><br>')
-    : descriptionField ? (getOmekaValue(itemDetails, descriptionField.property) as string) : itemDetails?.description;
+  const multiTextareaEntries = allTextareaFields
+    .map((f) => ({
+      field: f,
+      value: String(getOmekaValue(itemDetails, f.property) || ''),
+    }))
+    .filter(({ value }) => value.trim() !== '');
+  const description =
+    allTextareaFields.length > 1
+      ? ''
+      : descriptionField
+        ? String(getOmekaValue(itemDetails, descriptionField.property) || '')
+        : String(itemDetails?.description || '');
+  const hasDescription =
+    multiTextareaEntries.length > 0 || description.trim() !== '';
 
   const detailsPercentageField = detailsFields.find((f) => f.type === 'slider' || f.type === 'percentage');
   // Utiliser le pourcentage de l'overview si pas de champ spécifique dans details
@@ -671,7 +674,7 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
     }
   };
 
-  const hasContent = isEditing || date || description || (actants && actants.length > 0);
+  const hasContent = isEditing || date || hasDescription || (actants && actants.length > 0);
   if (!hasContent && !isEditing) return null;
 
   if (isEditing) {
@@ -840,11 +843,27 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
         className='cursor-pointer flex flex-col bg-c2 hover:bg-c3 p-6 rounded-lg gap-2.5 transition-all ease-in-out duration-200'
         onClick={toggleExpansion}>
         {date && <h3 className='text-base text-c5 font-medium'>{formatFlexibleDateDisplay(date)}</h3>}
-        {description && (
+        {hasDescription && (
           <div
-            className={`text-sm text-c4 font-normal transition-all ease-in-out duration-200 break-words gap-2.5 ${expanded ? '' : 'line-clamp-4'}`}
-            dangerouslySetInnerHTML={{ __html: description }}
-          />
+            className={`text-sm text-c4 font-normal transition-all ease-in-out duration-200 break-words gap-2.5 ${expanded ? '' : 'line-clamp-4'}`}>
+            {multiTextareaEntries.length > 0
+              ? multiTextareaEntries.map(({ field, value }, index) => (
+                  <div key={field.property} className={index > 0 ? 'mt-2.5 whitespace-pre-line' : 'whitespace-pre-line'}>
+                    {field.label ? (
+                      <>
+                        <strong>{field.label}:</strong>
+                        <br />
+                        {value}
+                      </>
+                    ) : (
+                      value
+                    )}
+                  </div>
+                ))
+              : (
+                <div className='whitespace-pre-line'>{description}</div>
+              )}
+          </div>
         )}
         {detailsFields
           .filter((f) => f.type === 'itemset')
@@ -859,7 +878,7 @@ export const SimpleDetailsCard: React.FC<SimpleDetailsProps> = ({
               </p>
             );
           })}
-        {description && (
+        {hasDescription && (
           <p className='text-base text-c5 font-semibold transition-all ease-in-out duration-200'>
             {expanded ? 'affichez moins' : '...affichez plus'}
           </p>

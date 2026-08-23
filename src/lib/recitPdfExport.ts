@@ -137,6 +137,11 @@ type DisplayableMedia =
   | { kind: 'image'; url: string }
   | { kind: 'youtube'; thumbnailUrl: string; videoUrl: string; title?: string | null };
 
+function toYouTubeWatchUrl(url: string): string {
+  const videoId = getYouTubeVideoId(url);
+  return videoId ? `https://www.youtube.com/watch?v=${videoId}` : url;
+}
+
 function getYouTubeHqThumbnail(url: string): string | null {
   const videoId = getYouTubeVideoId(url);
   return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : null;
@@ -150,8 +155,7 @@ function getYouTubeHqThumbnail(url: string): string | null {
  * les deux supportent le CORS cross-origin) pour rester robuste si l'un des deux est indisponible.
  */
 async function fetchYouTubeTitle(videoUrl: string): Promise<string | null> {
-  const videoId = getYouTubeVideoId(videoUrl);
-  const canonicalUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : videoUrl;
+  const canonicalUrl = toYouTubeWatchUrl(videoUrl);
   const endpoints = [
     `https://noembed.com/embed?url=${encodeURIComponent(canonicalUrl)}`,
     `https://www.youtube.com/oembed?url=${encodeURIComponent(canonicalUrl)}&format=json`,
@@ -176,7 +180,7 @@ function classifyMediaUrl(url: string): DisplayableMedia | null {
   if (!url) return null;
   if (isValidYouTubeUrl(url)) {
     const thumbnailUrl = getYouTubeHqThumbnail(url);
-    return thumbnailUrl ? { kind: 'youtube', thumbnailUrl, videoUrl: url } : null;
+    return thumbnailUrl ? { kind: 'youtube', thumbnailUrl, videoUrl: toYouTubeWatchUrl(url) } : null;
   }
   if (isImageMediaUrl(url)) return { kind: 'image', url };
   return null; // fichiers vidéo natifs (mp4/mov...) — non représentables sans lecteur, exclus
