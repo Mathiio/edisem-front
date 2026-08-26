@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState, type Key } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, type Variants } from 'framer-motion';
-import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from '@heroui/react';
+import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Tabs, Tab } from '@heroui/react';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@/theme/components';
 import { outlineButtonClass } from '@/theme/components/button';
 import { Layouts } from '@/components/layout/Layouts';
@@ -248,6 +248,14 @@ const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist, onDelete, onEdit,
 };
 
 // ─── Modale création / édition ─────────────────────────────────────────────────
+const PLAYLIST_VISIBILITY_TAB_CLASS_NAMES = {
+  base: 'w-full',
+  tabList: 'w-full bg-c2 border-2 border-c3 rounded-xl p-px gap-px',
+  cursor: 'w-full bg-action rounded-lg',
+  tab: 'flex-1 px-4 py-2 text-c5 data-[selected=true]:text-white justify-center',
+  tabContent: 'group-data-[selected=true]:text-white',
+};
+
 interface PlaylistFormModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -309,21 +317,16 @@ const PlaylistFormModal: React.FC<PlaylistFormModalProps> = ({ isOpen, onClose, 
             </div>
             <div className='flex flex-col gap-1.5'>
               <label className='text-sm font-medium text-c5'>Visibilité</label>
-              <div className='flex gap-3'>
-                {(['private', 'public'] as const).map((v) => (
-                  <button
-                    key={v}
-                    type='button'
-                    onClick={() => setVisibility(v)}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border-2 text-sm font-medium transition-colors ${
-                      visibility === v ? 'border-action bg-action/10 text-action' : 'border-c3 text-c5 hover:border-c4'
-                    }`}
-                  >
-                    {v === 'private' ? <LockIcon size={14} /> : <ShareIcon size={14} />}
-                    {v === 'private' ? 'Privée' : 'Partagée'}
-                  </button>
-                ))}
-              </div>
+              <Tabs
+                fullWidth
+                aria-label='Visibilité'
+                selectedKey={visibility}
+                onSelectionChange={(key) => setVisibility(String(key) as 'private' | 'public')}
+                classNames={PLAYLIST_VISIBILITY_TAB_CLASS_NAMES}
+              >
+                <Tab key='private' title='Privée' />
+                <Tab key='public' title='Partagée' />
+              </Tabs>
             </div>
           </div>
         </ModalBody>
