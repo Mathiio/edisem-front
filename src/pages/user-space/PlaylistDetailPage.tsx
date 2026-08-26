@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, type Variants } from 'framer-motion';
-import { Button, outlineButtonClass, outlineButtonCompactClass, primaryButtonClass } from '@/theme/components/button';
+import { Button, outlineButtonClass, primaryButtonClass } from '@/theme/components/button';
 import { Layouts } from '@/components/layout/Layouts';
 import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared/corpus/ResourceCard';
 import { BookMarkIcon, ArrowIcon, LockIcon, ShareIcon } from '@/components/ui/icons';
-import { addToast } from '@/theme/components';
 import { usePlaylist } from '@/hooks/usePlaylist';
 import { fetchPlaylistById, fetchPlaylistItemCards, type Playlist, type PlaylistCard } from '@/services/Playlist';
 import { BackgroundEllipse } from '@/assets/svg/BackgroundEllipse';
@@ -18,7 +17,7 @@ const fadeIn: Variants = {
 export const PlaylistDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { playlists, canUsePlaylists, loading: contextLoading } = usePlaylist();
+  const { playlists, loading: contextLoading } = usePlaylist();
 
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [cards, setCards] = useState<PlaylistCard[]>([]);
@@ -79,15 +78,6 @@ export const PlaylistDetailPage: React.FC = () => {
     const itemIds = new Set(fromContext.items.map((i) => i.id));
     setCards((prev) => prev.filter((c) => itemIds.has(c.id)));
   }, [playlists, playlistId]);
-
-  const handleShare = useCallback(() => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url).then(() => {
-      addToast({ title: 'Lien copié', description: 'Lien de la playlist copié dans votre presse-papier.', color: 'success' });
-    });
-  }, []);
-
-  const isOwner = canUsePlaylists && playlist && playlists.some((p) => p.id === playlist.id);
 
   if (loadingPlaylist) {
     return (
