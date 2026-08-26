@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { IntervenantCard } from '@/components/features/pages/intervenants/IntervenantCards';
 import { getRandomActants } from '@/services/Items';
 import { BGPattern } from '@/components/ui/bg-pattern';
+import { outlineButtonClass } from '@/theme/components/button';
 
 // Table for dynamic placement mapping
 const CARD_LAYOUTS = [
@@ -43,11 +44,8 @@ export const IntervenantsSection: React.FC = () => {
         <p className="text-c5 text-base transition-all ease-in-out duration-200">
           Découvrez les chercheur·e·s, artistes et invité·e·s ayant contribué aux séminaires, colloques, journées d'études et œuvres d'EdiSem.
         </p>
-        <Link 
-          to="/intervenants" 
-          className="hover:bg-c3 bg-c2 border-c3 shadow-[inset_0_0px_10px_rgba(255,255,255,0.05)] w-fit cursor-pointer px-3 py-2 text-base gap-2 min-h-11 text-c6 rounded-lg border-2 transition-all ease-in-out duration-200"
-        >
-          <div className="font-medium">Voir plus</div>
+        <Link to='/intervenants' className={`${outlineButtonClass} w-fit`}>
+          Voir plus
         </Link>
       </div>
 

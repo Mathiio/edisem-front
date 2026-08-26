@@ -102,10 +102,10 @@ export const ProfilDropdown = () => {
                 </Link>
               </DropdownItem>
 
-              <DropdownItem key='liste-de-lecture' className={`${dropdownMenuItemClass} ${userData?.type === 'actant' ? '' : 'hidden'}`}>
-                <Link to='/liste-de-lecture' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
+              <DropdownItem key='mes-playlists' className={`${dropdownMenuItemClass} ${userData?.type === 'actant' ? '' : 'hidden'}`}>
+                <Link to='/mes-playlists' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
                   <BookMarkIcon size={15} />
-                  <p className='text-base font-normal'>Liste de lecture</p>
+                  <p className='text-base font-normal'>Mes playlists</p>
                 </Link>
               </DropdownItem>
 

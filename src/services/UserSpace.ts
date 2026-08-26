@@ -1510,56 +1510,6 @@ export async function getTeacherResources(): Promise<AllStudentResources> {
   }
 }
 
-// ========== WATCHLIST (LISTE DE LECTURE / À REGARDER) ==========
-
-export interface WatchlistCard {
-  id: string | number;
-  title: string;
-  thumbnail?: string | null;
-  type?: string;
-  actants?: Array<{ name?: string; title?: string; firstname?: string; lastname?: string; picture?: string }>;
-  date?: string | null;
-  subtitle?: string;
-}
-
-async function watchlistFetch<T>(action: string, params: Record<string, string | number> = {}): Promise<T> {
-  const url = new URL(API_BASE);
-  url.searchParams.set('action', action);
-  url.searchParams.set('json', '1');
-  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)));
-
-  const response = await fetch(url.toString(), { credentials: 'include' });
-  const data = await response.json();
-
-  if (data?.code === 401) {
-    throw new Error('Non authentifié');
-  }
-  if (data?.error) {
-    throw new Error(data.error);
-  }
-
-  return data as T;
-}
-
-/** IDs des ressources sauvegardées par l'actant connecté */
-export async function getWatchlistIds(): Promise<{ ids: number[] }> {
-  try {
-    return await watchlistFetch<{ ids: number[] }>('getWatchlistIds');
-  } catch (error) {
-    console.error('Error fetching watchlist ids:', error);
-    return { ids: [] };
-  }
-}
-
-/** Cards des ressources sauvegardées */
-export async function getWatchlistCards(): Promise<{ items: WatchlistCard[] }> {
-  return watchlistFetch<{ items: WatchlistCard[] }>('getWatchlistCards');
-}
-
-/** Ajoute ou retire une ressource de la liste de lecture */
-export async function toggleWatchlistItem(resourceId: number): Promise<{ saved: boolean; ids: number[] }> {
-  return watchlistFetch<{ saved: boolean; ids: number[] }>('toggleWatchlistItem', { resourceId });
-}
 
 export interface LinkingExportRow {
   id: number;

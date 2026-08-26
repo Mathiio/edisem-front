@@ -41,6 +41,7 @@ const GRID_PAGES: Record<string, string> = {
   '/corpus/pratiques-narratives': 'Pratiques narratives',
   '/corpus/experimentations': 'Expérimentations',
   '/corpus/mises-en-recits': 'Mises en récits',
+  '/mes-playlists': 'Mes playlists',
   '/corpus/recits-scientifiques': 'Récits scientifiques',
   '/corpus/recits-techno-industriels': 'Récits techno-industriels',
   '/corpus/recits-citoyens': 'Récits citoyens',

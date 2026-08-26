@@ -11,6 +11,7 @@ interface PageBannerProps {
   title: string | ReactNode;
   description: string | ReactNode;
   stats?: Stat[];
+  actions?: ReactNode;
   className?: string;
   edition?: boolean;
   backgroundScale?: number;
@@ -23,6 +24,7 @@ export const PageBanner = ({
   title,
   description,
   stats = [],
+  actions,
   className = '',
   edition = false,
   backgroundScale = 1,
@@ -54,6 +56,8 @@ export const PageBanner = ({
               ))}
             </div>
           )}
+
+          {actions && <div className='z-[12] flex justify-center'>{actions}</div>}
         </div>
 
         {/* Animated Background */}

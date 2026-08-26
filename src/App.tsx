@@ -40,7 +40,7 @@ import { universiteConfig } from '@/pages/generic/config/universiteConfig';
 import { ecoleDoctoraleConfig } from '@/pages/generic/config/ecoleDoctoraleConfig';
 import { laboratoireConfig } from '@/pages/generic/config/laboratoireConfig';
 import { NavigationTrailProvider } from './hooks/useNavigationTrail';
-import { WatchlistProvider } from './hooks/useWatchlist';
+import { PlaylistProvider } from './hooks/usePlaylist';
 import { EspaceEtudiantPage } from '@/pages/user-space/EspaceEtudiantPage';
 import { LoadingScreen } from './components/layout/LoadingScreen';
 import { useState, useCallback, useEffect, createContext, useContext } from 'react';
@@ -50,7 +50,8 @@ import { bibliographyConfig } from './pages/generic/config/bibliographyConfig';
 import { mediagraphyConfig } from './pages/generic/config/mediagraphyConfig';
 import { StudentMySpace } from '@/pages/user-space/StudentMySpace';
 import { ActantMySpace } from '@/pages/user-space/ActantMySpace';
-import { WatchlistPage } from '@/pages/user-space/WatchlistPage';
+import { PlaylistsPage } from '@/pages/user-space/PlaylistsPage';
+import { PlaylistDetailPage } from '@/pages/user-space/PlaylistDetailPage';
 import { MotsClesPage } from '@/pages/admin/MotsClesPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import GlobalAdministration from '@/pages/admin/GlobalAdministration';
@@ -71,7 +72,8 @@ export const useNavbarReadyContext = () => {
 const ProtectedUsersPage = withAuth(AdminDashboard, { requiredPermission: 'admin' });
 const ProtectedAdministration = withAuth(GlobalAdministration, { requiredOmekaRole: 'global_admin' });
 const ProtectedMotsCles = withAuth(MotsClesPage, { requiredPermission: 'admin' });
-const ProtectedWatchlistPage = withAuth(WatchlistPage, { requiredRole: 'actant' });
+const ProtectedPlaylistsPage = withAuth(PlaylistsPage, { requiredRole: 'actant' });
+const ProtectedPlaylistDetailPage = withAuth(PlaylistDetailPage, { requiredRole: 'actant' });
 
 // Wrapper pour protéger ConfigurableDetailPage en mode création (actants et étudiants)
 const ProtectedAdminConfigurableDetailPage = withAuth(ConfigurableDetailPage, { requiredPermission: 'admin' });
@@ -104,7 +106,7 @@ function App() {
       <LoadingScreen isLoading={isLoading} />
       <NavbarReadyContext.Provider value={{ onNavbarReady: handleNavbarReady }}>
         <NavigationTrailProvider>
-          <WatchlistProvider>
+          <PlaylistProvider>
           <Routes>
             {/* Base routes */}
             <Route index path='/' Component={HomePage} />
@@ -116,7 +118,8 @@ function App() {
             <Route path='/mon-espace' Component={StudentMySpace} />
 
             <Route path='/mon-espace-4' Component={ActantMySpace} />
-            <Route path='/liste-de-lecture' Component={ProtectedWatchlistPage} />
+            <Route path='/mes-playlists' Component={ProtectedPlaylistsPage} />
+            <Route path='/mes-playlists/:id' Component={ProtectedPlaylistDetailPage} />
 
             {/* Utilisateurs (actants, étudiants, cours) */}
             <Route path='/users' Component={ProtectedUsersPage} />
@@ -222,7 +225,7 @@ function App() {
             <Route path='/add-resource/ecole-doctorale' element={<ProtectedCreateResourcePage config={ecoleDoctoraleConfig} />} />
             <Route path='/add-resource/laboratoire' element={<ProtectedCreateResourcePage config={laboratoireConfig} />} />
           </Routes>
-          </WatchlistProvider>
+          </PlaylistProvider>
         </NavigationTrailProvider>
       </NavbarReadyContext.Provider>
     </>
