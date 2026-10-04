@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/icons';
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
 
-const MAX_MENU_EDITIONS = 4;
 
 interface EditionLink {
   to: string;
@@ -67,7 +66,7 @@ const EventGroup: React.FC<{
   editions: EditionLink[];
   onNavigate: () => void;
 }> = ({ collectionUrl, collectionLabel, icon, editions, onNavigate }) => {
-  const visibleEditions = editions.slice(0, MAX_MENU_EDITIONS);
+  const visibleEditions = editions;
 
   return (
     <div className='flex flex-col'>

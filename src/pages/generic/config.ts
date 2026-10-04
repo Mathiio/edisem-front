@@ -231,7 +231,8 @@ export type FormFieldType =
   | 'media' // Upload de médias
   | 'url' // Input URL
   | 'number' // Input numérique
-  | 'slider'; // Slider (0-100)
+  | 'slider' // Slider (0-100)
+  | 'editionLink'; // Édition liée (conférence)
 
 /**
  * Section de formulaire (overview ou details)

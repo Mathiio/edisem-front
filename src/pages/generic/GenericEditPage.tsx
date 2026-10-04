@@ -28,6 +28,12 @@ import { formatEditAddButtonLabel } from '@/lib/editModeLabels';
 import { AlertModal } from '@/components/ui/AlertModal';
 import { EditSaveBar } from '@/components/ui/EditSaveBar';
 import { EditModeBanner } from '@/components/ui/EditModeBanner';
+import { ConferenceEditionEditor } from '@/components/features/forms/edit/ConferenceEditionEditor';
+import {
+  loadEditionLinkForConference,
+  persistConferenceEditionLink,
+  emptyEditionLinkState,
+} from '@/services/ConferenceEdition';
 import { ResourcePicker } from '@/components/features/forms/modals/ResourcePicker';
 import { RelatedResourcePicker } from '@/components/features/forms/modals/RelatedResourcePicker';
 import { getTemplatePropertiesMap } from '@/services/Items';
@@ -56,7 +62,14 @@ import { deleteUserResource } from '@/services/UserSpace';
 import { useFormState } from '@/hooks/useFormState';
 import { useAuth } from '@/hooks/useAuth';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '@/utils/omekaApi';
-import { resolveOmekaPropertyId, deleteMedia, syncCategoryValuesToFormFields, isUrlOmekaProperty, persistMediaGallery } from './simplifiedConfigAdapter';
+import {
+  resolveOmekaPropertyId,
+  deleteMedia,
+  syncCategoryValuesToFormFields,
+  isUrlOmekaProperty,
+  persistMediaGallery,
+  isLinkedResourceFormField,
+} from './simplifiedConfigAdapter';
 import { invalidateItemPageCache } from '@/services/itemPage';
 import { DEFAULT_AUTHOR_TEMPLATE_IDS } from '@/components/features/forms/edit/MediaDropzone';
 import {
@@ -811,6 +824,28 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemDetails, mode, id, setFormData, config.formFields, config.viewKeyToProperty]);
 
+  const isConferenceForm = Number(config.resourceTemplateId) === CONFERENCE_TEMPLATE_ID;
+
+  useEffect(() => {
+    if (!isConferenceForm || mode !== 'edit' || !id) return;
+    if (String(itemDetails?.['o:id']) !== String(id)) return;
+    let cancelled = false;
+    void loadEditionLinkForConference(Number(id)).then((state) => {
+      if (cancelled) return;
+      setValue('editionLink', state);
+      patchBaseline({ editionLink: state });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isConferenceForm, mode, id, itemDetails?.['o:id'], setValue, patchBaseline]);
+
+  useEffect(() => {
+    if (!isConferenceForm || mode !== 'create') return;
+    if (formData.editionLink != null) return;
+    setValue('editionLink', emptyEditionLinkState());
+  }, [isConferenceForm, mode, formData.editionLink, setValue]);
+
   // Inject keywords when they load (without full form reset)
   useEffect(() => {
     if (!formInitializedRef.current) return;
@@ -1068,7 +1103,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     syncCategoryValuesToFormFields(data, config.formFields);
 
     for (const field of config.formFields ?? []) {
-      if (field.type !== 'selection' && field.type !== 'multiselection') continue;
+      if (!isLinkedResourceFormField(field)) continue;
       const raw = data[field.key];
       if (raw === undefined || raw === null) continue;
       const omekaPropertyKey = formFieldKeyToProperty[field.key] ?? field.dataPath?.split('.')[0];
@@ -1127,6 +1162,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       'o:item_set',
       'o:media',
       'thumbnail_display_urls',
+      'editionLink',
     ]);
 
     for (const [key, value] of Object.entries(data)) {
@@ -1256,8 +1292,21 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
           updatedItem[omekaPropertyKey] = [];
         } else if (isUrlProperty) {
           updatedItem[omekaPropertyKey] = [{ type: 'uri', property_id: propertyId, '@id': strValue, is_public: true }];
+        } else if (isConferenceTypeOmekaProperty(omekaPropertyKey, templateId)) {
+          updatedItem[omekaPropertyKey] = [buildConferenceTypeOmekaValue(strValue, propertyId)];
         } else {
-          updatedItem[omekaPropertyKey] = [{ type: 'literal', property_id: propertyId, '@value': strValue, is_public: true }];
+          const formField = config.formFields?.find((f) => f.key === key);
+          const customVocabId = formField?.customVocabId;
+          updatedItem[omekaPropertyKey] = [
+            customVocabId
+              ? {
+                  type: `customvocab:${customVocabId}`,
+                  property_id: propertyId,
+                  '@value': strValue,
+                  is_public: true,
+                }
+              : { type: 'literal', property_id: propertyId, '@value': strValue, is_public: true },
+          ];
         }
         writtenOmekaProperties.add(omekaPropertyKey);
       }
@@ -1398,7 +1447,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       const propertyId = await resolveOmekaPropertyId(omekaPropertyKey, propMap, itemData);
       if (!propertyId) continue;
 
-      if (field.type === 'multiselection' || field.type === 'selection') {
+      if (isLinkedResourceFormField(field)) {
         const items: any[] = Array.isArray(raw) ? raw : typeof raw === 'number' ? [{ id: raw }] : [];
         if (items.length > 0) {
           itemData[omekaPropertyKey] = items
@@ -1415,6 +1464,17 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
           if (isConferenceTypeOmekaProperty(omekaPropertyKey, config.resourceTemplateId ?? CONFERENCE_TEMPLATE_ID)) {
             const confValue = buildConferenceTypeOmekaValue(raw, propertyId);
             if (confValue) { itemData[omekaPropertyKey] = [confValue]; continue; }
+          }
+          if (field.customVocabId) {
+            itemData[omekaPropertyKey] = [
+              {
+                type: `customvocab:${field.customVocabId}`,
+                property_id: propertyId,
+                '@value': raw.trim(),
+                is_public: true,
+              },
+            ];
+            continue;
           }
           itemData[omekaPropertyKey] = [{ type: 'literal', property_id: propertyId, '@value': raw, is_public: true }];
         }
@@ -1678,7 +1738,11 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       if (isDraft && !isAutoSave) changedData.__publishDraft = true;
 
       if (mode === 'create') {
-        await createInOmekaS(changedData);
+        const created = await createInOmekaS(changedData);
+        const newConferenceId = created?.['o:id'];
+        if (isConferenceForm && newConferenceId && formData.editionLink) {
+          await persistConferenceEditionLink(Number(newConferenceId), formData.editionLink);
+        }
         if (!onSaveComplete) {
           addToast({
             title: 'Ressource créée',
@@ -1689,12 +1753,19 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
         return;
       } else if (onSave) {
         await onSave(changedData);
+        if (id && isConferenceForm && formData.editionLink) {
+          await persistConferenceEditionLink(Number(id), formData.editionLink);
+        }
         if (id) {
           const savedTitle = changedData.title || formData.title;
           onSaveComplete?.(id, savedTitle);
         }
       } else {
         const result = await saveToOmekaS(changedData);
+        const conferenceId = result?.['o:id'] ?? id;
+        if (isConferenceForm && conferenceId && formData.editionLink) {
+          await persistConferenceEditionLink(Number(conferenceId), formData.editionLink);
+        }
         if (result?.['o:id']) {
           const savedTitle = changedData.title || result?.['o:title'] || result?.['dcterms:title']?.[0]?.['@value'];
           onSaveComplete?.(result['o:id'], savedTitle);
@@ -2039,10 +2110,14 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     if (!createItemSetTitle.trim()) return;
     setCreateItemSetLoading(true);
     try {
-      const body = {
+      const itemSetOmekaUserId = localStorage.getItem('omekaUserId');
+      const body: Record<string, unknown> = {
         'o:item_set': createItemSetModalState.itemSetIds.map((setId) => ({ 'o:id': setId })),
         'dcterms:title': [{ type: 'literal', '@value': createItemSetTitle.trim(), property_id: 1, is_public: true }],
       };
+      if (itemSetOmekaUserId && parseInt(itemSetOmekaUserId, 10) > 0) {
+        body['o:owner'] = { 'o:id': parseInt(itemSetOmekaUserId, 10) };
+      }
       const response = await fetch(omekaApiUrl(`${API_BASE}items`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!response.ok) throw new Error('Erreur création');
       const created = await response.json();
@@ -2584,20 +2659,38 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
 
                 {/* Static select fields */}
                 {config.formFields
+                  ?.filter((f) => f.type === 'editionLink')
+                  .map((field) => (
+                    <div key={field.key} className='flex flex-col gap-1.5'>
+                      <p className={formFieldLabelClass}>{field.label}</p>
+                      <ConferenceEditionEditor
+                        value={formData.editionLink}
+                        onChange={(next) => setValue('editionLink', next)}
+                        conferenceTypeTerm={formData.conferenceType || ''}
+                      />
+                    </div>
+                  ))}
+
+                {config.formFields
                   ?.filter((f) => f.type === 'selection' && Array.isArray(f.options) && f.options!.length > 0)
                   .map((field) => {
-                    const currentValue = formData[field.key] || field.options![0].value;
+                    const currentValue = formData[field.key];
                     return (
-                      <Select
-                        key={field.key}
-                        label={field.label}
-                        selectedKeys={[currentValue]}
-                        onSelectionChange={(keys) => {
-                          const key = Array.from(keys)[0];
-                          if (key) setValue(field.key, String(key));
-                        }}>
-                        {field.options!.map((opt) => <SelectItem key={opt.value}>{opt.label}</SelectItem>)}
-                      </Select>
+                      <div key={field.key} className='flex flex-col gap-1.5'>
+                        <p className={formFieldLabelClass}>{field.label}</p>
+                        <Select
+                          aria-label={field.label}
+                          placeholder='Sélectionner…'
+                          selectedKeys={currentValue ? [String(currentValue)] : []}
+                          onSelectionChange={(keys) => {
+                            const key = Array.from(keys)[0];
+                            if (key) setValue(field.key, String(key));
+                          }}>
+                          {field.options!.map((opt) => (
+                            <SelectItem key={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </Select>
+                      </div>
                     );
                   })}
 

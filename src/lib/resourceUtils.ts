@@ -289,9 +289,10 @@ export function pickOmekaMediaThumbnail(
  */
 export const getResourceThumbnail = (item: any): string => {
     // 0. Omeka S thumbnail_display_urls (réponse API liste ou détail)
+    // Priorité: large (800px) > medium (200px) > square (200×200 crop) pour la meilleure qualité
     const displayUrls = item['thumbnail_display_urls'];
     if (displayUrls) {
-        const raw = displayUrls.square || displayUrls.medium || displayUrls.large;
+        const raw = displayUrls.large || displayUrls.medium || displayUrls.square;
         const resolved = resolveOmekaThumbnail(typeof raw === 'string' ? raw : null);
         if (resolved) return resolved;
     }
@@ -359,10 +360,11 @@ export const getYouTubeThumbnail = (url: string | string[]): string | undefined 
     if (!finalUrl || typeof finalUrl !== 'string') return undefined;
 
     // Match youtube.com/watch?v=VIDEO_ID or youtu.be/VIDEO_ID
-    const match = finalUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?]+)/);
+    const match = finalUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^&?/]+)/);
     if (!match || !match[1]) return undefined;
 
-    return `https://img.youtube.com/vi/${match[1]}/0.jpg`;
+    // maxresdefault (1280×720) quand disponible, sinon hqdefault (480×360) toujours dispo
+    return `https://img.youtube.com/vi/${match[1]}/maxresdefault.jpg`;
 };
 
 /**

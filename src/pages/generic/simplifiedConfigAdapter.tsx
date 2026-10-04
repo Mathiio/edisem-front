@@ -370,16 +370,20 @@ const fieldTypeToFormType: Record<FieldType, FormFieldType> = {
   media: 'media',
   status: 'text',
   percentage: 'slider',
+  editionLink: 'editionLink',
 };
 
 export const fieldToFormField = (field: InternalFieldConfig): FormFieldConfig => {
   // For URL type fields, use @id instead of @value (Omeka S stores URIs in @id)
   // For itemset fields, use value_resource_id (linked resource)
-  const dataPath = field.type === 'url'
-    ? `${field.property}.0.@id`
-    : field.type === 'itemset'
-      ? `${field.property}.0.value_resource_id`
-      : `${field.property}.0.@value`;
+  const dataPath =
+    field.type === 'editionLink'
+      ? 'editionLink'
+      : field.type === 'url'
+        ? `${field.property}.0.@id`
+        : field.type === 'itemset'
+          ? `${field.property}.0.value_resource_id`
+          : `${field.property}.0.@value`;
   return {
     key: field.key,
     label: field.label,
@@ -2249,6 +2253,16 @@ async function fetchOmekaPropertyId(term: string): Promise<number | null> {
     console.warn('[resolveOmekaPropertyId] fetch failed for', term, err);
   }
   return null;
+}
+
+/** Select lié à des ressources Omeka (picker / item set), pas un choix statique (options + custom vocab). */
+export function isLinkedResourceFormField(field: {
+  type?: string;
+  selectionConfig?: { templateId?: number; templateIds?: number[]; itemSetId?: number };
+}): boolean {
+  if (field.type !== 'selection' && field.type !== 'multiselection') return false;
+  const sc = field.selectionConfig;
+  return Boolean(sc?.templateId || sc?.templateIds?.length || sc?.itemSetId);
 }
 
 export async function resolveOmekaPropertyId(

@@ -47,7 +47,8 @@ export type FieldType =
   | 'select' // Sélection depuis une liste statique d'options
   | 'media' // Médias (images/vidéos)
   | 'status' // Statut (chip/badge)
-  | 'percentage'; // Pourcentage avec barre de progression
+  | 'percentage' // Pourcentage avec barre de progression
+  | 'editionLink'; // Liaison édition (conférences)
 
 // ========================================
 // Zones d'affichage

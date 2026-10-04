@@ -16,6 +16,12 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
     title: { property: 'dcterms:title', type: 'title', zone: 'header' },
     date: { property: 'dcterms:date', type: 'date', zone: 'details' },
     description: { property: 'dcterms:abstract', type: 'textarea', label: 'Résumé', zone: 'details' },
+    editionLink: {
+      property: 'schema:isRelatedTo',
+      type: 'editionLink',
+      label: 'Édition',
+      zone: 'details',
+    },
     conferenceType: {
       property: CONFERENCE_TYPE_PROPERTY,
       type: 'select',

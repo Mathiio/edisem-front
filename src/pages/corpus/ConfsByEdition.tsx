@@ -1,6 +1,76 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import * as Items from '@/services/Items';
+import { getResourceThumbnail, getYouTubeThumbnail } from '@/lib/resourceUtils';
+
+const OMEKA_API = 'https://tests.arcanes.ca/omk/api';
+
+/**
+ * Résout la miniature d'une conférence quand le backend renvoie thumbnail: null.
+ *
+ * Priorité :
+ *  1. Source YouTube du media ingéré (o:ingester='youtube') → maxresdefault.jpg (1280×720)
+ *  2. getResourceThumbnail(item) — fallback pour items image ou autres
+ *
+ * Évite volontairement thumbnail_display_urls qui est une version Omeka retraitée
+ * basse qualité (souvent 480×360 ou 200×200 carré).
+ */
+/** Détecte un thumbnail Omeka dérivé basse qualité (square / medium / large). */
+const isOmekaDerivative = (url?: string) =>
+  !!url && /\/omk\/files\/(?:square|medium|large)\//.test(url);
+
+async function resolveConferenceThumbnail(
+  conferenceId: string,
+  currentThumbnail?: string,
+): Promise<string> {
+  // 1. Cherche un media YouTube ingéré → source YouTube → maxresdefault (1280×720)
+  const mediaList: any[] | null = await fetch(`${OMEKA_API}/media?item_id=${conferenceId}`)
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null);
+
+  if (mediaList) {
+    const ytMedia = mediaList.find(
+      (m: any) => m['o:ingester'] === 'youtube' && m['o:source'],
+    );
+    if (ytMedia) {
+      const thumb = getYouTubeThumbnail(ytMedia['o:source'] as string);
+      if (thumb) return thumb;
+    }
+  }
+
+  // 2. Si pas de YouTube, garder le thumbnail existant s'il est correct (original/)
+  if (currentThumbnail && !isOmekaDerivative(currentThumbnail)) return currentThumbnail;
+
+  // 3. Dernier recours : item brut → getResourceThumbnail (image uploadée hors YouTube)
+  const item: any | null = await fetch(`${OMEKA_API}/items/${conferenceId}`)
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null);
+
+  return item ? getResourceThumbnail(item) : (currentThumbnail ?? '');
+}
+
+async function enrichConferenceThumbnails(conferences: Conference[]): Promise<Conference[]> {
+  // Inclut les conférences sans thumbnail ET celles avec un dérivé Omeka pixelisé
+  const without = conferences.filter(
+    (c) => c.id && (!c.thumbnail || isOmekaDerivative(c.thumbnail)),
+  );
+  if (without.length === 0) return conferences;
+
+  const resolved = await Promise.allSettled(
+    without.map((c) => resolveConferenceThumbnail(String(c.id), c.thumbnail ?? undefined)),
+  );
+
+  const thumbMap = new Map<number, string>();
+  resolved.forEach((result, idx) => {
+    if (result.status !== 'fulfilled' || !result.value) return;
+    thumbMap.set(Number(without[idx].id), result.value);
+  });
+
+  if (thumbMap.size === 0) return conferences;
+  return conferences.map((c) =>
+    thumbMap.has(Number(c.id)) ? { ...c, thumbnail: thumbMap.get(Number(c.id)) } : c,
+  );
+}
 import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared/corpus/ResourceCard';
 import { motion, Variants } from 'framer-motion';
 import { Layouts } from '@/components/layout/Layouts';
@@ -22,29 +92,47 @@ export const Edition: React.FC = () => {
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [edition, setEdition] = useState<EditionType | null>(null);
   const [loading, setLoading] = useState(true);
+  const reEnrichingRef = useRef(false);
+
+  // Second effect : détecte les thumbnails Omeka dégradés dans le state
+  // (ex : state stale après HMR) et les remplace par YouTube maxresdefault.
+  useEffect(() => {
+    if (loading || reEnrichingRef.current) return;
+    if (!conferences.some((c) => c.id && isOmekaDerivative(c.thumbnail))) return;
+
+    reEnrichingRef.current = true;
+    enrichConferenceThumbnails(conferences).then((enriched) => {
+      setConferences(enriched);
+    });
+  }, [conferences, loading]);
 
   useEffect(() => {
+    reEnrichingRef.current = false;
+    if (!id) return;
+    setLoading(true);
+    setConferences([]);
+
     const fetchData = async () => {
-      if (!id) return;
-      
-      setLoading(true);
       try {
         const data = await Items.getEditionDetails(id);
-        
         if (data) {
-            setEdition(data.edition);
-            setConferences(data.conferences || []);
+          setEdition(data.edition);
+          const raw: Conference[] = data.conferences || [];
+          // Enrichissement AVANT le rendu : les thumbnails YouTube sont résolues
+          // pendant le loading, pas après. Évite toute phase intermédiaire pixelisée.
+          const enriched = await enrichConferenceThumbnails(raw);
+          setConferences(enriched);
         } else {
-            console.error('Aucune donnée trouvée pour cette édition');
+          console.error('Aucune donnée trouvée pour cette édition');
         }
       } catch (error) {
-        console.error('Erreur lors du chargement de l\'édition:', error);
+        console.error("Erreur lors du chargement de l'édition:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    void fetchData();
   }, [id]);
 
   return (
