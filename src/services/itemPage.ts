@@ -99,7 +99,7 @@ export interface ItemPageTextView {
   value: string | null;
 }
 
-/** Section "Imaginaire de l'IA" — cf. IMAGINAIRE_IA_VOCAB_FIELDS (front) / IMAGINAIRE_IA_TERMS (back). */
+/** Section "Imaginaire de l'IA" — cf. IMAGINAIRE_IA_VOCAB_FIELDS (front) / IMAGINAIRE_IA_TERMS (back, incl. cito:discusses). */
 export interface ItemPageVocabGroupView {
   type: 'vocabGroup';
   values: Record<string, string[]>;

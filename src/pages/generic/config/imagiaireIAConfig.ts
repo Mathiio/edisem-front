@@ -54,4 +54,12 @@ export const IMAGINAIRE_IA_VOCAB_FIELDS: VocabGroupField[] = [
     vocabId: 53,
     propertyId: 3239,
   },
+  {
+    label: 'Questions guide',
+    property: 'cito:discusses',
+    type: 'customVocab',
+    vocabId: 58,
+    itemSetResourceTemplateId: 134,
+    propertyId: 240,
+  },
 ];

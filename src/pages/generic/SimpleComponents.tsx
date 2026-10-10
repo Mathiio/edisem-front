@@ -974,7 +974,9 @@ const VocabField: React.FC<{
     setLoadingTerms(true);
     setFetchError(null);
 
-    fetchCustomVocabTerms(field.vocabId)
+    fetchCustomVocabTerms(field.vocabId, {
+      resourceTemplateId: field.itemSetResourceTemplateId,
+    })
       .then((terms) => {
         if (!cancelled) setVocabTerms(terms);
       })
@@ -992,7 +994,7 @@ const VocabField: React.FC<{
     return () => {
       cancelled = true;
     };
-  }, [field.vocabId, field.type]);
+  }, [field.vocabId, field.itemSetResourceTemplateId, field.type]);
 
   const rawValue = formData?.[field.property] ?? itemDetails?.[field.property];
 

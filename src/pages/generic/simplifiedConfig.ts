@@ -178,6 +178,11 @@ export interface VocabGroupField {
   type: VocabGroupFieldType;
   /** ID du vocabulaire custom Omeka S (pour type = 'customVocab') */
   vocabId?: number;
+  /**
+   * Si le custom vocab est alimenté par un item set Omeka, filtre optionnel sur le template
+   * (ex. 134 — EdiSem Questions guide).
+   */
+  itemSetResourceTemplateId?: number;
   /** ID de la propriété Omeka S (pour la sauvegarde si l'item n'a pas encore de valeur) */
   propertyId?: number;
   /** Placeholder pour les textareas */

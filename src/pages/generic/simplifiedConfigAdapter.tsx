@@ -410,8 +410,8 @@ export const fieldToFormField = (field: InternalFieldConfig): FormFieldConfig =>
             resourceType: field.label,
             itemSetId: field.itemSetId,
             multiple: field.multiSelect ?? false,
-          }
-        : undefined,
+        }
+      : undefined,
   };
 };
 
@@ -821,10 +821,10 @@ export const loadResourcesByTemplate = async (templateId: number, maxResults = 1
     return items.map((item: any) => {
       const templateId = item['o:resource_template']?.['o:id'];
       return {
-        id: item['o:id'],
+      id: item['o:id'],
         title: item['o:title'] || getResourceFallbackTitle(item['o:id'], templateId),
-        resourceClass: item['o:resource_class']?.['o:label'],
-        thumbnailUrl: item['thumbnail_display_urls']?.square,
+      resourceClass: item['o:resource_class']?.['o:label'],
+      thumbnailUrl: item['thumbnail_display_urls']?.square,
         templateId,
       };
     });
@@ -1018,11 +1018,11 @@ async function loadLinkedAssociatedMediaEntries(data: any): Promise<AssociatedMe
       const schemaUrl = itemData['schema:url']?.[0]?.['@id'];
       if (schemaUrl && isValidYouTubeUrl(schemaUrl)) return schemaUrl;
       if (biboUri && isValidYouTubeUrl(biboUri)) return biboUri;
-    } catch (err) {
+            } catch (err) {
       console.error(`Erreur chargement item média ${itemId}:`, err);
-    }
-    return null;
-  });
+          }
+          return null;
+        });
 
   const linkedMediaUrls = await Promise.all(linkedMediaPromises);
   return linkedMediaUrls.filter(Boolean).map((url) => ({ url: url as string }));
@@ -1064,28 +1064,28 @@ const resolveResourceThumbnailUrl = async (resourceData: any): Promise<string | 
   if (ytFromSchema) return ytFromSchema;
 
   if (resourceData['o:thumbnail']?.['o:id']) {
-    try {
-      const thumbRes = await fetchWithRetry(`${API_BASE}media/${resourceData['o:thumbnail']['o:id']}`, 1, 300);
-      if (thumbRes && thumbRes.ok) {
-        const thumbData = await thumbRes.json();
+              try {
+                const thumbRes = await fetchWithRetry(`${API_BASE}media/${resourceData['o:thumbnail']['o:id']}`, 1, 300);
+                if (thumbRes && thumbRes.ok) {
+                  const thumbData = await thumbRes.json();
         return pickOmekaMediaThumbnail(thumbData);
-      }
-    } catch (e) {
-      console.error('Erreur chargement thumbnail:', e);
-    }
-  }
+                }
+              } catch (e) {
+                console.error('Erreur chargement thumbnail:', e);
+              }
+            }
 
   if (resourceData['o:media']?.[0]?.['o:id']) {
-    try {
-      const mediaRes = await fetchWithRetry(`${API_BASE}media/${resourceData['o:media'][0]['o:id']}`, 1, 300);
-      if (mediaRes && mediaRes.ok) {
-        const mediaData = await mediaRes.json();
+              try {
+                const mediaRes = await fetchWithRetry(`${API_BASE}media/${resourceData['o:media'][0]['o:id']}`, 1, 300);
+                if (mediaRes && mediaRes.ok) {
+                  const mediaData = await mediaRes.json();
         return pickOmekaMediaThumbnail(mediaData);
-      }
-    } catch (e) {
-      console.error('Erreur chargement média:', e);
-    }
-  }
+                }
+              } catch (e) {
+                console.error('Erreur chargement média:', e);
+              }
+            }
 
   return undefined;
 };
@@ -1126,18 +1126,18 @@ const cacheLinkedOmekaResource = async (
       resourceData['o:title'] || `${firstname} ${lastname}`.trim() || getResourceFallbackTitle(resourceId, templateId);
     const externalUrl = extractExternalUrlFromOmekaItem(resourceData);
 
-    resourceCache[resourceId] = {
-      id: resourceId,
+            resourceCache[resourceId] = {
+              id: resourceId,
       title: displayTitle,
       name: displayTitle,
-      firstname,
-      lastname,
-      picture: thumbnailUrl,
-      thumbnail: thumbnailUrl,
-      thumbnailUrl,
+              firstname,
+              lastname,
+              picture: thumbnailUrl,
+              thumbnail: thumbnailUrl,
+              thumbnailUrl,
       class: templateId,
-      template: templateId,
-      resource_template_id: templateId,
+              template: templateId,
+              resource_template_id: templateId,
       type: resourceType,
       creator: extractCreators(resourceData),
       date: resourceData['dcterms:date']?.[0]?.['@value'] || null,
@@ -1167,7 +1167,7 @@ const cacheLinkedOmekaResource = async (
         resourceCache[resourceId].actants = contributorIds.map((id) => resourceCache[id]).filter(Boolean);
       }
     }
-  } catch (err) {
+          } catch (err) {
     console.error(`Erreur chargement ressource ${resourceId}:`, err);
   }
 };
@@ -1212,23 +1212,23 @@ const applyEnrichedLinkedProperties = (enrichedData: any, data: any, resourceCac
 const loadKeywordsFromData = async (data: any, config: SimplifiedDetailConfig): Promise<any[]> => {
   if (!config.showKeywords || !data['jdc:hasConcept']) return [];
 
-  const ids = getResourceIds(data, 'jdc:hasConcept').slice(0, 15);
-  const keywordPromises = ids.map(async (kidId) => {
-    try {
-      const res = await fetchWithRetry(`${API_BASE}items/${kidId}`, 1, 300);
-      if (res && res.ok) {
-        const kw = await res.json();
-        return {
-          id: kw['o:id'],
-          title: kw['o:title'],
-          short_resume: kw['dcterms:description']?.[0]?.['@value'] || '',
-        };
-      }
-    } catch (err) {
-      console.error(`Erreur chargement keyword ${kidId}:`, err);
-    }
-    return null;
-  });
+        const ids = getResourceIds(data, 'jdc:hasConcept').slice(0, 15);
+        const keywordPromises = ids.map(async (kidId) => {
+          try {
+            const res = await fetchWithRetry(`${API_BASE}items/${kidId}`, 1, 300);
+            if (res && res.ok) {
+              const kw = await res.json();
+              return {
+                id: kw['o:id'],
+                title: kw['o:title'],
+                short_resume: kw['dcterms:description']?.[0]?.['@value'] || '',
+              };
+            }
+          } catch (err) {
+            console.error(`Erreur chargement keyword ${kidId}:`, err);
+          }
+          return null;
+        });
 
   return (await Promise.all(keywordPromises)).filter(Boolean);
 };
@@ -1238,23 +1238,23 @@ const applyCombinedFieldProperties = (
   data: any,
   fieldSourceProperties: Record<string, string[]>,
 ) => {
-  Object.entries(fieldSourceProperties).forEach(([, sourceProperties]) => {
-    const allResourceIds: number[] = [];
-    sourceProperties.forEach((prop: string) => {
-      const ids = getResourceIds(data, prop);
-      allResourceIds.push(...ids);
-    });
+      Object.entries(fieldSourceProperties).forEach(([, sourceProperties]) => {
+        const allResourceIds: number[] = [];
+        sourceProperties.forEach((prop: string) => {
+          const ids = getResourceIds(data, prop);
+          allResourceIds.push(...ids);
+        });
 
-    const uniqueIds = [...new Set(allResourceIds)];
-    if (uniqueIds.length > 0) {
-      const combinedValues = uniqueIds.map((id) => ({
-        type: 'resource',
-        value_resource_id: id,
-      }));
-      const mainProperty = sourceProperties[0];
-      enrichedData[mainProperty] = combinedValues;
-    }
-  });
+        const uniqueIds = [...new Set(allResourceIds)];
+        if (uniqueIds.length > 0) {
+          const combinedValues = uniqueIds.map((id) => ({
+            type: 'resource',
+            value_resource_id: id,
+          }));
+          const mainProperty = sourceProperties[0];
+          enrichedData[mainProperty] = combinedValues;
+        }
+      });
 };
 
 /** Micro-résumés / citations via Item Page. */
@@ -1333,11 +1333,11 @@ const createProgressiveOmekaDataFetcher = (config: SimplifiedDetailConfig, field
       if (hasMicroresumesView && itemPageViews?.microResumes) enrichedData.microResumes = itemPageViews.microResumes;
       if (hasCitationsView && itemPageViews?.citations) enrichedData.citations = itemPageViews.citations;
 
-      onProgress({
-        itemDetails: enrichedData,
-        viewData: { rawData: data, resourceCache },
+        onProgress({
+          itemDetails: enrichedData,
+          viewData: { rawData: data, resourceCache },
         keywords,
-      });
+        });
 
       return {
         itemDetails: enrichedData,
@@ -1577,7 +1577,7 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
 
           const items = resourceIds
             .map((id) => {
-              const cached = resourceCache[id];
+            const cached = resourceCache[id];
               const update = updatedResources?.[String(id)];
               const formItem = formDataItems.find((item) => String(getLinkedResourceId(item)) === String(id));
 
@@ -1587,8 +1587,8 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
 
               const cachedTemplateId = cached?.resource_template_id || cached?.template || cached?.class || view.resourceTemplateId;
               const cachedTitle = cached?.title?.startsWith('Item #') ? undefined : cached?.title;
-              return {
-                id,
+            return {
+              id,
                 title:
                   update?.title ||
                   (formItem ? getLinkedResourceTitle(formItem, view.resourceTemplateId) : undefined) ||
@@ -1892,21 +1892,21 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                               {displayValues.map((value, index) => (
                                 <div key={index} className='flex gap-2 items-center'>
                                   <div className='flex-1 min-w-0'>
-                                    <AutoResizingField
+                                  <AutoResizingField
                                       textareaProps={getAutoResizeTextareaProps({ size: 'sm' })}
-                                      value={value}
-                                      onChange={(e) => {
+                                    value={value}
+                                    onChange={(e) => {
                                         if (allowMultiple) {
-                                          const newValues = [...displayValues];
-                                          newValues[index] = e.target.value;
-                                          onItemsChange?.(subcategory.property, newValues);
+                                      const newValues = [...displayValues];
+                                      newValues[index] = e.target.value;
+                                      onItemsChange?.(subcategory.property, newValues);
                                         } else {
                                           onItemsChange?.(subcategory.property, [e.target.value]);
                                         }
-                                      }}
-                                      placeholder={`Saisissez ${subcategory.label.toLowerCase()}...`}
-                                      isReadOnly={false}
-                                    />
+                                    }}
+                                    placeholder={`Saisissez ${subcategory.label.toLowerCase()}...`}
+                                    isReadOnly={false}
+                                  />
                                   </div>
                                   {allowMultiple && (displayValues.length > 1 || value.trim() !== '') && (
                                     <button
@@ -1928,8 +1928,8 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
                                   type='button'
                                   className={`w-fit ${outlineButtonClass}`}
                                   onClick={() => {
-                                    onItemsChange?.(subcategory.property, [...displayValues, '']);
-                                  }}>
+                                  onItemsChange?.(subcategory.property, [...displayValues, '']);
+                                }}>
                                   <AddIcon size={14} className='text-c4' />
                                   {formatEditAddButtonLabel(subcategory.label)}
                                 </button>
@@ -2158,7 +2158,7 @@ export const convertToGenericConfig = (config: SimplifiedDetailConfig): GenericD
             item.picture ||
             null;
           return {
-            id: item.id || item['o:id'],
+          id: item.id || item['o:id'],
             title: item.title || item.name || item['o:title'] || item['dcterms:title']?.[0]?.['@value'],
             type: item.type || config.recommendationType,
             url: item.url ?? item.externalLink ?? item.uri ?? null,
@@ -2626,8 +2626,8 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
           const propertyId =
           vocabPropertyIds[omekaProperty] ??
           (await resolveOmekaPropertyId(omekaProperty, propMap, updatedItem));
-          if (!propertyId) {
-            console.warn(`[handleSave] Property ID non trouvé pour: ${omekaProperty} (clé: ${key})`);
+        if (!propertyId) {
+          console.warn(`[handleSave] Property ID non trouvé pour: ${omekaProperty} (clé: ${key})`);
             continue;
           }
 
@@ -2750,29 +2750,29 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
           console.warn('[handleSave] Erreurs médias:', mediaErrors);
         }
       } else {
-        const mediaErrors: string[] = [];
+      const mediaErrors: string[] = [];
 
-        if (data.mediaToDelete && Array.isArray(data.mediaToDelete)) {
-          for (const mediaId of data.mediaToDelete) {
-            const deleted = await deleteMedia(mediaId);
-            if (!deleted) {
-              mediaErrors.push(`Erreur suppression média #${mediaId}`);
+      if (data.mediaToDelete && Array.isArray(data.mediaToDelete)) {
+        for (const mediaId of data.mediaToDelete) {
+          const deleted = await deleteMedia(mediaId);
+          if (!deleted) {
+            mediaErrors.push(`Erreur suppression média #${mediaId}`);
+          }
+        }
+      }
+
+      const mediaFilesToUpload = data.mediaFiles || data.newMediaFiles || [];
+      if (Array.isArray(mediaFilesToUpload) && mediaFilesToUpload.length > 0) {
+        for (const file of mediaFilesToUpload) {
+          const actualFile = file.file || file;
+          if (actualFile instanceof File) {
+            const uploaded = await uploadMedia(actualFile, String(itemId));
+            if (!uploaded) {
+              mediaErrors.push(`Erreur upload ${actualFile.name}`);
             }
           }
         }
-
-        const mediaFilesToUpload = data.mediaFiles || data.newMediaFiles || [];
-        if (Array.isArray(mediaFilesToUpload) && mediaFilesToUpload.length > 0) {
-          for (const file of mediaFilesToUpload) {
-            const actualFile = file.file || file;
-            if (actualFile instanceof File) {
-              const uploaded = await uploadMedia(actualFile, String(itemId));
-              if (!uploaded) {
-                mediaErrors.push(`Erreur upload ${actualFile.name}`);
-              }
-            }
-          }
-        }
+      }
 
         const youtubeUrlsToCreate: string[] = data.youtubeUrls || [];
         for (const ytUrl of youtubeUrlsToCreate) {
@@ -2782,9 +2782,9 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
           }
         }
 
-        if (mediaErrors.length > 0) {
-          console.warn('[handleSave] Erreurs médias:', mediaErrors);
-        }
+      if (mediaErrors.length > 0) {
+        console.warn('[handleSave] Erreurs médias:', mediaErrors);
+      }
       }
 
       invalidateItemPageCache(itemId);
