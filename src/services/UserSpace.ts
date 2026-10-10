@@ -6,9 +6,19 @@
 import { TEMPLATE_ID_TO_TYPE, filterMonEspaceResources, getCascadeDeleteWithParentTemplateIds, isParentLinkedOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
 import { getYouTubeThumbnail, isOmekaPlaceholderThumbnail, resolveOmekaThumbnail } from '@/lib/resourceUtils';
 import { ApiProxy } from '@/services/ApiProxy';
-import { omekaApiUrl, OMEKA_API_BASE } from '@/utils/omekaApi';
+import { edisemHelperAjaxUrl, omekaApiUrl, OMEKA_API_BASE } from '@/utils/omekaApi';
 
-const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=UserSpace';
+function userSpaceUrl(params: Record<string, string | number | undefined> | URLSearchParams): string {
+  const flat: Record<string, string | number | undefined> = {};
+  if (params instanceof URLSearchParams) {
+    params.forEach((value, key) => {
+      flat[key] = value;
+    });
+  } else {
+    Object.assign(flat, params);
+  }
+  return edisemHelperAjaxUrl('UserSpace', flat);
+}
 
 /** Propriétés Omeka susceptibles de contenir une URL vidéo ou image */
 const MEDIA_URL_PROPERTIES = [
@@ -223,7 +233,7 @@ export interface Student {
  */
 export async function getAllStudentResources(): Promise<AllStudentResources> {
   try {
-    const response = await fetch(`${API_BASE}&action=getAllResources&json=1`);
+    const response = await fetch(userSpaceUrl({ action: 'getAllResources', json: '1' }));
 
     if (!response.ok) {
       throw new Error('Erreur lors de la récupération des ressources');
@@ -532,7 +542,7 @@ async function fetchRecentUserResourcesFromApi(ownerId: number, limit = 5): Prom
     limit: String(limit),
     json: '1',
   });
-  const response = await fetch(`${API_BASE}&${params.toString()}`);
+  const response = await fetch(userSpaceUrl(params));
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération des ressources récentes');
   }
@@ -551,7 +561,7 @@ async function fetchAllUserResourcesFromApi(ownerId: number): Promise<StudentRes
     ownerId: String(ownerId),
     json: '1',
   });
-  const response = await fetch(`${API_BASE}&${params.toString()}`);
+  const response = await fetch(userSpaceUrl(params));
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération des ressources utilisateur');
   }
@@ -744,7 +754,7 @@ export async function getUserResources(userId: number, omekaUserId?: number | nu
       params.set('ownerId', String(omekaUserId));
     }
 
-    const response = await fetch(`${API_BASE}&${params.toString()}`);
+    const response = await fetch(userSpaceUrl(params));
 
     if (!response.ok) {
       throw new Error('Erreur lors de la récupération des ressources utilisateur');
@@ -767,7 +777,7 @@ function normalizeLegacyResourceCards(cards: StudentResourceCard[]): StudentReso
  */
 export async function getStudentExperimentations(): Promise<StudentResourceCard[]> {
   try {
-    const response = await fetch(`${API_BASE}&action=getExperimentations&json=1`);
+    const response = await fetch(userSpaceUrl({ action: 'getExperimentations', json: '1' }));
 
     if (!response.ok) {
       throw new Error('Erreur lors de la récupération des expérimentations');
@@ -785,7 +795,7 @@ export async function getStudentExperimentations(): Promise<StudentResourceCard[
  */
 export async function getStudentTools(): Promise<StudentResourceCard[]> {
   try {
-    const response = await fetch(`${API_BASE}&action=getTools&json=1`);
+    const response = await fetch(userSpaceUrl({ action: 'getTools', json: '1' }));
 
     if (!response.ok) {
       throw new Error('Erreur lors de la récupération des outils');
@@ -803,7 +813,7 @@ export async function getStudentTools(): Promise<StudentResourceCard[]> {
  */
 export async function getStudentFeedbacks(): Promise<StudentResourceCard[]> {
   try {
-    const response = await fetch(`${API_BASE}&action=getFeedbacks&json=1`);
+    const response = await fetch(userSpaceUrl({ action: 'getFeedbacks', json: '1' }));
 
     if (!response.ok) {
       throw new Error('Erreur lors de la récupération des feedbacks');
@@ -824,7 +834,7 @@ export async function getStudentTemplateProperties(templateId: number): Promise<
   properties: TemplateProperty[];
 }> {
   try {
-    const response = await fetch(`${API_BASE}&action=getTemplateProperties&templateId=${templateId}&json=1`);
+    const response = await fetch(userSpaceUrl({ action: 'getTemplateProperties', templateId, json: '1' }));
 
     if (!response.ok) {
       throw new Error('Erreur lors de la récupération des propriétés');
@@ -843,7 +853,7 @@ export async function getStudentTemplateProperties(templateId: number): Promise<
  */
 export async function getStudentsForLogin(): Promise<Student[]> {
   try {
-    const response = await fetch(`${API_BASE}&action=getStudents&json=1`);
+    const response = await fetch(userSpaceUrl({ action: 'getStudents', json: '1' }));
 
     if (!response.ok) {
       throw new Error('Erreur lors de la récupération des étudiants');
@@ -891,7 +901,7 @@ export interface CourseFormData {
  */
 export async function getCourses(): Promise<Course[]> {
   try {
-    const response = await fetch(`${API_BASE}&action=getCourses&json=1`);
+    const response = await fetch(userSpaceUrl({ action: 'getCourses', json: '1' }));
 
     if (!response.ok) {
       throw new Error('Erreur lors de la récupération des cours');
@@ -917,7 +927,7 @@ export async function createCourse(data: CourseFormData): Promise<{ success: boo
     year: data.year || '',
   });
 
-  const response = await fetch(`${API_BASE}&action=createCourse&json=1&${params.toString()}`);
+  const response = await fetch(userSpaceUrl({ action: 'createCourse', json: '1', ...Object.fromEntries(params) }));
   const result = await response.json();
 
   if (result.error) {
@@ -940,7 +950,7 @@ export async function updateCourse(id: number, data: Partial<CourseFormData>): P
   if (data.session !== undefined) params.append('session', data.session);
   if (data.year !== undefined) params.append('year', data.year);
 
-  const response = await fetch(`${API_BASE}&action=updateCourse&json=1&${params.toString()}`);
+  const response = await fetch(userSpaceUrl({ action: 'updateCourse', json: '1', ...Object.fromEntries(params) }));
   const result = await response.json();
 
   if (result.error) {
@@ -954,7 +964,7 @@ export async function updateCourse(id: number, data: Partial<CourseFormData>): P
  * Supprimer un cours
  */
 export async function deleteCourse(id: number): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}&action=deleteCourse&id=${id}&json=1`);
+  const response = await fetch(userSpaceUrl({ action: 'deleteCourse', id, json: '1' }));
   const result = await response.json();
 
   if (result.error) {
@@ -1085,7 +1095,7 @@ export async function deleteUserResource(id: string | number): Promise<{ success
  * Inscrire un étudiant à un cours
  */
 export async function enrollStudent(studentId: number, courseId: number): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}&action=enrollStudent&studentId=${studentId}&courseId=${courseId}&json=1`);
+  const response = await fetch(userSpaceUrl({ action: 'enrollStudent', studentId, courseId, json: '1' }));
   const result = await response.json();
 
   if (result.error) {
@@ -1099,7 +1109,7 @@ export async function enrollStudent(studentId: number, courseId: number): Promis
  * Désinscrire un étudiant d'un cours
  */
 export async function unenrollStudent(studentId: number, courseId: number): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}&action=unenrollStudent&studentId=${studentId}&courseId=${courseId}&json=1`);
+  const response = await fetch(userSpaceUrl({ action: 'unenrollStudent', studentId, courseId, json: '1' }));
   const result = await response.json();
 
   if (result.error) {
@@ -1113,7 +1123,7 @@ export async function unenrollStudent(studentId: number, courseId: number): Prom
  * Récupérer les cours d'un étudiant
  */
 export async function getStudentCourses(studentId: number): Promise<Course[]> {
-  const response = await fetch(`${API_BASE}&action=getStudentCourses&studentId=${studentId}&json=1`);
+  const response = await fetch(userSpaceUrl({ action: 'getStudentCourses', studentId, json: '1' }));
   const result = await response.json();
 
   if (result.error) {
@@ -1127,7 +1137,7 @@ export async function getStudentCourses(studentId: number): Promise<Course[]> {
  * Récupérer les étudiants d'un cours
  */
 export async function getCourseStudents(courseId: number): Promise<Student[]> {
-  const response = await fetch(`${API_BASE}&action=getCourseStudents&courseId=${courseId}&json=1`);
+  const response = await fetch(userSpaceUrl({ action: 'getCourseStudents', courseId, json: '1' }));
   const result = await response.json();
 
   if (result.error) {
@@ -1141,7 +1151,7 @@ export async function getCourseStudents(courseId: number): Promise<Student[]> {
  * Récupérer les ressources filtrées par cours
  */
 export async function getResourcesByCourse(courseId: number): Promise<AllStudentResources> {
-  const response = await fetch(`${API_BASE}&action=getResourcesByCourse&courseId=${courseId}&json=1`);
+  const response = await fetch(userSpaceUrl({ action: 'getResourcesByCourse', courseId, json: '1' }));
   const result = await response.json();
 
   if (result.error) {
@@ -1156,7 +1166,9 @@ export async function getResourcesByCourse(courseId: number): Promise<AllStudent
  * Pour les recommandations "Expérimentations similaires"
  */
 export async function getSameCourseExperimentations(experimentationId: number, limit: number = 4): Promise<StudentResourceCard[]> {
-  const response = await fetch(`${API_BASE}&action=getSameCourseExperimentations&experimentationId=${experimentationId}&limit=${limit}&json=1`);
+  const response = await fetch(
+    userSpaceUrl({ action: 'getSameCourseExperimentations', experimentationId, limit, json: '1' }),
+  );
   const result = await response.json();
 
   if (result.error) {
@@ -1253,12 +1265,7 @@ export async function saveResearch(title: string, filterGroups: any, imageDataUr
     ],
   };
 
-  // Utiliser les credentials depuis les variables d'environnement
-  const API_KEY = import.meta.env.VITE_API_KEY;
-  const API_IDENT = 'NUO2yCjiugeH7XbqwUcKskhE8kXg0rUj';
-  const createUrl = `https://tests.arcanes.ca/omk/api/items?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
-
-  const response = await fetch(createUrl, {
+  const response = await fetch(omekaApiUrl(`${OMEKA_API_BASE}items`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(itemData),
@@ -1291,8 +1298,7 @@ export async function saveResearch(title: string, filterGroups: any, imageDataUr
       );
       formData.append('file[0]', imageFile);
 
-      const mediaUrl = `https://tests.arcanes.ca/omk/api/media?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
-      const mediaResponse = await fetch(mediaUrl, {
+      const mediaResponse = await fetch(omekaApiUrl(`${OMEKA_API_BASE}media`), {
         method: 'POST',
         body: formData,
       });
@@ -1320,12 +1326,12 @@ export async function getUserSavedResearches(): Promise<SavedResearch[]> {
     return [];
   }
 
-  const API_KEY = import.meta.env.VITE_API_KEY;
-  const API_IDENT = 'NUO2yCjiugeH7XbqwUcKskhE8kXg0rUj';
-  const url = `https://tests.arcanes.ca/omk/api/items?resource_template_id=${RESEARCH_TEMPLATE_ID}&owner_id=${omekaUserId}&key_identity=${API_IDENT}&key_credential=${API_KEY}`;
-
   try {
-    const response = await fetch(url);
+    const response = await fetch(
+      omekaApiUrl(
+        `${OMEKA_API_BASE}items?resource_template_id=${RESEARCH_TEMPLATE_ID}&owner_id=${omekaUserId}`,
+      ),
+    );
     if (!response.ok) {
       console.error('Erreur récupération recherches:', response.statusText);
       return [];
@@ -1350,11 +1356,7 @@ export async function getUserSavedResearches(): Promise<SavedResearch[]> {
  * Supprime une recherche sauvegardée
  */
 export async function deleteResearch(id: number): Promise<{ success: boolean }> {
-  const API_KEY = import.meta.env.VITE_API_KEY;
-  const API_IDENT = 'NUO2yCjiugeH7XbqwUcKskhE8kXg0rUj';
-  const url = `https://tests.arcanes.ca/omk/api/items/${id}?key_identity=${API_IDENT}&key_credential=${API_KEY}`;
-
-  const response = await fetch(url, { method: 'DELETE' });
+  const response = await fetch(omekaApiUrl(`${OMEKA_API_BASE}items/${id}`), { method: 'DELETE' });
 
   if (!response.ok) {
     throw new Error('Erreur lors de la suppression de la recherche');
@@ -1388,7 +1390,7 @@ export interface Actant {
  */
 export async function getActantsForLogin(): Promise<Actant[]> {
   try {
-    const response = await fetch(`${API_BASE}&action=getActants&json=1`);
+    const response = await fetch(userSpaceUrl({ action: 'getActants', json: '1' }));
 
     if (!response.ok) {
       throw new Error('Erreur lors de la récupération des actants');
@@ -1405,7 +1407,7 @@ export async function getActantsForLogin(): Promise<Actant[]> {
  * Lier un actant (item) à un utilisateur Omeka S
  */
 export async function linkActantToUser(actantId: number, userId: number): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}&action=linkActantToUser&actantId=${actantId}&userId=${userId}&json=1`, {
+  const response = await fetch(userSpaceUrl({ action: 'linkActantToUser', actantId, userId, json: '1' }), {
     method: 'POST',
   });
   const result = await response.json();
@@ -1433,7 +1435,7 @@ export async function createOmekaUserForActant(
     role,
   });
 
-  const response = await fetch(`${API_BASE}&action=createOmekaUserForActant&json=1&${params.toString()}`, {
+  const response = await fetch(userSpaceUrl({ action: 'createOmekaUserForActant', json: '1', ...Object.fromEntries(params) }), {
     method: 'POST',
   });
   const result = await response.json();
@@ -1454,7 +1456,7 @@ export async function deleteActant(actantId: number, deleteUser: boolean = false
     deleteUser: String(deleteUser),
   });
 
-  const response = await fetch(`${API_BASE}&action=deleteActant&json=1&${params.toString()}`, {
+  const response = await fetch(userSpaceUrl({ action: 'deleteActant', json: '1', ...Object.fromEntries(params) }), {
     method: 'POST',
   });
   const result = await response.json();
@@ -1480,7 +1482,7 @@ export async function createActantWithUser(
     role,
   });
 
-  const response = await fetch(`${API_BASE}&action=createActantWithUser&json=1&${params.toString()}`, {
+  const response = await fetch(userSpaceUrl({ action: 'createActantWithUser', json: '1', ...Object.fromEntries(params) }), {
     method: 'POST',
   });
   const result = await response.json();
@@ -1497,7 +1499,7 @@ export async function createActantWithUser(
  */
 export async function getTeacherResources(): Promise<AllStudentResources> {
   try {
-    const response = await fetch(`${API_BASE}&action=getTeacherResources&json=1`);
+    const response = await fetch(userSpaceUrl({ action: 'getTeacherResources', json: '1' }));
 
     if (!response.ok) {
       throw new Error('Erreur lors de la récupération des ressources enseignantes');
@@ -1524,7 +1526,7 @@ export async function fetchLinkingExportCatalog(): Promise<LinkingExportRow[]> {
     action: 'getLinkingExportCatalog',
     json: '1',
   });
-  const response = await fetch(`${API_BASE}&${params.toString()}`, { credentials: 'include' });
+  const response = await fetch(userSpaceUrl(params), { credentials: 'include' });
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération du catalogue');
   }

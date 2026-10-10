@@ -1,4 +1,5 @@
 import { ApiProxy } from './ApiProxy';
+import { OMEKA_API_BASE } from '@/utils/omekaApi';
 
 /**
  * Omk.ts
@@ -14,7 +15,7 @@ export class Omk {
   public rts: any[];
 
   constructor(params: { api?: string; vocabs?: string[] } = {}) {
-    this.api = params.api || 'https://tests.arcanes.ca/omk/api/';
+    this.api = params.api || OMEKA_API_BASE;
     this.vocabs = params.vocabs || ['dcterms', 'foaf', 'fup8', 'bibo'];
     this.props = [];
     this.classes = [];

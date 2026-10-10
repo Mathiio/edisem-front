@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { getCoverageMatrix, getKeywordsByType, CoverageMatrixData, TypeKeywordsData } from '@/services/Analytics';
 import { Skeleton, Modal, ModalContent, ModalHeader, ModalBody } from '@heroui/react';
 import { Grid3X3, AlertTriangle, BarChart3, Eye, Info } from 'lucide-react';
+import { AnalyticsViewHeader } from './AnalyticsViewHeader';
+import { CoverageMatrixViewSkeleton } from './AnalyticsViewSkeletons';
 import { ViewLoader } from './ViewLoader';
 
 // Fonction pour calculer le style en fonction du count
@@ -126,17 +128,23 @@ export const CoverageMatrix: React.FC<CoverageMatrixProps> = ({ onGapClick, topK
   }, [filteredMatrix]);
 
   return (
-    <ViewLoader
-      isLoading={isLoading}
-      error={error}
-      isEmpty={!data || data.keywords.length === 0}
-      icon={<Grid3X3 />}
-      title='Aucune donnée'
-      emptyMessage='Aucune donnée de couverture disponible.'
-      loadingMessage='Chargement de la matrice...'>
-      <div className='flex-1 w-full h-full bg-c1 overflow-hidden flex flex-col'>
-        {/* Contenu principal */}
-        <div className='flex-1 flex overflow-hidden p-6'>
+    <div className='flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden'>
+      <AnalyticsViewHeader
+        title='Matrice de couverture'
+        description='Croisement des types de ressources et des mots-clés les plus fréquents.'
+        icon={<Grid3X3 size={18} />}
+      />
+      <ViewLoader
+        isLoading={isLoading}
+        error={error}
+        isEmpty={!data || data.keywords.length === 0}
+        icon={<Grid3X3 />}
+        title='Aucune donnée'
+        emptyMessage='Aucune donnée de couverture disponible.'
+        loadingSkeleton={<CoverageMatrixViewSkeleton />}>
+        <div className='flex h-full w-full flex-1 flex-col overflow-hidden bg-c1'>
+          {/* Contenu principal */}
+          <div className='flex min-h-0 flex-1 overflow-hidden py-6'>
           {/* Matrice */}
           <div ref={scrollContainerRef} className='w-fit max-w-full overflow-auto rounded-lg border-2 border-c3 ' style={{ scrollbarGutter: 'stable' }}>
             <div className='w-fit flex flex-col  rounded-lg'>
@@ -204,7 +212,7 @@ export const CoverageMatrix: React.FC<CoverageMatrixProps> = ({ onGapClick, topK
               ))}
             </div>
           </div>
-        </div>
+          </div>
 
         {/* Modal de détails du type */}
         <Modal
@@ -321,7 +329,7 @@ export const CoverageMatrix: React.FC<CoverageMatrixProps> = ({ onGapClick, topK
         </Modal>
 
         {/* Footer avec légende et infos hover */}
-        <div className='px-6 py-6 border-t border-c3 flex items-center justify-between bg-c2/50'>
+        <div className='flex items-center justify-between border-t-2 border-c3 bg-c2/50 px-6 py-5'>
           {hoveredCell ? (
             <span className='text-base'>
               <span className='text-c6 font-medium'>{hoveredCell.typeLabel}</span>
@@ -347,8 +355,9 @@ export const CoverageMatrix: React.FC<CoverageMatrixProps> = ({ onGapClick, topK
             ))}
           </div>
         </div>
-      </div>
-    </ViewLoader>
+        </div>
+      </ViewLoader>
+    </div>
   );
 };
 

@@ -1,6 +1,9 @@
 import { UserData, SESSION_EXPIRED_EVENT } from '@/hooks/useAuth';
 
-const AUTH_URL = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=ActantAuth';
+import { edisemHelperAjaxUrl } from '@/utils/omekaApi';
+
+const actantAuthUrl = (params: Record<string, string | number | undefined>) =>
+  edisemHelperAjaxUrl('ActantAuth', { json: '1', ...params });
 
 export interface LoginResponse {
   success: boolean;
@@ -51,7 +54,7 @@ export const AuthService = {
     }
 
     try {
-      const response = await fetch(`${AUTH_URL}&action=${action}&json=1`, {
+      const response = await fetch(actantAuthUrl({ action }), {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: params.toString(),
@@ -73,7 +76,7 @@ export const AuthService = {
 
   async checkEmail(email: string): Promise<{ success: boolean; exists: boolean; hasUser: boolean; actantItemId?: number; error?: string }> {
     try {
-      const response = await fetch(`${AUTH_URL}&action=checkEmail&email=${encodeURIComponent(email)}&json=1`, {
+      const response = await fetch(actantAuthUrl({ action: 'checkEmail', email }), {
         method: 'GET',
         credentials: 'include',
       });
@@ -92,7 +95,7 @@ export const AuthService = {
     params.append('confirmPassword', confirmPassword);
 
     try {
-      const response = await fetch(`${AUTH_URL}&action=register&json=1`, {
+      const response = await fetch(actantAuthUrl({ action: 'register' }), {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: params.toString(),
@@ -113,7 +116,7 @@ export const AuthService = {
 
   async me(): Promise<LoginResponse> {
     try {
-      const response = await fetch(`${AUTH_URL}&action=me&json=1`, {
+      const response = await fetch(actantAuthUrl({ action: 'me' }), {
         credentials: 'include',
       });
       const data = await response.json();

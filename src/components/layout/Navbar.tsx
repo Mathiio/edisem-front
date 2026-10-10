@@ -9,6 +9,11 @@ import {
   CorpusMegaMenuTrigger,
   useCorpusMegaMenu,
 } from '@/components/layout/CorpusMegaMenu';
+import {
+  DatavisMegaMenuPanel,
+  DatavisMegaMenuTrigger,
+  useDatavisMegaMenu,
+} from '@/components/layout/DatavisMegaMenu';
 
 interface NavbarProps {
   onReady?: () => void;
@@ -22,14 +27,27 @@ export const Navbar: React.FC<NavbarProps> = ({ onReady }) => {
   const searchModalRef = useRef<SearchModalRef>(null);
   const location = useLocation();
   const hasNotifiedReady = useRef(false);
-  const { isOpen, isClosing, openMenu, closeMenu, closeImmediately } = useCorpusMegaMenu();
+  const corpusMenu = useCorpusMegaMenu();
+  const datavisMenu = useDatavisMegaMenu();
 
   const isActive = useMemo(() => (path: string) => location.pathname === path, [location.pathname]);
   const isCorpusPathValue = useMemo(() => location.pathname.startsWith('/corpus'), [location.pathname]);
+  const isDatavisPathValue = useMemo(() => location.pathname.startsWith('/visualisation'), [location.pathname]);
 
   useEffect(() => {
-    closeImmediately();
-  }, [location.pathname, closeImmediately]);
+    corpusMenu.closeImmediately();
+    datavisMenu.closeImmediately();
+  }, [location.pathname, corpusMenu.closeImmediately, datavisMenu.closeImmediately]);
+
+  const openCorpusMenu = () => {
+    datavisMenu.closeImmediately();
+    corpusMenu.openMenu();
+  };
+
+  const openDatavisMenu = () => {
+    corpusMenu.closeImmediately();
+    datavisMenu.openMenu();
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -109,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onReady }) => {
       <nav
         className={`sticky top-0 left-0 right-0 z-30 transition-all duration-300 relative ${
           hasScrolled ? 'bg-c1/90 backdrop-blur-sm shadow-lg' : 'bg-transparent'
-        } ${isOpen ? 'bg-c1 shadow-lg' : ''}`}>
+        } ${corpusMenu.isOpen || datavisMenu.isOpen ? 'bg-c1 shadow-lg' : ''}`}>
         <div className='max-w-screen-2xl mx-auto px-5 pt-4'>
           <div className='relative'>
             <div className='flex items-center justify-between pb-4'>
@@ -120,22 +138,28 @@ export const Navbar: React.FC<NavbarProps> = ({ onReady }) => {
 
               <div className='flex items-center gap-2.5'>
                 <CorpusMegaMenuTrigger
-                  isOpen={isOpen}
+                  isOpen={corpusMenu.isOpen}
                   isCorpusActive={isCorpusPathValue}
                   linkBaseClass={linkBaseClass}
                   activeClass={activeClass}
                   hoverClass={hoverClass}
-                  onMouseEnter={openMenu}
-                  onMouseLeave={closeMenu}
+                  onMouseEnter={openCorpusMenu}
+                  onMouseLeave={corpusMenu.closeMenu}
                 />
 
                 <Link to='/intervenants' className={`${linkBaseClass} ${isActive('/intervenants') ? activeClass : hoverClass}`}>
                   Intervenants
                 </Link>
 
-                <Link to='/visualisation' className={`${linkBaseClass} ${isActive('/visualisation') ? activeClass : hoverClass}`}>
-                  Datavisualisation
-                </Link>
+                <DatavisMegaMenuTrigger
+                  isOpen={datavisMenu.isOpen}
+                  isDatavisActive={isDatavisPathValue}
+                  linkBaseClass={linkBaseClass}
+                  activeClass={activeClass}
+                  hoverClass={hoverClass}
+                  onMouseEnter={openDatavisMenu}
+                  onMouseLeave={datavisMenu.closeMenu}
+                />
                 <Link to='/espace-etudiant' className={`${linkBaseClass} ${isActive('/espace-etudiant') ? activeClass : hoverClass}`}>
                   Espace étudiant
                 </Link>
@@ -148,14 +172,22 @@ export const Navbar: React.FC<NavbarProps> = ({ onReady }) => {
             </div>
 
             <CorpusMegaMenuPanel
-              isOpen={isOpen}
-              isClosing={isClosing}
+              isOpen={corpusMenu.isOpen}
+              isClosing={corpusMenu.isClosing}
               seminarEditions={seminarEditions}
               colloqueEditions={colloqueEditions}
               studyDayEditions={studyDayEditions}
-              onMouseEnter={openMenu}
-              onMouseLeave={closeMenu}
-              onClose={closeImmediately}
+              onMouseEnter={openCorpusMenu}
+              onMouseLeave={corpusMenu.closeMenu}
+              onClose={corpusMenu.closeImmediately}
+            />
+
+            <DatavisMegaMenuPanel
+              isOpen={datavisMenu.isOpen}
+              isClosing={datavisMenu.isClosing}
+              onMouseEnter={openDatavisMenu}
+              onMouseLeave={datavisMenu.closeMenu}
+              onClose={datavisMenu.closeImmediately}
             />
           </div>
         </div>

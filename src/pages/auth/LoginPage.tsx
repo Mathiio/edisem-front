@@ -5,7 +5,7 @@ import { Input, passwordToggleButtonClass } from '@/theme/components';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthService } from '@/services/Auth';
 import { EyeIcon, EyeSlashIcon } from '@/components/ui/icons';
-import { useNavbarReadyContext } from '@/App';
+import { useNavbarReadyContext } from '@/context/NavbarReadyContext';
 
 type ActantStatus = 'idle' | 'checking' | 'recognized' | 'not_found' | 'needs_registration';
 

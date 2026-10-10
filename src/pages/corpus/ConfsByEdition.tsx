@@ -1,9 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
 import * as Items from '@/services/Items';
+import { fetchEditionHeaderMeta } from '@/services/editionHeaderMeta';
 import { getResourceThumbnail, getYouTubeThumbnail } from '@/lib/resourceUtils';
-
-const OMEKA_API = 'https://tests.arcanes.ca/omk/api';
+import { formatEditionTypeLabel } from '@/config/editionConfig';
+import { EditionPageHeader, EditionPageHeaderSkeleton } from '@/components/features/shared/corpus/EditionMetaPills';
+import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared/corpus/ResourceCard';
+import { motion, Variants } from 'framer-motion';
+import { Layouts } from '@/components/layout/Layouts';
+import { Conference, Edition as EditionType } from '@/types/ui';
+import { BackgroundEllipse } from '@/assets/svg/BackgroundEllipse';
+import { omekaApiUrl, OMEKA_API_BASE } from '@/utils/omekaApi';
 
 /**
  * Résout la miniature d'une conférence quand le backend renvoie thumbnail: null.
@@ -23,8 +30,7 @@ async function resolveConferenceThumbnail(
   conferenceId: string,
   currentThumbnail?: string,
 ): Promise<string> {
-  // 1. Cherche un media YouTube ingéré → source YouTube → maxresdefault (1280×720)
-  const mediaList: any[] | null = await fetch(`${OMEKA_API}/media?item_id=${conferenceId}`)
+  const mediaList: any[] | null = await fetch(omekaApiUrl(`${OMEKA_API_BASE}media?item_id=${conferenceId}`))
     .then((r) => (r.ok ? r.json() : null))
     .catch(() => null);
 
@@ -38,11 +44,9 @@ async function resolveConferenceThumbnail(
     }
   }
 
-  // 2. Si pas de YouTube, garder le thumbnail existant s'il est correct (original/)
   if (currentThumbnail && !isOmekaDerivative(currentThumbnail)) return currentThumbnail;
 
-  // 3. Dernier recours : item brut → getResourceThumbnail (image uploadée hors YouTube)
-  const item: any | null = await fetch(`${OMEKA_API}/items/${conferenceId}`)
+  const item: any | null = await fetch(omekaApiUrl(`${OMEKA_API_BASE}items/${conferenceId}`))
     .then((r) => (r.ok ? r.json() : null))
     .catch(() => null);
 
@@ -50,7 +54,6 @@ async function resolveConferenceThumbnail(
 }
 
 async function enrichConferenceThumbnails(conferences: Conference[]): Promise<Conference[]> {
-  // Inclut les conférences sans thumbnail ET celles avec un dérivé Omeka pixelisé
   const without = conferences.filter(
     (c) => c.id && (!c.thumbnail || isOmekaDerivative(c.thumbnail)),
   );
@@ -71,12 +74,6 @@ async function enrichConferenceThumbnails(conferences: Conference[]): Promise<Co
     thumbMap.has(Number(c.id)) ? { ...c, thumbnail: thumbMap.get(Number(c.id)) } : c,
   );
 }
-import { ResourceCard, ResourceCardSkeleton } from '@/components/features/shared/corpus/ResourceCard';
-import { motion, Variants } from 'framer-motion';
-import { Layouts } from '@/components/layout/Layouts';
-import { Conference, Edition as EditionType } from '@/types/ui';
-import { BackgroundEllipse } from '@/assets/svg/BackgroundEllipse';
-import { Skeleton } from '@heroui/react';
 
 const fadeIn: Variants = {
   hidden: { opacity: 0, y: 6 },
@@ -87,15 +84,28 @@ const fadeIn: Variants = {
   }),
 };
 
+function editionSubtitle(edition: EditionType | null, pathname: string): string {
+  if (!edition) return '';
+  const typeLabel = formatEditionTypeLabel(edition.editionType, pathname);
+  const seasonPart = edition.season?.trim();
+  const yearPart = edition.year?.trim();
+
+  if (seasonPart && yearPart) return `${typeLabel} — Édition ${seasonPart} ${yearPart}`;
+  if (seasonPart) return `${typeLabel} — Édition ${seasonPart}`;
+  if (yearPart) return `${typeLabel} — Édition ${yearPart}`;
+  return typeLabel;
+}
+
 export const Edition: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { pathname } = useLocation();
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [edition, setEdition] = useState<EditionType | null>(null);
   const [loading, setLoading] = useState(true);
   const reEnrichingRef = useRef(false);
 
-  // Second effect : détecte les thumbnails Omeka dégradés dans le state
-  // (ex : state stale après HMR) et les remplace par YouTube maxresdefault.
+  const subtitle = useMemo(() => editionSubtitle(edition, pathname), [edition, pathname]);
+
   useEffect(() => {
     if (loading || reEnrichingRef.current) return;
     if (!conferences.some((c) => c.id && isOmekaDerivative(c.thumbnail))) return;
@@ -111,15 +121,22 @@ export const Edition: React.FC = () => {
     if (!id) return;
     setLoading(true);
     setConferences([]);
+    setEdition(null);
 
     const fetchData = async () => {
       try {
-        const data = await Items.getEditionDetails(id);
+        const [data, headerMeta] = await Promise.all([
+          Items.getEditionDetails(id),
+          fetchEditionHeaderMeta(id),
+        ]);
         if (data) {
-          setEdition(data.edition);
+          setEdition({
+            ...data.edition,
+            season: data.edition.season?.trim() || headerMeta.season || '',
+            hostInstitutions: headerMeta.hostInstitutions,
+            organizers: headerMeta.organizers,
+          });
           const raw: Conference[] = data.conferences || [];
-          // Enrichissement AVANT le rendu : les thumbnails YouTube sont résolues
-          // pendant le loading, pas après. Évite toute phase intermédiaire pixelisée.
           const enriched = await enrichConferenceThumbnails(raw);
           setConferences(enriched);
         } else {
@@ -135,25 +152,26 @@ export const Edition: React.FC = () => {
     void fetchData();
   }, [id]);
 
+  const hostInstitutions = edition?.hostInstitutions ?? [];
+  const organizers = edition?.organizers ?? [];
+
   return (
-    <Layouts className='col-span-10 flex flex-col gap-24'>
-      <div className='pt-24 justify-center flex items-center flex-col gap-5 relative'>
-        <div className='gap-5 justify-between flex items-center flex-col'>
-          {loading ?
-            <>
-              <Skeleton className='w-[850px] h-14 rounded-lg' />
-              <Skeleton className='w-[650px] h-14 rounded-lg' />
-            </>
-          : 
-            <h1 className='z-[12] text-6xl text-c6 font-medium flex text-center flex-col items-center max-w-[850px]'>
-            {edition?.title}
-          </h1>
-          }
-          <p className='text-c5 text-base z-[12] text-center max-w-[600px]'>
-            {edition?.editionType ? edition.editionType.charAt(0).toUpperCase() + edition.editionType.slice(1) : ''} Edisem - Édition {edition?.season} {edition?.year}
-          </p>
+    <Layouts className='col-span-10 flex flex-col gap-12'>
+      <div className='relative pt-8 md:pt-10'>
+        {loading ? (
+          <EditionPageHeaderSkeleton />
+        ) : (
+          <EditionPageHeader
+            subtitle={subtitle}
+            title={edition?.title}
+            institutions={hostInstitutions}
+            organizers={organizers}
+          />
+        )}
+
+        {!loading ? (
           <motion.div
-            className='top-[-50px] absolute z-[-1]'
+            className='pointer-events-none absolute left-1/2 top-[-50px] z-[-1] -translate-x-1/2'
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, ease: 'easeIn' }}
@@ -162,7 +180,7 @@ export const Edition: React.FC = () => {
               <BackgroundEllipse />
             </div>
           </motion.div>
-        </div>
+        ) : null}
       </div>
       <div className='grid grid-cols-4 grid-rows-3 gap-6'>
         {loading

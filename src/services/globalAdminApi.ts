@@ -4,9 +4,7 @@
 
 import { enrichResourceCardsThumbnails, type StudentResourceCard } from '@/services/UserSpace';
 
-const EDISEM_AJAX_BASE =
-  import.meta.env.VITE_EDISEM_AJAX_BASE ??
-  (import.meta.env.DEV ? 'https://tests.arcanes.ca/omk/s/edisem/page/ajax' : '/omk/s/edisem/page/ajax');
+import { edisemHelperAjaxUrl } from '@/utils/omekaApi';
 
 export interface OmekaOwnerOption {
   id: number;
@@ -46,7 +44,7 @@ async function fetchGlobalAdmin<T>(action: string, params: Record<string, string
     }
   });
 
-  const response = await fetch(`${EDISEM_AJAX_BASE}?${searchParams.toString()}`, {
+  const response = await fetch(edisemHelperAjaxUrl('GlobalAdmin', Object.fromEntries(searchParams)), {
     credentials: 'include',
   });
 

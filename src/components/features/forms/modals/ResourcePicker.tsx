@@ -134,7 +134,7 @@ const loadResourcesByMultipleTemplateIds = async (templateIds: number[]): Promis
       }),
     );
 
-    // Group by label to avoid duplicate tabs (e.g. Bibliographie 81 + 99)
+    // Group by label to avoid duplicate tabs when several templates share a label
     const grouped = new Map<string, TemplateData>();
     for (const r of rawResults) {
       const existing = grouped.get(r.templateLabel);

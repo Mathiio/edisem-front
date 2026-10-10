@@ -81,7 +81,7 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
       title: 'Bibliographie',
       property: 'dcterms:references',
       renderType: 'references',
-      resourceTemplateIds: [81, 99],
+      resourceTemplateIds: [81],
       editable: true,
     },
     {
@@ -89,7 +89,7 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
       title: 'Médias',
       property: 'schema:associatedMedia',
       renderType: 'references',
-      resourceTemplateIds: [83, 98],
+      resourceTemplateIds: [83],
       editable: true,
     },
   ],

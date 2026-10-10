@@ -97,7 +97,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
     gender: 'f',
     icon: ImageIcon,
     color: '#FFB8E6',
-    templateIds: [83, 98],
+    templateIds: [83],
     getUrl: (id) => `/corpus/mediagraphie/${id}`,
     createUrl: '/add-resource/mediagraphie',
     formOnly: true,
@@ -108,7 +108,7 @@ export const RESOURCE_TYPES: Record<ResourceType, ResourceTypeConfig> = {
     label: 'Bibliographie',
     gender: 'f',
     icon: undefined,
-    templateIds: [81, 99],
+    templateIds: [81],
     getUrl: (id) => `/corpus/bibliographie/${id}`,
     createUrl: '/add-resource/bibliographie',
     formOnly: true,
@@ -432,10 +432,10 @@ export const TEMPLATE_ID_TO_TYPE: Record<number, ResourceType> = (() => {
 /**
  * Récupère la config d'un type de ressource par son template_id
  */
-/** Template IDs des bibliographies (chercheur + étudiant) */
+/** Template ID des bibliographies */
 export const BIBLIOGRAPHY_TEMPLATE_IDS = RESOURCE_TYPES.bibliographie.templateIds;
 
-/** Template IDs des médiagraphies (chercheur + étudiant) */
+/** Template ID des médiagraphies */
 export const MEDIAGRAPHY_TEMPLATE_IDS = RESOURCE_TYPES.mediagraphie.templateIds;
 
 /** Sépare les template IDs mixtes bibliographie / médiagraphie */

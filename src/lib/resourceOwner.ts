@@ -1,5 +1,6 @@
 import { getActantsForLogin, type Actant } from '@/services/UserSpace';
 import { getResourceOwnerId } from '@/lib/resourceEditHelpers';
+import { edisemHelperAjaxUrl } from '@/utils/omekaApi';
 
 export type ResourceOwnerInfo = {
   omekaUserId: number;
@@ -7,8 +8,6 @@ export type ResourceOwnerInfo = {
   actantId?: number;
   email?: string;
 };
-
-const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=UserSpace';
 
 let actantsList: Actant[] | null = null;
 let actantsLoadPromise: Promise<Actant[]> | null = null;
@@ -73,7 +72,7 @@ async function resolveResourceOwnerFallback(omekaUserId: number): Promise<Resour
 async function resolveResourceOwnerFromApi(omekaUserId: number): Promise<ResourceOwnerInfo | null> {
   try {
     const response = await fetch(
-      `${API_BASE}&action=resolveResourceOwner&ownerId=${omekaUserId}&json=1`,
+      edisemHelperAjaxUrl('UserSpace', { action: 'resolveResourceOwner', ownerId: omekaUserId, json: '1' }),
     );
     if (!response.ok) return null;
 

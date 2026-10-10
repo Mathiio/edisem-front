@@ -3,7 +3,14 @@
  * Endpoints optimisés pour les visualisations analytiques (heatmaps, trends, coverage)
  */
 
-const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Analytics';
+import { edisemHelperAjaxUrl, omekaSiteMediaUrl, parseFetchJsonLoose } from '@/utils/omekaApi';
+
+async function readAnalyticsJson<T>(response: Response): Promise<T> {
+  return (await parseFetchJsonLoose(response)) as T;
+}
+
+const analyticsUrl = (params: Record<string, string | number | undefined>) =>
+  edisemHelperAjaxUrl('Analytics', { json: '1', ...params });
 
 // ========== TYPES ==========
 
@@ -246,133 +253,135 @@ export interface CollaborationNetworkData {
  * Récupère la vue d'ensemble (comptages par type)
  */
 export async function getOverview(): Promise<OverviewData> {
-  const response = await fetch(`${API_BASE}&action=getOverview&json=1`);
+  const response = await fetch(analyticsUrl({ action: 'getOverview' }));
   if (!response.ok) {
     throw new Error("Erreur lors de la récupération de la vue d'ensemble");
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 /**
  * Récupère l'activité par jour pour une année (heatmap calendrier)
  */
 export async function getActivityByDay(year?: number): Promise<ActivityByDayData> {
-  const yearParam = year ? `&year=${year}` : '';
-  const response = await fetch(`${API_BASE}&action=getActivityByDay${yearParam}&json=1`);
+  const response = await fetch(analyticsUrl({ action: 'getActivityByDay', ...(year ? { year } : {}) }));
   if (!response.ok) {
     throw new Error("Erreur lors de la récupération de l'activité");
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 /**
  * Récupère les tendances des keywords dans le temps
  */
 export async function getKeywordTrends(limit?: number): Promise<KeywordTrendsData> {
-  const limitParam = limit ? `&limit=${limit}` : '';
-  const response = await fetch(`${API_BASE}&action=getKeywordTrends${limitParam}&json=1`);
+  const response = await fetch(analyticsUrl({ action: 'getKeywordTrends', ...(limit ? { limit } : {}) }));
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération des tendances');
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 /**
  * Récupère la timeline des ressources
  */
 export async function getTimeline(types?: string[]): Promise<TimelineData> {
-  const typesParam = types ? `&types=${types.join(',')}` : '';
-  const response = await fetch(`${API_BASE}&action=getTimeline${typesParam}&json=1`);
+  const response = await fetch(
+    analyticsUrl({ action: 'getTimeline', ...(types ? { types: types.join(',') } : {}) }),
+  );
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération de la timeline');
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 /**
  * Récupère la matrice de couverture Types × Keywords
  */
 export async function getCoverageMatrix(topKeywords?: number): Promise<CoverageMatrixData> {
-  const param = topKeywords ? `&topKeywords=${topKeywords}` : '';
-  const response = await fetch(`${API_BASE}&action=getCoverageMatrix${param}&json=1`);
+  const response = await fetch(
+    analyticsUrl({ action: 'getCoverageMatrix', ...(topKeywords ? { topKeywords } : {}) }),
+  );
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération de la matrice de couverture');
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 /**
  * Récupère les ressources orphelines (peu connectées)
  */
 export async function getOrphanResources(threshold?: number): Promise<OrphanResourcesData> {
-  const param = threshold ? `&threshold=${threshold}` : '';
-  const response = await fetch(`${API_BASE}&action=getOrphanResources${param}&json=1`);
+  const response = await fetch(
+    analyticsUrl({ action: 'getOrphanResources', ...(threshold ? { threshold } : {}) }),
+  );
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération des ressources orphelines');
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 /**
  * Récupère les statistiques de complétude des métadonnées
  */
 export async function getCompletenessStats(): Promise<CompletenessStatsData> {
-  const response = await fetch(`${API_BASE}&action=getCompletenessStats&json=1`);
+  const response = await fetch(analyticsUrl({ action: 'getCompletenessStats' }));
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération des statistiques de complétude');
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 /**
  * Récupère les relations entre types (pour chord diagram)
  */
 export async function getTypeRelations(): Promise<TypeRelationsData> {
-  const response = await fetch(`${API_BASE}&action=getTypeRelations&json=1`);
+  const response = await fetch(analyticsUrl({ action: 'getTypeRelations' }));
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération des relations entre types');
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 /**
  * Récupère les co-occurrences de keywords
  */
 export async function getKeywordCooccurrence(limit?: number, minOccurrence?: number): Promise<KeywordCooccurrenceData> {
-  const params = [];
-  if (limit) params.push(`limit=${limit}`);
-  if (minOccurrence) params.push(`minOccurrence=${minOccurrence}`);
-  const queryString = params.length ? `&${params.join('&')}` : '';
-
-  const response = await fetch(`${API_BASE}&action=getKeywordCooccurrence${queryString}&json=1`);
+  const response = await fetch(
+    analyticsUrl({
+      action: 'getKeywordCooccurrence',
+      ...(limit ? { limit } : {}),
+      ...(minOccurrence ? { minOccurrence } : {}),
+    }),
+  );
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération des co-occurrences');
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 /**
  * Récupère les métriques des actants
  */
 export async function getActantMetrics(limit?: number): Promise<ActantMetricsData> {
-  const param = limit ? `&limit=${limit}` : '';
-  const response = await fetch(`${API_BASE}&action=getActantMetrics${param}&json=1`);
+  const response = await fetch(analyticsUrl({ action: 'getActantMetrics', ...(limit ? { limit } : {}) }));
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération des métriques actants');
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 /**
  * Récupère le réseau de collaboration entre actants
  */
 export async function getCollaborationNetwork(minCollabs?: number): Promise<CollaborationNetworkData> {
-  const param = minCollabs ? `&minCollabs=${minCollabs}` : '';
-  const response = await fetch(`${API_BASE}&action=getCollaborationNetwork${param}&json=1`);
+  const response = await fetch(
+    analyticsUrl({ action: 'getCollaborationNetwork', ...(minCollabs ? { minCollabs } : {}) }),
+  );
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération du réseau de collaboration');
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 /**
@@ -392,11 +401,11 @@ export interface TypeKeywordsData {
 }
 
 export async function getKeywordsByType(type: string): Promise<TypeKeywordsData> {
-  const response = await fetch(`${API_BASE}&action=getKeywordsByType&type=${encodeURIComponent(type)}&json=1`);
+  const response = await fetch(analyticsUrl({ action: 'getKeywordsByType', type }));
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération des keywords par type');
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 /**
@@ -416,12 +425,13 @@ export interface CoverageStatsData {
 }
 
 export async function getCoverageStats(topKeywords?: number): Promise<CoverageStatsData> {
-  const param = topKeywords ? `&topKeywords=${topKeywords}` : '';
-  const response = await fetch(`${API_BASE}&action=getCoverageStats${param}&json=1`);
+  const response = await fetch(
+    analyticsUrl({ action: 'getCoverageStats', ...(topKeywords ? { topKeywords } : {}) }),
+  );
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération des statistiques de couverture');
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 // ========== HELPER FUNCTIONS ==========
@@ -430,8 +440,7 @@ export async function getCoverageStats(topKeywords?: number): Promise<CoverageSt
  * Préfixe une URL de média avec le domaine
  */
 export function getFullMediaUrl(relativePath: string | null): string | null {
-  if (!relativePath) return null;
-  return `https://tests.arcanes.ca/omk${relativePath}`;
+  return omekaSiteMediaUrl(relativePath);
 }
 
 /**
@@ -454,12 +463,12 @@ export async function getNarrativePracticesStats(): Promise<{
   experimentations: number;
   recitsByType: Record<string, number>;
 }> {
-  const response = await fetch(`${API_BASE}&action=getNarrativePracticesStats&json=1`);
+  const response = await fetch(analyticsUrl({ action: 'getNarrativePracticesStats' }));
   if (!response.ok) {
     console.error('Error fetching narrative practices stats');
     return { recits: 0, experimentations: 0, recitsByType: {} };
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 /**
@@ -471,12 +480,12 @@ export async function getNarrativeTopKeywords(limit: number = 8): Promise<Array<
   label: string;
   value: number;
 }>> {
-  const response = await fetch(`${API_BASE}&action=getTopNarrativeKeywords&limit=${limit}&json=1`);
+  const response = await fetch(analyticsUrl({ action: 'getTopNarrativeKeywords', limit }));
   if (!response.ok) {
     console.error('Error fetching narrative top keywords');
     return [];
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }
 
 /**
@@ -487,10 +496,10 @@ export async function getRecitTypeBreakdown(): Promise<Array<{
   type: string;
   count: number;
 }>> {
-  const response = await fetch(`${API_BASE}&action=getRecitTypeBreakdown&json=1`);
+  const response = await fetch(analyticsUrl({ action: 'getRecitTypeBreakdown' }));
   if (!response.ok) {
     console.error('Error fetching recit type breakdown');
     return [];
   }
-  return response.json();
+  return readAnalyticsJson(response);
 }

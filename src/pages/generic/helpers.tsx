@@ -296,8 +296,7 @@ const renderFormField = (field: FormFieldConfig, value: any, onChange: (value: a
  * @param options Options de configuration (resourceTemplateIds pour les bibliographies/médiagraphies)
  */
 export const createScientificReferencesView = (options?: { resourceTemplateIds?: number[]; editable?: boolean }): ViewOption => {
-  // Template IDs par défaut pour bibliographies/médiagraphies : 81, 99, 98, 83
-  const defaultTemplateIds = [81, 99, 98, 83];
+  const defaultTemplateIds = [81, 83];
 
   return {
     key: 'ContentScient',
@@ -376,8 +375,7 @@ export const createScientificReferencesView = (options?: { resourceTemplateIds?:
  * @param options Options de configuration (resourceTemplateIds pour les bibliographies/médiagraphies)
  */
 export const createCulturalReferencesView = (options?: { resourceTemplateIds?: number[]; editable?: boolean }): ViewOption => {
-  // Template IDs par défaut pour bibliographies/médiagraphies : 81, 99, 98, 83
-  const defaultTemplateIds = [81, 99, 98, 83];
+  const defaultTemplateIds = [81, 83];
 
   return {
     key: 'ContentCultu',

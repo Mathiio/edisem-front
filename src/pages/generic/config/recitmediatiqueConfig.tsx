@@ -62,14 +62,14 @@ export const recitMediatiqueConfigSimplified: SimplifiedDetailConfig = {
       title: 'Contenus scientifiques',
       property: 'dcterms:source',
       renderType: 'references',
-      resourceTemplateIds: [81, 99, 98, 83],
+      resourceTemplateIds: [81, 83],
     },
     {
       key: 'ContentCultu',
       title: 'Contenus culturels',
       property: 'schema:review',
       renderType: 'references',
-      resourceTemplateIds: [81, 99, 98, 83],
+      resourceTemplateIds: [81, 83],
     },
     {
       key: 'ImagiaireIA',

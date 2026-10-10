@@ -301,7 +301,8 @@ export const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ onKeywordClick }) 
       icon={<TrendingUp />}
       title='Aucune donnée'
       emptyMessage='Pas de données de tendances disponibles.'
-      loadingMessage='Chargement des tendances...'>
+
+      >
       <div className='flex-1 w-full h-full bg-c1 overflow-hidden flex flex-col'>
         {/* Header avec titre et contrôles */}
         <div className='p-4 border-b border-c3 flex items-center justify-between'>

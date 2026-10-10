@@ -1,6 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Progress } from '@heroui/react';
 import { Database, CheckCircle, AlertTriangle, LayoutDashboard, ArrowRight, ExternalLink, Tag } from 'lucide-react';
+import { Modal, ModalBody, ModalContent, ModalHeader, modalCloseButtonClasses } from '@/theme/components';
+import { ModalTitle } from '@/components/ui/ModalTitle';
+import { AnalyticsViewHeader } from './AnalyticsViewHeader';
+import { DashboardViewSkeleton } from './AnalyticsViewSkeletons';
 import { ViewLoader } from './ViewLoader';
 import {
   getOverview,
@@ -14,6 +18,7 @@ import {
   type TypeCount,
   type TypeCompleteness,
 } from '@/services/Analytics';
+import { omekaAdminItemUrl } from '@/utils/omekaApi';
 import { calculateOverallCompleteness, getMostActiveType, getCompletenessColor, formatNumber, calculatePercentage } from '../../utils/dashboardHelpers';
 
 // ========================================
@@ -27,12 +32,51 @@ interface DashboardData {
   keywords: CoverageMatrixData;
 }
 
-export type DashboardView = 'overview' | 'distribution' | 'completeness' | 'orphans';
+type DashboardDetailModal = 'distribution' | 'completeness' | 'orphans';
 
-interface DashboardProps {
-  currentView?: DashboardView;
-  onViewChange?: (view: DashboardView) => void;
-}
+const MODAL_MOTION_PROPS = {
+  variants: {
+    enter: { y: 0, opacity: 1, transition: { duration: 0.3, ease: 'easeOut' } },
+    exit: { y: -20, opacity: 0, transition: { duration: 0.2, ease: 'easeIn' } },
+  },
+};
+
+const DETAIL_MODAL_META = {
+  distribution: {
+    title: 'Total ressources',
+    subtitle: 'Répartition par type de ressource dans le corpus.',
+    icon: Database,
+    iconColor: 'text-datavisBlue',
+    iconBg: 'bg-datavisBlue/15',
+    size: '3xl' as const,
+  },
+  completeness: {
+    title: 'Complétude',
+    subtitle: 'Taux de remplissage des métadonnées par type et par propriété.',
+    icon: CheckCircle,
+    iconColor: 'text-datavisGreen',
+    iconBg: 'bg-datavisGreen/15',
+    size: '3xl' as const,
+  },
+  orphans: {
+    title: 'Ressources isolées',
+    subtitle: 'Ressources avec au plus deux connexions dans le graphe.',
+    icon: AlertTriangle,
+    iconColor: 'text-datavisOrange',
+    iconBg: 'bg-datavisOrange/15',
+    size: '3xl' as const,
+  },
+} satisfies Record<
+  DashboardDetailModal,
+  {
+    title: string;
+    subtitle: string;
+    icon: typeof Database;
+    iconColor: string;
+    iconBg: string;
+    size: '3xl' | '4xl' | '5xl';
+  }
+>;
 
 // ========================================
 // SOUS-COMPOSANTS
@@ -43,8 +87,8 @@ interface DashboardProps {
  */
 const OverviewView: React.FC<{
   data: DashboardData;
-  onNavigate: (view: DashboardView) => void;
-}> = ({ data, onNavigate }) => {
+  onOpenDetail: (panel: DashboardDetailModal) => void;
+}> = ({ data, onOpenDetail }) => {
   const stats = useMemo(() => {
     const mostActive = getMostActiveType(data.overview);
     const activeTypes = data.overview.types.filter((t) => t.count > 0);
@@ -62,11 +106,11 @@ const OverviewView: React.FC<{
   }, [data]);
 
   return (
-    <div className='flex-1 w-full bg-c1 overflow-auto p-6'>
+    <div className='flex-1 w-full overflow-auto bg-c1 py-6'>
       {/* Navigation Cards - Cliquables */}
       <div className='grid grid-cols-3 gap-5 mb-5'>
         {/* Card Total ressources → Distribution */}
-        <button onClick={() => onNavigate('distribution')} className='bg-c2 rounded-xl p-5 border border-c3 hover:border-datavisBlue/50 transition-all text-left group'>
+        <button type='button' onClick={() => onOpenDetail('distribution')} className='cursor-pointer bg-c2 rounded-xl p-5 border-2 border-c3 hover:border-datavisBlue/50 transition-all text-left group'>
           <div className='flex items-center justify-between mb-4'>
             <div className='flex items-center gap-2.5'>
               <div className='w-10 h-10 rounded-lg bg-datavisBlue/15 flex items-center justify-center'>
@@ -90,7 +134,7 @@ const OverviewView: React.FC<{
         </button>
 
         {/* Card Complétude */}
-        <button onClick={() => onNavigate('completeness')} className='bg-c2 rounded-xl p-5 border border-c3 hover:border-datavisGreen/50 transition-all text-left group'>
+        <button type='button' onClick={() => onOpenDetail('completeness')} className='cursor-pointer bg-c2 rounded-xl p-5 border-2 border-c3 hover:border-datavisGreen/50 transition-all text-left group'>
           <div className='flex items-center justify-between mb-4'>
             <div className='flex items-center gap-2.5'>
               <div className='w-10 h-10 rounded-lg bg-datavisGreen/15 flex items-center justify-center'>
@@ -108,7 +152,7 @@ const OverviewView: React.FC<{
         </button>
 
         {/* Card Ressources isolées */}
-        <button onClick={() => onNavigate('orphans')} className='bg-c2 rounded-xl p-5 border border-c3 hover:border-datavisOrange/50 transition-all text-left group'>
+        <button type='button' onClick={() => onOpenDetail('orphans')} className='cursor-pointer bg-c2 rounded-xl p-5 border-2 border-c3 hover:border-datavisOrange/50 transition-all text-left group'>
           <div className='flex items-center justify-between mb-4'>
             <div className='flex items-center gap-2.5'>
               <div className='w-10 h-10 rounded-lg bg-datavisOrange/15 flex items-center justify-center'>
@@ -127,7 +171,7 @@ const OverviewView: React.FC<{
       </div>
 
       {/* Carte Thématiques - Non cliquable */}
-      <div className='bg-c2 rounded-xl p-5 border border-c3'>
+      <div className='rounded-xl border-2 border-c3 bg-c2 p-5'>
         <div className='flex items-center gap-2.5 mb-5'>
           <div className='w-10 h-10 rounded-lg bg-datavisYellow/15 flex items-center justify-center'>
             <Tag size={20} className='text-datavisYellow' />
@@ -171,18 +215,19 @@ const DistributionView: React.FC<{ types: TypeCount[] }> = ({ types }) => {
   }, [types, sortMode]);
 
   return (
-    <div className='flex-1 w-full bg-c1 overflow-auto p-6'>
-      {/* Sort controls */}
+    <>
       <div className='flex items-center gap-2.5 mb-4'>
         <span className='text-c4 text-xs'>Trier par:</span>
         <button
+          type='button'
           onClick={() => setSortMode('count')}
-          className={`px-2.5 py-1.5 rounded-md text-xs transition-colors ${sortMode === 'count' ? 'bg-datavisBlue text-selected' : 'bg-c2 text-c5 hover:bg-c3'}`}>
+          className={`cursor-pointer px-2.5 py-1.5 rounded-md text-xs transition-colors ${sortMode === 'count' ? 'bg-datavisBlue text-selected' : 'bg-c2 text-c5 hover:bg-c3'}`}>
           Quantité
         </button>
         <button
+          type='button'
           onClick={() => setSortMode('name')}
-          className={`px-2.5 py-1.5 rounded-md text-xs transition-colors ${sortMode === 'name' ? 'bg-datavisBlue text-selected' : 'bg-c2 text-c5 hover:bg-c3'}`}>
+          className={`cursor-pointer px-2.5 py-1.5 rounded-md text-xs transition-colors ${sortMode === 'name' ? 'bg-datavisBlue text-selected' : 'bg-c2 text-c5 hover:bg-c3'}`}>
           Nom
         </button>
       </div>
@@ -191,7 +236,7 @@ const DistributionView: React.FC<{ types: TypeCount[] }> = ({ types }) => {
         {sortedTypes.map((type) => {
           const percentage = calculatePercentage(type.count, total);
           return (
-            <div key={type.type} className='bg-c2 rounded-lg p-4 border border-c3 hover:bg-c3 transition-colors flex items-center gap-4'>
+            <div key={type.type} className='flex items-center gap-4 rounded-lg border-2 border-c3 bg-c2 p-4 transition-colors hover:bg-c3'>
               <div className='flex-1 min-w-0'>
                 <p className='text-c6 text-sm font-medium truncate'>{type.label}</p>
               </div>
@@ -206,7 +251,7 @@ const DistributionView: React.FC<{ types: TypeCount[] }> = ({ types }) => {
           );
         })}
       </div>
-    </div>
+    </>
   );
 };
 
@@ -230,18 +275,19 @@ const CompletenessView: React.FC<{ stats: TypeCompleteness[] }> = ({ stats }) =>
   }, [stats, sortMode]);
 
   return (
-    <div className='flex-1 w-full bg-c1 overflow-auto p-6'>
-      {/* Sort controls */}
+    <>
       <div className='flex items-center gap-2.5 mb-4'>
         <span className='text-c4 text-xs'>Trier par:</span>
         <button
+          type='button'
           onClick={() => setSortMode('completeness')}
-          className={`px-2.5 py-1.5 rounded-md text-xs transition-colors ${sortMode === 'completeness' ? 'bg-datavisBlue text-selected' : 'bg-c2 text-c5 hover:bg-c3'}`}>
+          className={`cursor-pointer px-2.5 py-1.5 rounded-md text-xs transition-colors ${sortMode === 'completeness' ? 'bg-datavisBlue text-selected' : 'bg-c2 text-c5 hover:bg-c3'}`}>
           Complétude
         </button>
         <button
+          type='button'
           onClick={() => setSortMode('name')}
-          className={`px-2.5 py-1.5 rounded-md text-xs transition-colors ${sortMode === 'name' ? 'bg-datavisBlue text-selected' : 'bg-c2 text-c5 hover:bg-c3'}`}>
+          className={`cursor-pointer px-2.5 py-1.5 rounded-md text-xs transition-colors ${sortMode === 'name' ? 'bg-datavisBlue text-selected' : 'bg-c2 text-c5 hover:bg-c3'}`}>
           Nom
         </button>
       </div>
@@ -252,9 +298,9 @@ const CompletenessView: React.FC<{ stats: TypeCompleteness[] }> = ({ stats }) =>
           const properties = Object.entries(type.properties);
 
           return (
-            <div key={type.type} className='bg-c2 rounded-lg border border-c3 overflow-hidden'>
+            <div key={type.type} className='overflow-hidden rounded-lg border-2 border-c3 bg-c2'>
               {/* Type Header - Clickable */}
-              <button onClick={() => setExpandedType(isExpanded ? null : type.type)} className='w-full p-4 flex items-center gap-2.5 hover:bg-c3 transition-colors text-left'>
+              <button type='button' onClick={() => setExpandedType(isExpanded ? null : type.type)} className='cursor-pointer w-full p-4 flex items-center gap-2.5 hover:bg-c3 transition-colors text-left'>
                 <span className='text-c4 text-xs'>{isExpanded ? '▼' : '▶'}</span>
                 <div className='flex-1 min-w-0'>
                   <p className='text-c6 text-sm font-medium truncate'>{type.label}</p>
@@ -314,7 +360,7 @@ const CompletenessView: React.FC<{ stats: TypeCompleteness[] }> = ({ stats }) =>
           );
         })}
       </div>
-    </div>
+    </>
   );
 };
 
@@ -328,12 +374,10 @@ const OrphansView: React.FC<{ orphans: OrphanResourcesData }> = ({ orphans }) =>
     return label;
   };
 
-  return (
-    <div className='flex-1 w-full bg-c1 overflow-auto p-6'>
-      {orphans.byType.length > 0 ? (
+  return orphans.byType.length > 0 ? (
         <div className='flex flex-col gap-4'>
           {orphans.byType.map((typeGroup) => (
-            <div key={typeGroup.type} className='bg-c2 rounded-lg p-4 border border-c3'>
+            <div key={typeGroup.type} className='rounded-lg border-2 border-c3 bg-c2 p-4'>
               <div className='flex items-center justify-between mb-2.5'>
                 <span className='text-c6 text-sm font-medium'>{getTypeLabel(typeGroup.label, typeGroup.type)}</span>
                 <span className='text-c4 text-xs'>{typeGroup.count} isolées</span>
@@ -348,10 +392,10 @@ const OrphansView: React.FC<{ orphans: OrphanResourcesData }> = ({ orphans }) =>
                     <div className='flex items-center gap-2.5'>
                       <span className='text-orange-500 text-xs'>{item.link_count} conn.</span>
                       <a
-                        href={`https://tests.arcanes.ca/omk/admin/item/${item.id}`}
+                        href={omekaAdminItemUrl(item.id)}
                         target='_blank'
                         rel='noopener noreferrer'
-                        className='text-c4 hover:text-datavisBlue transition-colors'
+                        className='cursor-pointer text-c4 hover:text-datavisBlue transition-colors'
                         title='Ouvrir dans Omeka S'>
                         <ExternalLink size={14} />
                       </a>
@@ -363,34 +407,68 @@ const OrphansView: React.FC<{ orphans: OrphanResourcesData }> = ({ orphans }) =>
           ))}
         </div>
       ) : (
-        <div className='p-5 text-center'>
+        <div className='py-8 text-center'>
           <CheckCircle size={32} className='text-datavisGreen mx-auto mb-2.5' />
           <p className='text-c6 font-medium text-sm'>Aucune ressource isolée</p>
         </div>
-      )}
-    </div>
-  );
+      );
 };
+
+function DashboardDetailModal({
+  panel,
+  data,
+  onClose,
+}: {
+  panel: DashboardDetailModal | null;
+  data: DashboardData;
+  onClose: () => void;
+}) {
+  const meta = panel ? DETAIL_MODAL_META[panel] : DETAIL_MODAL_META.distribution;
+
+  return (
+    <Modal
+      theme='default'
+      backdrop='blur'
+      size={meta.size}
+      isOpen={panel !== null}
+      onClose={onClose}
+      scrollBehavior='inside'
+      classNames={{ closeButton: modalCloseButtonClasses }}
+      motionProps={MODAL_MOTION_PROPS as React.ComponentProps<typeof Modal>['motionProps']}>
+      <ModalContent>
+        {panel ? (
+          <>
+            <ModalHeader className='flex flex-col gap-px py-4'>
+              <ModalTitle
+                title={meta.title}
+                subtitle={meta.subtitle}
+                icon={meta.icon as React.ComponentType<{ size?: number; className?: string }>}
+                iconColor={meta.iconColor}
+                iconBg={meta.iconBg}
+                titleClassName='text-c6 text-lg font-semibold'
+              />
+            </ModalHeader>
+            <ModalBody className='gap-4 py-4'>
+              {panel === 'distribution' && <DistributionView types={data.overview.types} />}
+              {panel === 'completeness' && <CompletenessView stats={data.completeness.stats} />}
+              {panel === 'orphans' && <OrphansView orphans={data.orphans} />}
+            </ModalBody>
+          </>
+        ) : null}
+      </ModalContent>
+    </Modal>
+  );
+}
 
 // ========================================
 // COMPOSANT PRINCIPAL
 // ========================================
 
-export const Dashboard: React.FC<DashboardProps> = ({ currentView: externalView, onViewChange }) => {
+export const Dashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [internalView, setInternalView] = useState<DashboardView>('overview');
-
-  // Utiliser la vue externe si fournie, sinon la vue interne
-  const currentView = externalView ?? internalView;
-  const setCurrentView = (view: DashboardView) => {
-    if (onViewChange) {
-      onViewChange(view);
-    } else {
-      setInternalView(view);
-    }
-  };
+  const [detailModal, setDetailModal] = useState<DashboardDetailModal | null>(null);
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -409,21 +487,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentView: externalView,
   }, []);
 
   return (
-    <ViewLoader
-      isLoading={isLoading}
-      error={error}
-      isEmpty={!data || data.overview.total === 0}
-      icon={<LayoutDashboard />}
-      title='Aucune donnée'
-      emptyMessage='Aucune donnée disponible dans le tableau de bord.'
-      loadingMessage='Chargement du tableau de bord...'>
-      <div className='flex-1 w-full h-full bg-c1 flex flex-col overflow-hidden'>
-        {currentView === 'overview' && data && <OverviewView data={data} onNavigate={setCurrentView} />}
-        {currentView === 'distribution' && data && <DistributionView types={data.overview.types} />}
-        {currentView === 'completeness' && data && <CompletenessView stats={data.completeness.stats} />}
-        {currentView === 'orphans' && data && <OrphansView orphans={data.orphans} />}
-      </div>
-    </ViewLoader>
+    <div className='flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden'>
+      <AnalyticsViewHeader
+        title='Tableau de bord'
+        description='Synthèse du corpus, complétude des métadonnées et ressources isolées.'
+        icon={<LayoutDashboard size={18} />}
+      />
+      <ViewLoader
+        isLoading={isLoading}
+        error={error}
+        isEmpty={!data || data.overview.total === 0}
+        icon={<LayoutDashboard />}
+        title='Aucune donnée'
+        emptyMessage='Aucune donnée disponible dans le tableau de bord.'
+        loadingSkeleton={<DashboardViewSkeleton />}>
+        <div className='flex h-full w-full flex-1 flex-col overflow-hidden bg-c1'>
+          <div className='min-h-0 flex-1 overflow-hidden'>
+            {data ? (
+              <>
+                <OverviewView data={data} onOpenDetail={setDetailModal} />
+                <DashboardDetailModal panel={detailModal} data={data} onClose={() => setDetailModal(null)} />
+              </>
+            ) : null}
+          </div>
+        </div>
+      </ViewLoader>
+    </div>
   );
 };
 

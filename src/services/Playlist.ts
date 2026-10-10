@@ -3,11 +3,9 @@
  * Template Omeka ID 133
  */
 
-import { omekaApiUrl, OMEKA_API_BASE } from '@/utils/omekaApi';
+import { edisemHelperAjaxUrl, omekaApiUrl, OMEKA_API_BASE } from '@/utils/omekaApi';
 import { getYouTubeThumbnail, isOmekaPlaceholderThumbnail } from '@/lib/resourceUtils';
 import { TEMPLATE_ID_TO_TYPE, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
-
-const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=UserSpace';
 
 export const PLAYLIST_TEMPLATE_ID = 133;
 
@@ -41,15 +39,11 @@ export interface PlaylistCard {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function apiFetch<T>(action: string, params: Record<string, string | number | object> = {}): Promise<T> {
-  const url = new URL(API_BASE);
-  url.searchParams.set('action', action);
-  url.searchParams.set('json', '1');
-
+  const flat: Record<string, string | number | undefined> = { action, json: '1' };
   Object.entries(params).forEach(([key, value]) => {
-    url.searchParams.set(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+    flat[key] = typeof value === 'object' ? JSON.stringify(value) : String(value);
   });
-
-  const response = await fetch(url.toString(), { credentials: 'include' });
+  const response = await fetch(edisemHelperAjaxUrl('UserSpace', flat), { credentials: 'include' });
   const data = await response.json();
 
   if (data?.code === 401) throw new Error('Non authentifié');

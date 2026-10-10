@@ -5,7 +5,7 @@
  * que les champs réellement affichés.
  */
 
-const QUERY_API_URL = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax';
+import { omekaQueryAjaxUrl } from '@/utils/omekaApi';
 
 export interface ItemPageMediaVideo {
   id: number;
@@ -191,7 +191,7 @@ async function fetchItemPageAction(action: 'getItemPage' | 'getChildItem', id: s
         id: String(id),
       });
 
-      const response = await fetch(`${QUERY_API_URL}?${params.toString()}`);
+      const response = await fetch(omekaQueryAjaxUrl(Object.fromEntries(params)));
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -259,7 +259,7 @@ export async function reorderItemMedia(
       linked_resource_ids: JSON.stringify(linkedResourceIds),
     });
 
-    const response = await fetch(`${QUERY_API_URL}?${params.toString()}`);
+    const response = await fetch(omekaQueryAjaxUrl(Object.fromEntries(params)));
     if (!response.ok) {
       return { success: false, message: `HTTP ${response.status}` };
     }

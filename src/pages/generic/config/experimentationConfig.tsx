@@ -84,14 +84,14 @@ export const experimentationConfigSimplified: SimplifiedDetailConfig = {
       title: 'Contenus scientifiques',
       property: 'dcterms:references',
       renderType: 'references',
-      resourceTemplateIds: [81, 99, 98, 83],
+      resourceTemplateIds: [81, 83],
     },
     {
       key: 'ContentCultu',
       title: 'Contenus culturels',
       property: 'dcterms:bibliographicCitation',
       renderType: 'references',
-      resourceTemplateIds: [81, 99, 98, 83],
+      resourceTemplateIds: [81, 83],
     },
   ],
 

@@ -104,18 +104,15 @@ export default function VisualFilterOverlay({ onSelect, renderBreadcrumb, onNavi
   // Synchroniser avec initialState quand il change (pour restaurer l'état)
   useEffect(() => {
     if (initialState) {
-      console.log('VisualFilterOverlay initialState:', initialState);
       setCurrentStep(initialState.step);
       setSelectedType(initialState.selectedType);
       setSearchValue(initialState.searchValue);
 
       // Si on a des groupes importés (mode filtrage avancé)
       if (initialState.importedGroups && initialState.importedGroups.length > 0) {
-        console.log('Imported groups:', initialState.importedGroups);
         setImportedGroups(initialState.importedGroups);
         // Extraire les conditions du premier groupe pour l'affichage
         const firstGroup = initialState.importedGroups[0];
-        console.log('First group conditions:', firstGroup.conditions);
         if (firstGroup.conditions && firstGroup.conditions.length > 0) {
           // Copier les conditions pour éviter les mutations
           setConditions([...firstGroup.conditions]);

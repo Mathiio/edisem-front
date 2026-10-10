@@ -65,7 +65,7 @@ export const experimentationStudentConfigSimplified: SimplifiedDetailConfig = {
       property: 'dcterms:references',
       renderType: 'references',
       referenceType: 'scientific',
-      resourceTemplateIds: [81, 99, 98, 83],
+      resourceTemplateIds: [81, 83],
     },
     {
       key: 'dcterms:bibliographicCitation',
@@ -73,7 +73,7 @@ export const experimentationStudentConfigSimplified: SimplifiedDetailConfig = {
       property: 'dcterms:bibliographicCitation',
       renderType: 'references',
       referenceType: 'cultural',
-      resourceTemplateIds: [81, 99, 98, 83],
+      resourceTemplateIds: [81, 83],
     },
   ],
 

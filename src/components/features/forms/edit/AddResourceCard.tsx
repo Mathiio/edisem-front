@@ -16,7 +16,7 @@ export interface AddResourceCardProps {
   className?: string;
 }
 
-const DEFAULT_REFERENCE_TEMPLATE_IDS = [81, 99, 98, 83];
+const DEFAULT_REFERENCE_TEMPLATE_IDS = [81, 83];
 
 /** Deux boutons distincts (bibliographie / médiagraphie) quand la vue mélange les deux types */
 export interface ReferenceAddButtonsProps {

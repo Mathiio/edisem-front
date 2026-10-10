@@ -375,6 +375,7 @@ function buildItemDetailsFromItemPage(
       case 'categories': {
         (view.categories ?? []).forEach((category) => {
           category.subcategories.forEach((sub) => {
+            if (!(sub.key in fastView.values)) return;
             const entry = fastView.values[sub.key];
             itemDetails[sub.property] = (entry?.values ?? []).map(literalEntry);
           });
@@ -473,6 +474,44 @@ function buildItemDetailsFromItemPage(
   return { itemDetails, resourceCache, keywords, mediaEntries };
 }
 
+/** Propriétés de vues « categories » absentes du payload Item Page (ex. dcterms:temporal, pas encore dans ItemPageConfig.php). */
+function categoryPropertiesMissingFromItemPage(page: ItemPageData, config: SimplifiedDetailConfig): string[] {
+  const missing: string[] = [];
+  for (const view of config.views ?? []) {
+    if (view.renderType !== 'categories' || !view.categories) continue;
+    const fastView = page.views[view.key];
+    if (!fastView || fastView.type !== 'categories') continue;
+    for (const category of view.categories) {
+      for (const sub of category.subcategories) {
+        if (!(sub.key in fastView.values)) missing.push(sub.property);
+      }
+    }
+  }
+  return missing;
+}
+
+async function hydrateMissingCategoryProperties(
+  itemDetails: Record<string, unknown>,
+  page: ItemPageData,
+  config: SimplifiedDetailConfig,
+): Promise<void> {
+  const missing = categoryPropertiesMissingFromItemPage(page, config);
+  if (missing.length === 0) return;
+  try {
+    const response = await fetch(omekaApiUrl(`${API_BASE}items/${page.id}`));
+    if (!response.ok) return;
+    const data = await response.json();
+    for (const property of missing) {
+      const values = data[property];
+      if (Array.isArray(values) && values.length > 0) {
+        itemDetails[property] = values;
+      }
+    }
+  } catch {
+    // silencieux — le champ reste vide si l'API Omeka est indisponible
+  }
+}
+
 /** Repli si le backend SQL ne renvoie pas owner_id (colonne vide) alors que l'API Omeka l'a. */
 async function hydrateOwnerFromOmekaApi(itemDetails: Record<string, unknown>, itemId: number): Promise<void> {
   if (getResourceOwnerId(itemDetails) != null) return;
@@ -513,6 +552,7 @@ export function createItemPageDataFetcher(
 
       const { itemDetails, resourceCache, keywords, mediaEntries } = buildItemDetailsFromItemPage(page, config, fields);
       itemDetails.resourceCache = resourceCache;
+      await hydrateMissingCategoryProperties(itemDetails, page, config);
       await hydrateOwnerFromOmekaApi(itemDetails, page.id);
       await hydrateMediaIdsFromOmekaApi(itemDetails, page.id, mediaEntries);
       await enrichItemWithResourceOwner(itemDetails);
@@ -549,6 +589,7 @@ export function createProgressiveItemPageDataFetcher(
 
       const { itemDetails, resourceCache, keywords, mediaEntries } = buildItemDetailsFromItemPage(page, config, fields);
       itemDetails.resourceCache = resourceCache;
+      await hydrateMissingCategoryProperties(itemDetails, page, config);
       await hydrateOwnerFromOmekaApi(itemDetails, page.id);
       await hydrateMediaIdsFromOmekaApi(itemDetails, page.id, mediaEntries);
       await enrichItemWithResourceOwner(itemDetails);

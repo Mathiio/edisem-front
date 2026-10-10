@@ -2,6 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { getActivityByDay, ActivityByDayData } from '@/services/Analytics';
 import { Tooltip } from '@heroui/react';
 import { TrendingUp, Activity, Calendar } from 'lucide-react';
+import { AnalyticsViewHeader } from './AnalyticsViewHeader';
+import { ActivityHeatmapViewSkeleton } from './AnalyticsViewSkeletons';
 import { ViewLoader } from './ViewLoader';
 
 // Fonction pour calculer l'opacité en fonction du count - retourne un style inline
@@ -144,57 +146,63 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ onDayClick, se
   const maxActivity = data?.stats.maxDailyActivity || 1;
 
   return (
-    <ViewLoader
-      isLoading={isLoading}
-      error={error}
-      isEmpty={!data}
-      icon={<Calendar />}
-      title='Aucune donnée'
-      emptyMessage="Pas de données d'activité pour cette année."
-      loadingMessage="Chargement du calendrier d'activité...">
-      <div className='flex-1 w-full h-full bg-c1 overflow-hidden flex flex-col gap-6 '>
-        {/* Stats cards */}
-        <div className='px-6 pt-6 border-b border-c3'>
-          <div className='grid grid-cols-4 gap-5'>
-            <div className='flex items-center gap-8 bg-c2 rounded-xl p-4'>
-              <TrendingUp size={16} className='text-c6' />
+    <div className='flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden'>
+      <AnalyticsViewHeader
+        title="Calendrier d'activité"
+        description={`Créations jour par jour${selectedYear ? ` — ${selectedYear}` : ''}.`}
+        icon={<Calendar size={18} />}
+      />
+      <ViewLoader
+        isLoading={isLoading}
+        error={error}
+        isEmpty={!data}
+        icon={<Calendar />}
+        title='Aucune donnée'
+        emptyMessage="Pas de données d'activité pour cette année."
+        loadingSkeleton={<ActivityHeatmapViewSkeleton />}>
+        <div className='flex h-full w-full flex-1 flex-col gap-6 overflow-hidden bg-c1'>
+          {/* Stats cards */}
+          <div className='border-b-2 border-c3 pb-5 pt-5'>
+          <div className='grid grid-cols-4 gap-4'>
+            <div className='flex items-center gap-3 rounded-xl border-2 border-c3 bg-c2 p-4'>
+              <TrendingUp size={16} className='shrink-0 text-c6' />
               <div>
-                <p className='text-c4 text-xs'>Total créations</p>
-                <p className='text-c6 font-medium'>{data?.stats.totalActivity}</p>
+                <p className='text-xs text-c4'>Total créations</p>
+                <p className='font-medium text-c6'>{data?.stats.totalActivity}</p>
               </div>
             </div>
 
-            <div className='flex items-center gap-8 bg-c2 rounded-xl p-4'>
-              <Activity size={16} className='text-c6' />
+            <div className='flex items-center gap-3 rounded-xl border-2 border-c3 bg-c2 p-4'>
+              <Activity size={16} className='shrink-0 text-c6' />
               <div>
-                <p className='text-c4 text-xs'>Jours actifs</p>
-                <p className='text-c6 font-medium'>{data?.stats.activeDays}</p>
+                <p className='text-xs text-c4'>Jours actifs</p>
+                <p className='font-medium text-c6'>{data?.stats.activeDays}</p>
               </div>
             </div>
 
-            <div className='flex items-center gap-8 bg-c2 rounded-xl p-4'>
-              <Calendar size={16} className='text-c6' />
+            <div className='flex items-center gap-3 rounded-xl border-2 border-c3 bg-c2 p-4'>
+              <Calendar size={16} className='shrink-0 text-c6' />
               <div>
-                <p className='text-c4 text-xs'>Max journalier</p>
-                <p className='text-c6 font-medium'>{data?.stats.maxDailyActivity}</p>
+                <p className='text-xs text-c4'>Max journalier</p>
+                <p className='font-medium text-c6'>{data?.stats.maxDailyActivity}</p>
               </div>
             </div>
 
-            <div className='flex items-center gap-8 bg-c2 rounded-xl p-4'>
-              <TrendingUp size={16} className='text-c6' />
+            <div className='flex items-center gap-3 rounded-xl border-2 border-c3 bg-c2 p-4'>
+              <TrendingUp size={16} className='shrink-0 text-c6' />
               <div>
-                <p className='text-c4 text-xs'>Moyenne/jour actif</p>
-                <p className='text-c6 font-medium'>{data?.stats.avgDailyActivity}</p>
+                <p className='text-xs text-c4'>Moyenne/jour actif</p>
+                <p className='font-medium text-c6'>{data?.stats.avgDailyActivity}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Heatmap par mois */}
-        <div className='flex-1 overflow-auto px-6 pb-6'>
-          <div className='grid grid-cols-4 gap-5'>
+        <div className='flex-1 overflow-auto pb-6'>
+          <div className='grid grid-cols-4 gap-4'>
             {monthsData.map((monthData) => (
-              <div key={monthData.month} className='bg-c2 rounded-xl p-4 flex flex-col '>
+              <div key={monthData.month} className='flex flex-col rounded-xl border-2 border-c3 bg-c2 p-4'>
                 {/* Nom du mois */}
                 <h3 className='text-c5 text-sm font-medium mb-2.5 text-center'>{monthData.name}</h3>
 
@@ -259,8 +267,9 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ onDayClick, se
             <span className='text-c4 text-xs'>Plus</span>
           </div>
         </div>
-      </div>
-    </ViewLoader>
+        </div>
+      </ViewLoader>
+    </div>
   );
 };
 

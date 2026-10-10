@@ -73,6 +73,25 @@ export type Citation = {
   keywords: Keyword[];
 };
 
+export type EditionHostInstitution = {
+  id: number;
+  title: string;
+  shortTitle?: string;
+  logo?: string;
+  kind: 'universite' | 'laboratoire';
+  href: string;
+};
+
+export type EditionOrganizer = {
+  id: number;
+  firstname: string;
+  lastname: string;
+  picture?: string;
+  href: string;
+  /** Universités / labos liés à l’intervenant (jdc:hasUniversity). */
+  affiliations?: string[];
+};
+
 export type Edition = {
   id: string;
   title: string;
@@ -80,6 +99,8 @@ export type Edition = {
   season: string;
   editionType: string;
   year: string;
+  hostInstitutions?: EditionHostInstitution[];
+  organizers?: EditionOrganizer[];
 };
 
 export type Conference = {

@@ -43,7 +43,8 @@ import { NavigationTrailProvider } from './hooks/useNavigationTrail';
 import { PlaylistProvider } from './hooks/usePlaylist';
 import { EspaceEtudiantPage } from '@/pages/user-space/EspaceEtudiantPage';
 import { LoadingScreen } from './components/layout/LoadingScreen';
-import { useState, useCallback, useEffect, createContext, useContext } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { NavbarReadyContext } from '@/context/NavbarReadyContext';
 import { experimentationStudentConfig } from './pages/generic/config/experimentationStudentConfig';
 import { feedbackStudentConfig } from './pages/generic/config/feedbackStudentConfig';
 import { bibliographyConfig } from './pages/generic/config/bibliographyConfig';
@@ -56,18 +57,6 @@ import { MotsClesPage } from '@/pages/admin/MotsClesPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import GlobalAdministration from '@/pages/admin/GlobalAdministration';
 import { CreateResourcePage } from '@/pages/generic/CreateResourcePage';
-
-// Create context for navbar ready callback
-interface NavbarReadyContextType {
-  onNavbarReady: () => void;
-}
-
-const NavbarReadyContext = createContext<NavbarReadyContextType | null>(null);
-
-export const useNavbarReadyContext = () => {
-  const context = useContext(NavbarReadyContext);
-  return context;
-};
 
 const ProtectedUsersPage = withAuth(AdminDashboard, { requiredPermission: 'admin' });
 const ProtectedAdministration = withAuth(GlobalAdministration, { requiredOmekaRole: 'global_admin' });

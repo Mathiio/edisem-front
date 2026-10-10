@@ -2,7 +2,7 @@ import React, { ReactNode } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { motion, Variants } from 'framer-motion';
-import { useNavbarReadyContext } from '@/App';
+import { useNavbarReadyContext } from '@/context/NavbarReadyContext';
 
 const containerVariants: Variants = {
   hidden: { opacity: 1 },

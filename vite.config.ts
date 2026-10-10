@@ -20,18 +20,22 @@ export default defineConfig({
     },
     hmr: true,
     proxy: {
-      // Proxy pour l'API Omeka S - contourne CORS en dev
+      // Proxy Omeka S en dev (same-origin /omk/* → edisem)
       '/omk/api': {
         target: 'https://edisem.arcanes.ca',
         changeOrigin: true,
         secure: true,
       },
-      // Proxy pour l'API Omeka S tests - contourne CORS en dev
-      '/tests-api': {
-        target: 'https://tests.arcanes.ca',
+      '/omk/s': {
+        target: 'https://edisem.arcanes.ca',
         changeOrigin: true,
         secure: true,
-        rewrite: (path) => path.replace(/^\/tests-api/, '/omk/api'),
+      },
+      // Fichiers médias (miniatures ResourceCard, avatars, etc.)
+      '/omk/files': {
+        target: 'https://edisem.arcanes.ca',
+        changeOrigin: true,
+        secure: true,
       },
     },
   },

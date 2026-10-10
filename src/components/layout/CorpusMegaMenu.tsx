@@ -9,6 +9,16 @@ import {
   ExperimentationIcon,
 } from '@/components/ui/icons';
 import { RESOURCE_TYPES } from '@/config/resourceConfig';
+import {
+  MEGA_MENU_CARD_CLASS,
+  MEGA_MENU_COL_FIRST_CLASS,
+  MEGA_MENU_COL_LAST_CLASS,
+  MEGA_MENU_COL_MIDDLE_CLASS,
+  MEGA_MENU_GRID_CLASS,
+  MEGA_MENU_HOVER_BRIDGE_CLASS,
+  MEGA_MENU_INNER_CLASS,
+  megaMenuPanelShellClass,
+} from '@/components/layout/megaMenuLayout';
 
 
 interface EditionLink {
@@ -189,13 +199,11 @@ export const CorpusMegaMenuPanel: React.FC<{
 
   return (
     <div
-      className={`absolute left-0 right-0 top-full z-40 ${
-        isClosing ? 'corpus-mega-menu-exit' : 'corpus-mega-menu-enter'
-      }`}
+      className={megaMenuPanelShellClass(isClosing, 'corpus-mega-menu-exit', 'corpus-mega-menu-enter')}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}>
-      <div className='h-2 -mt-2' aria-hidden='true' />
-      <div className='rounded-xl border-2 border-c3 bg-c2 shadow-lg overflow-hidden'>
+      <div className={MEGA_MENU_HOVER_BRIDGE_CLASS} aria-hidden='true' />
+      <div className={MEGA_MENU_CARD_CLASS}>
         <style>{`
         @keyframes corpusMegaMenuEnter {
           from { opacity: 0; transform: translateY(-4px); }
@@ -209,9 +217,9 @@ export const CorpusMegaMenuPanel: React.FC<{
         .corpus-mega-menu-exit { animation: corpusMegaMenuExit 140ms ease-in forwards; }
       `}</style>
 
-        <div className='px-4 py-3'>
-          <div className='grid grid-cols-1 md:grid-cols-3 md:divide-x md:divide-c3'>
-            <div className='flex flex-col md:pr-6'>
+        <div className={MEGA_MENU_INNER_CLASS}>
+          <div className={MEGA_MENU_GRID_CLASS}>
+            <div className={MEGA_MENU_COL_FIRST_CLASS}>
             <MegaMenuLink
               to='/corpus/pratiques-narratives'
               label='IA & Pratiques narratives'
@@ -240,7 +248,7 @@ export const CorpusMegaMenuPanel: React.FC<{
             />
           </div>
 
-          <div className='flex flex-col md:px-6 mt-4 md:mt-0'>
+          <div className={MEGA_MENU_COL_MIDDLE_CLASS}>
             <EventGroup
               collectionUrl={RESOURCE_TYPES.seminaire.collectionUrl || '#'}
               collectionLabel={RESOURCE_TYPES.seminaire.collectionLabel || 'Séminaires'}
@@ -250,7 +258,7 @@ export const CorpusMegaMenuPanel: React.FC<{
             />
           </div>
 
-          <div className='flex flex-col md:pl-6 mt-4 md:mt-0'>
+          <div className={MEGA_MENU_COL_LAST_CLASS}>
             <div className='flex flex-col gap-2'>
               <EventGroup
                 collectionUrl={RESOURCE_TYPES.colloque.collectionUrl || '#'}

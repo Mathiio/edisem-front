@@ -1,4 +1,7 @@
-const API_URL = 'https://tests.arcanes.ca/omk/api';
+import { omekaApiUrl, OMEKA_API_BASE, omekaQueryAjaxUrl, parseLooseJsonText } from '@/utils/omekaApi';
+
+const queryAction = (action: string, extra: Record<string, string | number | undefined> = {}) =>
+  omekaQueryAjaxUrl({ helper: 'Query', action, json: '1', ...extra });
 
 // Clés de cache utilisées dans sessionStorage
 const CACHE_KEYS = [
@@ -34,12 +37,27 @@ const CACHE_KEYS = [
 ];
 
 const CACHE_TIMESTAMP_KEY = 'edisem_cache_timestamp';
+/** Incrémenter après un changement de format API / parsing pour vider les caches session vides ou corrompus. */
+const CACHE_SCHEMA_VERSION = '2026-03-ajax-json';
+const CACHE_SCHEMA_KEY = 'edisem_cache_schema';
+
+function ensureCacheSchema(): void {
+  try {
+    if (sessionStorage.getItem(CACHE_SCHEMA_KEY) === CACHE_SCHEMA_VERSION) return;
+    CACHE_KEYS.forEach((key) => sessionStorage.removeItem(key));
+    sessionStorage.removeItem(CACHE_TIMESTAMP_KEY);
+    sessionStorage.setItem(CACHE_SCHEMA_KEY, CACHE_SCHEMA_VERSION);
+  } catch {
+    /* ignore */
+  }
+}
 
 /**
  * Vérifie si le cache doit être vidé (si c'est un nouveau jour)
  * et vide tous les caches si nécessaire
  */
 function checkAndClearDailyCache(): void {
+  ensureCacheSchema();
   try {
     const today = new Date().toDateString(); // Format: "Mon Jan 01 2024"
     const lastCacheDate = sessionStorage.getItem(CACHE_TIMESTAMP_KEY);
@@ -76,7 +94,9 @@ export const getDataByClass = async (resourceClassId: number): Promise<Data[]> =
 
   while (morePages) {
     try {
-      const response = await fetch(`${API_URL}/items?resource_template_id=${resourceClassId}&page=${page}&per_page=${perPage}`);
+      const response = await fetch(
+        omekaApiUrl(`${OMEKA_API_BASE}items?resource_template_id=${resourceClassId}&page=${page}&per_page=${perPage}`),
+      );
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
@@ -98,7 +118,7 @@ export const getDataByClass = async (resourceClassId: number): Promise<Data[]> =
 
 export const fetchRT = async (resourceTemplateId: number): Promise<Data[]> => {
   try {
-    const response = await fetch(`${API_URL}/resource_templates/${resourceTemplateId}`);
+    const response = await fetch(omekaApiUrl(`${OMEKA_API_BASE}resource_templates/${resourceTemplateId}`));
     if (!response.ok) {
       throw new Error('Network response was not ok');
     }
@@ -118,7 +138,7 @@ export const getAllProperties = async (): Promise<any[]> => {
 
   while (morePages) {
     try {
-      const response = await fetch(`${API_URL}/properties?page=${page}&per_page=${perPage}`);
+      const response = await fetch(omekaApiUrl(`${OMEKA_API_BASE}properties?page=${page}&per_page=${perPage}`));
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
@@ -151,7 +171,7 @@ export const getTemplatePropertiesMap = async (templateId: number): Promise<Reco
     return JSON.parse(cached);
   }
 
-  const response = await fetch(`${API_URL.replace('/api', '')}/s/edisem/page/ajax?helper=Query&action=getTemplateProperties&template_id=${templateId}&json=1`);
+  const response = await fetch(queryAction('getTemplateProperties', { template_id: templateId }));
   const map = await response.json();
 
   if (map.error) {
@@ -160,11 +180,10 @@ export const getTemplatePropertiesMap = async (templateId: number): Promise<Reco
   }
 
   sessionStorage.setItem(cacheKey, JSON.stringify(map));
-  console.log(`[getTemplatePropertiesMap] Template ${templateId}: ${Object.keys(map).length} properties`);
   return map;
 };
 
-export async function getDataByUrl(url: string) {
+export async function getDataByUrl(url: string): Promise<any> {
   try {
     // Check if this is an AJAX call that should use POST
     const isAjaxCall = url.includes('/ajax?') && url.includes('helper=Query');
@@ -191,13 +210,16 @@ export async function getDataByUrl(url: string) {
       return [];
     }
 
-    // Try to parse JSON
     try {
-      const data = JSON.parse(text);
+      const data = parseLooseJsonText(text);
+      if (data && typeof data === 'object' && 'error' in (data as object)) {
+        console.error(`API error for ${url}:`, (data as { error?: string }).error);
+        return [];
+      }
       return data;
     } catch (jsonError) {
       console.error(`JSON parsing error for ${url}:`, jsonError);
-      console.error('Response text:', text);
+      console.error('Response text (truncated):', text.slice(0, 500));
       return [];
     }
   } catch (error) {
@@ -216,7 +238,7 @@ export async function getMediagraphies(id?: number) {
       return id ? mediagraphies.find((m: any) => String(m.id) === String(id)) : mediagraphies;
     }
 
-    const mediagraphies = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getMediagraphies&json=1');
+    const mediagraphies = await getDataByUrl(queryAction('getMediagraphies'));
     const mediagraphiesFull = mediagraphies.map((mediagraphie: any) => ({
       ...mediagraphie,
       type: 'mediagraphie',
@@ -232,7 +254,7 @@ export async function getMediagraphies(id?: number) {
 
 export async function getActantsGlobalStats() {
   try {
-    return await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getActantsGlobalStats&json=1');
+    return await getDataByUrl(queryAction('getActantsGlobalStats'));
   } catch (error) {
     console.error('Error fetching global stats:', error);
     return null;
@@ -241,7 +263,7 @@ export async function getActantsGlobalStats() {
 
 export async function getRandomActants(limit = 12) {
   try {
-    return await getDataByUrl(`https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getRandomActants&limit=${limit}&json=1`);
+    return await getDataByUrl(queryAction('getRandomActants', { limit }));
   } catch (error) {
     console.error('Error fetching random actants:', error);
     return [];
@@ -250,7 +272,7 @@ export async function getRandomActants(limit = 12) {
 
 export async function getActantDetails(id: string | number) {
   try {
-    return await getDataByUrl(`https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getActantDetails&id=${id}&json=1`);
+    return await getDataByUrl(queryAction('getActantDetails', { id }));
   } catch (error) {
     console.error(`Error fetching actant details for ${id}:`, error);
     return null;
@@ -259,7 +281,7 @@ export async function getActantDetails(id: string | number) {
 
 export async function getActantNetwork(id: string | number) {
   try {
-    return await getDataByUrl(`https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getActantNetwork&id=${id}&json=1`);
+    return await getDataByUrl(queryAction('getActantNetwork', { id }));
   } catch (error) {
     console.error(`Error fetching actant network for ${id}:`, error);
     return { nodes: [], links: [] };
@@ -268,7 +290,7 @@ export async function getActantNetwork(id: string | number) {
 
 export async function getActantsByCountry() {
   try {
-    return await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getActantsByCountry&json=1');
+    return await getDataByUrl(queryAction('getActantsByCountry'));
   } catch (error) {
     console.error('Error fetching actants by country:', error);
     return [];
@@ -277,7 +299,7 @@ export async function getActantsByCountry() {
 
 export async function getEditionDetails(id: string | number) {
   try {
-    return await getDataByUrl(`https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getEditionDetails&id=${id}&json=1`);
+    return await getDataByUrl(queryAction('getEditionDetails', { id }));
   } catch (error) {
     console.error(`Error fetching edition details for ${id}:`, error);
     return null;
@@ -286,7 +308,7 @@ export async function getEditionDetails(id: string | number) {
 
 export async function getEditionsByType(type: string) {
   try {
-    return await getDataByUrl(`https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getEditionsByType&type=${type}&json=1`);
+    return await getDataByUrl(queryAction('getEditionsByType', { type }));
   } catch (error) {
     console.error(`Error fetching editions by type ${type}:`, error);
     return [];
@@ -297,8 +319,8 @@ export async function getNavbarEditions() {
   try {
     // We don't necessarily cache this heavily in session storage as it's lightweight and critical for nav
     // But we could if we wanted to.
-    const editions = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getNavbarEditions&json=1');
-    return editions;
+    const editions = await getDataByUrl(queryAction('getNavbarEditions'));
+    return Array.isArray(editions) ? editions : [];
   } catch (error) {
     console.error('Error fetching navbar editions:', error);
     return [];
@@ -361,7 +383,7 @@ export async function getPersonnes(id?: number) {
       return id ? personnes.find((p: any) => p.id === String(id)) : personnes;
     }
 
-    const personnes = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getPersonnes&json=1');
+    const personnes = await getDataByUrl(queryAction('getPersonnes'));
 
     personnes.forEach((personne: any) => {
       personne.type = 'personne';
@@ -384,7 +406,7 @@ export async function getKeywords() {
       return JSON.parse(storedKeywords);
     }
 
-    const keywords = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getKeywords&json=1');
+    const keywords = await getDataByUrl(queryAction('getKeywords'));
 
     // Add null check and default to empty array if no keywords
     const keywordsFull = (keywords || []).map((keyword: any) => ({
@@ -403,7 +425,7 @@ export async function getKeywords() {
 
 export async function getRecherches() {
   try {
-    const recherches = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getRecherches&json=1');
+    const recherches = await getDataByUrl(queryAction('getRecherches'));
 
     return recherches;
   } catch (error) {
@@ -422,7 +444,7 @@ export async function getStudents(id?: number) {
       return id ? parsedStudents.find((e: any) => String(e.id) === String(id)) : parsedStudents;
     }
 
-    const students = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getStudents&json=1');
+    const students = await getDataByUrl(queryAction('getStudents'));
 
     const updatedStudents = students.map((student: { firstname: string; lastname: string; id: number }) => {
       return {
@@ -442,7 +464,7 @@ export async function getStudents(id?: number) {
 
 export async function getComments() {
   try {
-    const data = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getComments&json=1');
+    const data = await getDataByUrl(queryAction('getComments'));
     return data;
   } catch (error) {
     console.error('Error fetching comments:', error);
@@ -466,7 +488,7 @@ async function enrichRecitCardsCreators(cards: any[]): Promise<any[]> {
   await Promise.all(
     needsEnrichment.map(async (card) => {
       try {
-        const response = await fetch(`${API_URL}/items/${card.id}`);
+        const response = await fetch(omekaApiUrl(`${OMEKA_API_BASE}items/${card.id}`));
         if (!response.ok) return;
         const item = await response.json();
         const creatorRefs = [
@@ -502,7 +524,7 @@ async function enrichRecitCardsCreators(cards: any[]): Promise<any[]> {
 
 export async function getRecitsCitoyensCards() {
   try {
-    const data = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getRecitsCitoyensCards&json=1');
+    const data = await getDataByUrl(queryAction('getRecitsCitoyensCards'));
     return enrichRecitCardsCreators(data);
   } catch (error) {
     console.error('Error fetching recits citoyens cards:', error);
@@ -512,7 +534,7 @@ export async function getRecitsCitoyensCards() {
 
 export async function getOutilsCards() {
   try {
-    const data = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getOutilsCards&json=1');
+    const data = await getDataByUrl(queryAction('getOutilsCards'));
     return data;
   } catch (error) {
     console.error('Error fetching outils cards:', error);
@@ -522,7 +544,7 @@ export async function getOutilsCards() {
 
 export async function getRecitsMediatiquesCards() {
   try {
-    const data = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getRecitsMediatiquesCards&json=1');
+    const data = await getDataByUrl(queryAction('getRecitsMediatiquesCards'));
     return enrichRecitCardsCreators(data);
   } catch (error) {
     console.error('Error fetching recits mediatiques cards:', error);
@@ -532,7 +554,7 @@ export async function getRecitsMediatiquesCards() {
 
 export async function getRecitsScientifiquesCards() {
   try {
-    const data = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getRecitsScientifiquesCards&json=1');
+    const data = await getDataByUrl(queryAction('getRecitsScientifiquesCards'));
     return enrichRecitCardsCreators(data);
   } catch (error) {
     console.error('Error fetching recits scientifiques cards:', error);
@@ -542,7 +564,7 @@ export async function getRecitsScientifiquesCards() {
 
 export async function getRecitsTechnoCards() {
   try {
-    const data = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getRecitsTechnoCards&json=1');
+    const data = await getDataByUrl(queryAction('getRecitsTechnoCards'));
     return enrichRecitCardsCreators(data);
   } catch (error) {
     console.error('Error fetching recits techno cards:', error);
@@ -552,7 +574,7 @@ export async function getRecitsTechnoCards() {
 
 export async function getRecitsArtistiquesCards() {
   try {
-    const data = await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getRecitsArtistiquesCards&json=1');
+    const data = await getDataByUrl(queryAction('getRecitsArtistiquesCards'));
     return enrichRecitCardsCreators(data);
   } catch (error) {
     console.error('Error fetching recits artistiques cards:', error);
@@ -562,7 +584,7 @@ export async function getRecitsArtistiquesCards() {
 
 export async function getExperimentationCards() {
   try {
-    return await getDataByUrl('https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getExperimentationCards&json=1');
+    return await getDataByUrl(queryAction('getExperimentationCards'));
   } catch (error) {
     console.error('Error fetching experimentation cards:', error);
     throw new Error('Failed to fetch experimentation cards');
@@ -576,7 +598,7 @@ export async function getExperimentationCards() {
  */
 export async function getCardsByEdition(editionId: string | number) {
   try {
-    return await getDataByUrl(`https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getCardsByEdition&editionId=${editionId}&json=1`);
+    return await getDataByUrl(queryAction('getCardsByEdition', { editionId }));
   } catch (error) {
     console.error('Error fetching cards by edition:', error);
     return [];
@@ -591,8 +613,12 @@ export async function getCardsByEdition(editionId: string | number) {
  */
 export async function getCardsByActant(actantId: string | number, types: string[] = []) {
   try {
-    const typesParam = types.length > 0 ? `&types=${types.join(',')}` : '';
-    return await getDataByUrl(`https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getCardsByActant&actantId=${actantId}${typesParam}&json=1`);
+    return await getDataByUrl(
+      queryAction('getCardsByActant', {
+        actantId,
+        ...(types.length > 0 ? { types: types.join(',') } : {}),
+      }),
+    );
   } catch (error) {
     console.error('Error fetching cards by actant:', error);
     return [];
@@ -601,7 +627,7 @@ export async function getCardsByActant(actantId: string | number, types: string[
 
 export async function getCardsByPersonne(personneId: string | number) {
   try {
-    return await getDataByUrl(`https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getCardsByPersonne&personneId=${personneId}&json=1`);
+    return await getDataByUrl(queryAction('getCardsByPersonne', { personneId }));
   } catch (error) {
     console.error('Error fetching cards by personne:', error);
     return [];
@@ -617,7 +643,7 @@ export async function getCardsByPersonne(personneId: string | number) {
 
 export async function getResourceCardsByKeyword(keywordId: string | number, limit: number = 12) {
   try {
-    return await getDataByUrl(`https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=getResourceCardsByKeyword&keywordId=${keywordId}&limit=${limit}&json=1`);
+    return await getDataByUrl(queryAction('getResourceCardsByKeyword', { keywordId, limit }));
   } catch (error) {
     console.error('Error fetching resource cards by keyword:', error);
     return [];
@@ -626,8 +652,12 @@ export async function getResourceCardsByKeyword(keywordId: string | number, limi
 
 export async function advancedSearch(query: string, types: string[] = []) {
   try {
-    const typesParam = types.length > 0 ? `&types=${types.join(',')}` : '';
-    return await getDataByUrl(`https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=Query&action=advancedSearch&query=${encodeURIComponent(query)}${typesParam}&json=1`);
+    return await getDataByUrl(
+      queryAction('advancedSearch', {
+        query,
+        ...(types.length > 0 ? { types: types.join(',') } : {}),
+      }),
+    );
   } catch (error) {
     console.error('Error in advanced search:', error);
     return [];

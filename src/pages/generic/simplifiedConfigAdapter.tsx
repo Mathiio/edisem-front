@@ -266,7 +266,7 @@ const InlineMicroresumeForm: React.FC<{
   );
 };
 import { getResourceConfigByTemplateId, isFormOnlyResourceType, resolveResourceTypeFromOmekaItem } from '@/config/resourceConfig';
-import { buildCachedResourceUrl, extractExternalUrlFromOmekaItem, getResourceThumbnail, getYouTubeThumbnail, isOverviewMediaUrl, pickOmekaDisplayThumbnail, pickOmekaMediaThumbnail, resolveOmekaThumbnail } from '@/lib/resourceUtils';
+import { buildCachedResourceUrl, extractExternalUrlFromOmekaItem, getResourceThumbnail, getYouTubeThumbnail, isOverviewMediaUrl, pickOmekaDisplayThumbnail, pickOmekaMediaThumbnail, readOmekaPersonFirstName, readOmekaPersonLastName, resolveOmekaThumbnail } from '@/lib/resourceUtils';
 import { isValidYouTubeUrl } from '@/lib/utils';
 import { enrichItemWithResourceOwner } from '@/lib/resourceOwner';
 import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/ui/form/AutoResizingTextarea';
@@ -1120,10 +1120,8 @@ const cacheLinkedOmekaResource = async (
     const templateId = resourceData['o:resource_template']?.['o:id'];
     const contributorType = getContributorDisplayType(templateId);
     const resourceType = contributorType || getResourceTypeFromTemplate(templateId, resourceData);
-    const firstname =
-      resourceData['foaf:firstName']?.[0]?.['@value'] || resourceData['schema:givenName']?.[0]?.['@value'] || '';
-    const lastname =
-      resourceData['foaf:familyName']?.[0]?.['@value'] || resourceData['schema:familyName']?.[0]?.['@value'] || '';
+    const firstname = readOmekaPersonFirstName(resourceData);
+    const lastname = readOmekaPersonLastName(resourceData);
     const displayTitle =
       resourceData['o:title'] || `${firstname} ${lastname}`.trim() || getResourceFallbackTitle(resourceId, templateId);
     const externalUrl = extractExternalUrlFromOmekaItem(resourceData);
@@ -2459,7 +2457,6 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
 
       // 2. Récupérer le mapping des propriétés pour ce template (dynamique)
       const propMap = await getTemplatePropertiesMap(config.templateId);
-      console.log('[handleSave] Properties map loaded:', Object.keys(propMap).length, 'properties');
 
       // 3. Construire le mapping clé → propriété Omeka S
       const keyToProperty: Record<string, string> = {
@@ -2726,8 +2723,6 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
         updatedItem['schema:agent'] = [];
       }
 
-      console.log('[handleSave] Item data to send:', updatedItem);
-
       // 7. Sauvegarder
       const url = omekaApiUrl(`${API_BASE}items/${itemId}`);
       const saveResponse = await fetch(url, {
@@ -2742,7 +2737,6 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
       }
 
       await saveResponse.json();
-      console.log('[handleSave] Item saved successfully');
 
       // 8. Gérer les médias (ordre, upload, suppression)
       if (data.mediaOrder && Array.isArray(data.mediaOrder)) {

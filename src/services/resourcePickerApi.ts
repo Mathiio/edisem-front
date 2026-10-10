@@ -8,6 +8,7 @@ import {
   getResourceConfigByType,
   getRessourceLabel,
 } from '@/config/resourceConfig';
+import { edisemHelperAjaxUrl } from '@/utils/omekaApi';
 
 export interface PickerListItem {
   id: number;
@@ -32,11 +33,6 @@ export interface PickerListResponse {
 const PER_PAGE = 200;
 const MAX_PAGES = 100;
 
-/** Même base que les autres appels ajax (Query, MotsCles, …) */
-const EDISEM_AJAX_BASE =
-  import.meta.env.VITE_EDISEM_AJAX_BASE ??
-  (import.meta.env.DEV ? 'https://tests.arcanes.ca/omk/s/edisem/page/ajax' : '/omk/s/edisem/page/ajax');
-
 function buildPickerUrl(params: Record<string, string | number | undefined>): string {
   const searchParams = new URLSearchParams({
     helper: 'ResourcePicker',
@@ -48,7 +44,7 @@ function buildPickerUrl(params: Record<string, string | number | undefined>): st
       searchParams.set(key, String(value));
     }
   });
-  return `${EDISEM_AJAX_BASE}?${searchParams.toString()}`;
+  return edisemHelperAjaxUrl('ResourcePicker', Object.fromEntries(searchParams));
 }
 
 export async function fetchPickerPage(options: {

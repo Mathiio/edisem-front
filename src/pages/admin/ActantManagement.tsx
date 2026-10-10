@@ -33,6 +33,7 @@ import {
 import { matchesAdminSearch, sortByStringField } from '@/components/features/pages/user-management/adminListConfig';
 import { useAdminListControls } from '@/hooks/useAdminListControls';
 import { getActantsForLogin, linkActantToUser, createOmekaUserForActant, createActantWithUser, deleteActant, type Actant } from '@/services/UserSpace';
+import { edisemHelperAjaxUrl } from '@/utils/omekaApi';
 
 // Types
 interface OmekaUser {
@@ -43,12 +44,9 @@ interface OmekaUser {
   created: string;
 }
 
-const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=UserSpace';
-
 // Récupérer les utilisateurs Omeka S
 async function fetchOmekaUsers(): Promise<OmekaUser[]> {
-  const url = `${API_BASE}&action=getOmekaUsers&json=1`;
-  const response = await fetch(url);
+  const response = await fetch(edisemHelperAjaxUrl('UserSpace', { action: 'getOmekaUsers', json: '1' }));
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération des utilisateurs');
   }
@@ -285,7 +283,15 @@ export const ActantManagement: React.FC<ActantManagementProps> = ({ embedded = f
 
     setSaving(true);
     try {
-      const url = `${API_BASE}&action=updateActant&actantId=${editingActant.id}&email=${encodeURIComponent(editEmail)}&name=${encodeURIComponent(editName)}&firstname=${encodeURIComponent(editFirstname)}&lastname=${encodeURIComponent(editLastname)}&json=1`;
+      const url = edisemHelperAjaxUrl('UserSpace', {
+        action: 'updateActant',
+        actantId: editingActant.id,
+        email: editEmail,
+        name: editName,
+        firstname: editFirstname,
+        lastname: editLastname,
+        json: '1',
+      });
       const response = await fetch(url, { method: 'POST' });
       const result = await response.json();
 

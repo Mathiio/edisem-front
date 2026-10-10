@@ -59,7 +59,7 @@ for (const config of ALL_CONFIGS) {
   }
 }
 
-const { bibliographies, mediagraphies } = splitBibliographyMediagraphyTemplateIds([81, 99, 98, 83]);
+const { bibliographies, mediagraphies } = splitBibliographyMediagraphyTemplateIds([81, 83]);
 for (const id of bibliographies) {
   TEMPLATE_ID_TO_CONFIG[id] ??= bibliographyConfig;
 }

@@ -232,6 +232,14 @@ export function resolveOmekaPublicUrl(url: string | null | undefined): string | 
   if (!trimmed) return null;
 
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.pathname.startsWith('/omk/')) {
+        return `${parsed.pathname}${parsed.search}`;
+      }
+    } catch {
+      /* garder l’URL absolue */
+    }
     return trimmed;
   }
 
@@ -387,3 +395,24 @@ export const getRecitDateLine = (item: any): string | undefined => {
     if (item.type === 'recit_citoyen') return `Fondé : ${formatted}`;
     return `Publié : ${formatted}`;
 };
+
+function readOmekaLiteralFirst(data: Record<string, unknown> | null | undefined, property: string): string {
+  const values = data?.[property];
+  if (!Array.isArray(values) || !values[0] || typeof values[0] !== 'object') return '';
+  const v = (values[0] as { '@value'?: string })['@value'];
+  return typeof v === 'string' && v.trim() ? v.trim() : '';
+}
+
+/** Prénom sur fiche personne / actant (aligné intervenantConfig / personneConfig). */
+export function readOmekaPersonFirstName(data: Record<string, unknown> | null | undefined): string {
+  return readOmekaLiteralFirst(data, 'foaf:firstName') || readOmekaLiteralFirst(data, 'schema:givenName');
+}
+
+/** Nom de famille — les formulaires écrivent foaf:lastName ; legacy foaf:familyName / schema:familyName. */
+export function readOmekaPersonLastName(data: Record<string, unknown> | null | undefined): string {
+  return (
+    readOmekaLiteralFirst(data, 'foaf:lastName') ||
+    readOmekaLiteralFirst(data, 'foaf:familyName') ||
+    readOmekaLiteralFirst(data, 'schema:familyName')
+  );
+}

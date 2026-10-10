@@ -16,7 +16,9 @@ const logout = () => {
     }
 };
 
-const PROXY_URL = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=ApiProxy';
+import { edisemHelperAjaxUrl } from '@/utils/omekaApi';
+
+const apiProxyUrl = (action: string) => edisemHelperAjaxUrl('ApiProxy', { action, json: '1' });
 
 export const ApiProxy = {
   async request(url: string, options: RequestInit = {}): Promise<Response> {
@@ -77,7 +79,7 @@ export const ApiProxy = {
    * Proxiage spécifique via ApiProxyViewHelper (backend)
    */
   async proxy(action: string, params: Record<string, any> = {}): Promise<any> {
-    return this.post(`${PROXY_URL}&action=${action}&json=1`, params);
+    return this.post(apiProxyUrl(action), params);
   },
 
   async createItem(data: any): Promise<any> {
@@ -96,7 +98,7 @@ export const ApiProxy = {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('itemId', String(itemId));
-    return this.post(`${PROXY_URL}&action=uploadMedia&json=1`, formData);
+    return this.post(apiProxyUrl('uploadMedia'), formData);
   },
 
   async createMedia(mediaData: any): Promise<any> {

@@ -14,8 +14,10 @@ import {
   resolveConferenceResourceTypeFromTerm,
   type ConferenceResourceType,
 } from '@/config/conferenceTypeConfig';
+import { edisemHelperAjaxUrl } from '@/utils/omekaApi';
 
-const BASE_URL = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=MotsCles';
+const motsClesUrl = (params: Record<string, string | number | undefined>) =>
+  edisemHelperAjaxUrl('MotsCles', { json: '1', ...params });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -275,7 +277,7 @@ const KeywordExplorerSection: React.FC = () => {
     debounceRef.current = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const res  = await fetch(`${BASE_URL}&action=searchKeywords&q=${encodeURIComponent(query)}&json=1`);
+        const res = await fetch(motsClesUrl({ action: 'searchKeywords', q: query }));
         const data = await res.json();
         setSuggestions(data.keywords ?? []);
         if (suppressNextSuggestOpenRef.current) {
@@ -308,7 +310,7 @@ const KeywordExplorerSection: React.FC = () => {
     setQuery(kw.title);
     setIsLoadingItems(true);
     try {
-      const res  = await fetch(`${BASE_URL}&action=getKeywordItems&id=${kw.id}&json=1`);
+      const res = await fetch(motsClesUrl({ action: 'getKeywordItems', id: kw.id }));
       const data = await res.json();
       if (!data.success) throw new Error(data.error ?? 'Erreur serveur');
       setResult(data as KeywordResult);
@@ -354,7 +356,12 @@ const KeywordExplorerSection: React.FC = () => {
     setIsReplacing(true);
     try {
       const res = await fetch(
-        `${BASE_URL}&action=replaceKeyword&from_id=${result.keyword.id}&to_id=${replaceToId}&dryRun=1&json=1`,
+        motsClesUrl({
+          action: 'replaceKeyword',
+          from_id: result.keyword.id,
+          to_id: replaceToId,
+          dryRun: 1,
+        }),
       );
       const data = await res.json();
       if (!data.success) throw new Error(data.error ?? 'Erreur serveur');
@@ -372,7 +379,11 @@ const KeywordExplorerSection: React.FC = () => {
     setIsReplacing(true);
     try {
       const res = await fetch(
-        `${BASE_URL}&action=replaceKeyword&from_id=${result.keyword.id}&to_id=${replaceToId}&json=1`,
+        motsClesUrl({
+          action: 'replaceKeyword',
+          from_id: result.keyword.id,
+          to_id: replaceToId,
+        }),
       );
       const data = await res.json();
       if (!data.success) throw new Error(data.error ?? 'Erreur serveur');
@@ -398,7 +409,11 @@ const KeywordExplorerSection: React.FC = () => {
     setIsDeletingOrigin(true);
     try {
       const res = await fetch(
-        `${BASE_URL}&action=deleteKeywords&dryRun=1&ids=${originDeleteProposal.from.id}&json=1`,
+        motsClesUrl({
+          action: 'deleteKeywords',
+          dryRun: 1,
+          ids: originDeleteProposal.from.id,
+        }),
       );
       const data = await res.json();
       if (!data.success) throw new Error(data.error ?? 'Erreur serveur');
@@ -416,7 +431,11 @@ const KeywordExplorerSection: React.FC = () => {
     setIsDeletingOrigin(true);
     try {
       const res = await fetch(
-        `${BASE_URL}&action=deleteKeywords&dryRun=0&ids=${originDeleteProposal.from.id}&json=1`,
+        motsClesUrl({
+          action: 'deleteKeywords',
+          dryRun: 0,
+          ids: originDeleteProposal.from.id,
+        }),
       );
       const data = await res.json();
       if (!data.success) throw new Error(data.error ?? 'Erreur serveur');
@@ -684,7 +703,7 @@ const KeywordsUsageSection: React.FC = () => {
     if (!ids.length) { setError('Aucun ID valide.'); return; }
     setIsLoading(true);
     try {
-      const res  = await fetch(`${BASE_URL}&action=exportKeywordUsage&ids=${encodeURIComponent(ids.join(','))}&json=1`);
+      const res = await fetch(motsClesUrl({ action: 'exportKeywordUsage', ids: ids.join(',') }));
       const data = await res.json();
       if (!data.success || !data.csv) throw new Error(data.error ?? 'Réponse vide');
       const blob = new Blob([data.csv], { type: 'text/csv;charset=utf-8;' });
@@ -769,7 +788,7 @@ const KeywordsDeleteSection: React.FC = () => {
     if (!ids.length) { setError('Aucun ID valide.'); return; }
     setIsLoading(true);
     try {
-      const res  = await fetch(`${BASE_URL}&action=deleteKeywords&dryRun=1&ids=${encodeURIComponent(ids.join(','))}&json=1`);
+      const res = await fetch(motsClesUrl({ action: 'deleteKeywords', dryRun: 1, ids: ids.join(',') }));
       const data = await res.json();
       if (!data.success) throw new Error(data.error ?? 'Erreur serveur');
       setDryRun(data as DryRunResult); setStep('confirming');
@@ -782,7 +801,7 @@ const KeywordsDeleteSection: React.FC = () => {
     const ids = parseIds(idsInput);
     setIsLoading(true);
     try {
-      const res  = await fetch(`${BASE_URL}&action=deleteKeywords&dryRun=0&ids=${encodeURIComponent(ids.join(','))}&json=1`);
+      const res = await fetch(motsClesUrl({ action: 'deleteKeywords', dryRun: 0, ids: ids.join(',') }));
       const data = await res.json();
       if (!data.success) throw new Error(data.error ?? 'Erreur serveur');
       setDeleteResult(data as DeleteResult); setStep('deleted');

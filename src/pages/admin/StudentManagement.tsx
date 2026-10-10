@@ -34,6 +34,7 @@ import { matchesAdminSearch, sortByStringField } from '@/components/features/pag
 import { useAdminListControls } from '@/hooks/useAdminListControls';
 import { AdminSelectionBar } from '@/components/features/pages/user-management/AdminSelectionBar';
 import { getCourses, getStudentCourses, enrollStudent, unenrollStudent, type Course } from '@/services/UserSpace';
+import { edisemHelperAjaxUrl } from '@/utils/omekaApi';
 
 // Types
 interface OmekaUser {
@@ -69,12 +70,12 @@ interface FormData {
   courseIds: number[]; // Cours à inscrire lors de la création
 }
 
-const API_BASE = 'https://tests.arcanes.ca/omk/s/edisem/page/ajax?helper=UserSpace';
+const userSpaceAdminUrl = (params: Record<string, string | number | undefined>) =>
+  edisemHelperAjaxUrl('UserSpace', { json: '1', ...params });
 
 // Récupérer les étudiants
 async function fetchStudents(): Promise<StudentItem[]> {
-  const url = `${API_BASE}&action=getStudentsAdmin&json=1`;
-  const response = await fetch(url);
+  const response = await fetch(userSpaceAdminUrl({ action: 'getStudentsAdmin' }));
   if (!response.ok) {
     const text = await response.text();
     console.error('[StudentManagement] Error response:', text);
@@ -86,8 +87,7 @@ async function fetchStudents(): Promise<StudentItem[]> {
 
 // Récupérer les utilisateurs Omeka S
 async function fetchOmekaUsers(): Promise<OmekaUser[]> {
-  const url = `${API_BASE}&action=getOmekaUsers&json=1`;
-  const response = await fetch(url);
+  const response = await fetch(userSpaceAdminUrl({ action: 'getOmekaUsers' }));
   if (!response.ok) {
     const text = await response.text();
     console.error('[StudentManagement] Users error response:', text);
@@ -108,9 +108,9 @@ async function createStudent(data: FormData): Promise<any> {
     classNumber: data.classNumber || '',
     createUser: data.createUser ? '1' : '0',
   });
-  const url = `${API_BASE}&action=createStudent&json=1&${params.toString()}`;
-
-  const response = await fetch(url);
+  const response = await fetch(
+    userSpaceAdminUrl({ action: 'createStudent', ...Object.fromEntries(params) }),
+  );
 
   const responseText = await response.text();
 
@@ -140,7 +140,7 @@ async function createStudent(data: FormData): Promise<any> {
 
 // Mettre à jour un étudiant
 async function updateStudent(id: number, data: Partial<FormData>): Promise<any> {
-  const response = await fetch(`${API_BASE}&action=updateStudent&id=${id}&json=1`, {
+  const response = await fetch(userSpaceAdminUrl({ action: 'updateStudent', id }), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -154,7 +154,7 @@ async function updateStudent(id: number, data: Partial<FormData>): Promise<any> 
 
 // Lier un étudiant à un utilisateur Omeka S
 async function linkStudentToUser(studentId: number, userId: number): Promise<any> {
-  const response = await fetch(`${API_BASE}&action=linkStudentToUser&studentId=${studentId}&userId=${userId}&json=1`, {
+  const response = await fetch(userSpaceAdminUrl({ action: 'linkStudentToUser', studentId, userId }), {
     method: 'POST',
   });
   if (!response.ok) {
@@ -166,7 +166,7 @@ async function linkStudentToUser(studentId: number, userId: number): Promise<any
 
 // Supprimer un étudiant
 async function deleteStudent(id: number): Promise<any> {
-  const response = await fetch(`${API_BASE}&action=deleteStudent&id=${id}&json=1`, {
+  const response = await fetch(userSpaceAdminUrl({ action: 'deleteStudent', id }), {
     method: 'POST',
   });
   if (!response.ok) {

@@ -1,6 +1,6 @@
 import * as Items from '@/services/Items';
 import { ApiProxy } from '@/services/ApiProxy';
-import { omekaApiUrl, OMEKA_API_BASE } from '@/utils/omekaApi';
+import { omekaApiUrl, OMEKA_API_BASE, omekaQueryAjaxUrl, parseFetchJsonLoose } from '@/utils/omekaApi';
 // import { Actant } from "@/types/ui";
 
 export async function getItemByID(id: string): Promise<any | null> {
@@ -26,7 +26,7 @@ export async function getResearchByActant(actantId: string) {
       recherchesFiltrees.map(async (recherche: any) => {
         try {
           // Récupérer les médias de l'item
-          const mediaResponse = await fetch(`https://tests.arcanes.ca/omk/api/media?item_id=${recherche.id}`);
+          const mediaResponse = await fetch(omekaApiUrl(`${OMEKA_API_BASE}media?item_id=${recherche.id}`));
           if (mediaResponse.ok) {
             const mediaData = await mediaResponse.json();
             if (mediaData && mediaData.length > 0) {
@@ -124,10 +124,9 @@ export async function createEdisemComment(commentaireData: {
       values: JSON.stringify(values),
     });
 
-    console.log('Sending request params:', params.toString());
-    console.log('Final URL:', `https://tests.arcanes.ca/omk/s/edisem/page/ajax?${params.toString()}`);
+    const createCommentUrl = omekaQueryAjaxUrl(Object.fromEntries(params));
 
-    const response = await fetch(`https://tests.arcanes.ca/omk/s/edisem/page/ajax?${params.toString()}`, {
+    const response = await fetch(createCommentUrl, {
       method: 'GET', // Utiliser GET car les paramètres sont dans l'URL
     });
 
@@ -138,7 +137,6 @@ export async function createEdisemComment(commentaireData: {
     }
 
     const responseText = await response.text();
-    console.log('Raw server response:', responseText);
 
     let result;
     try {
@@ -171,7 +169,7 @@ export async function createEdisemComment(commentaireData: {
  */
 export async function getEdisemComments(): Promise<any[]> {
   try {
-    const response = await fetch('https://tests.arcanes.ca/omk/s/edisem/page/ajax', {
+    const response = await fetch(omekaQueryAjaxUrl({ helper: 'Query', action: 'getEdisemComments', json: '1' }), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -189,7 +187,7 @@ export async function getEdisemComments(): Promise<any[]> {
       throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
 
-    const result = await response.json();
+    const result = await parseFetchJsonLoose(response);
 
     if (!result || !Array.isArray(result)) {
       throw new Error('Format de réponse invalide');

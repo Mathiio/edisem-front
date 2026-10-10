@@ -50,6 +50,7 @@ export const elementNarratifConfigSimplified: SimplifiedDetailConfig = {
             { key: 'identification', label: 'Identification (Metz)', property: 'drama:feels', allowMultipleInputs: false },
             { key: 'regimeModal', label: 'Régime modal (Ryan)', property: 'genstory:hasMonde', allowMultipleInputs: false },
             { key: 'voixAcousmatique', label: 'Voix et acousmatique (Chion)', property: 'ma:hasAudioDescription', allowMultipleInputs: false },
+            { key: 'temporality', label: 'Temporalité / Régime temporel / Image-temps (Deleuze)', property: 'dcterms:temporal', allowMultipleInputs: false },
             { key: 'racontabilite', label: 'Racontabilité (Ryan)', property: 'storyline:hasTheme', allowMultipleInputs: false },
           ],
         },
@@ -60,7 +61,7 @@ export const elementNarratifConfigSimplified: SimplifiedDetailConfig = {
       title: 'Contenus extérieurs',
       property: 'dcterms:references',
       renderType: 'references',
-      resourceTemplateIds: [81, 99, 98, 83],
+      resourceTemplateIds: [81, 83],
     },
     {
       key: 'Adaptations',
