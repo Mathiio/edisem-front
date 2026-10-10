@@ -126,6 +126,7 @@ export interface OrphanResource {
   title: string;
   template_id: number;
   created: string;
+  /** Items publics distincts liés en entrée ou en sortie (value_resource_id Omeka). */
   link_count: number;
   type: string;
   label: string;
@@ -313,7 +314,10 @@ export async function getCoverageMatrix(topKeywords?: number): Promise<CoverageM
  */
 export async function getOrphanResources(threshold?: number): Promise<OrphanResourcesData> {
   const response = await fetch(
-    analyticsUrl({ action: 'getOrphanResources', ...(threshold ? { threshold } : {}) }),
+    analyticsUrl({
+      action: 'getOrphanResources',
+      ...(threshold !== undefined ? { threshold } : {}),
+    }),
   );
   if (!response.ok) {
     throw new Error('Erreur lors de la récupération des ressources orphelines');

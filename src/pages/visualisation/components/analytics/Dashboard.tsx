@@ -34,6 +34,9 @@ interface DashboardData {
 
 type DashboardDetailModal = 'distribution' | 'completeness' | 'orphans';
 
+/** Seuil Analytics getOrphanResources : uniquement les items sans voisin item↔item. */
+const ORPHAN_MAX_LINKS = 0;
+
 const MODAL_MOTION_PROPS = {
   variants: {
     enter: { y: 0, opacity: 1, transition: { duration: 0.3, ease: 'easeOut' } },
@@ -60,7 +63,7 @@ const DETAIL_MODAL_META = {
   },
   orphans: {
     title: 'Ressources isolées',
-    subtitle: 'Ressources avec au plus deux connexions dans le graphe.',
+    subtitle: 'Ressources sans aucune connexion item↔item (entrantes ni sortantes).',
     icon: AlertTriangle,
     iconColor: 'text-datavisOrange',
     iconBg: 'bg-datavisOrange/15',
@@ -162,10 +165,12 @@ const OverviewView: React.FC<{
             </div>
             <ArrowRight size={16} className='text-c4 group-hover:text-datavisOrange group-hover:translate-x-px transition-all' />
           </div>
-          <p className='text-c6 text-3xl font-bold tracking-tight'>{stats.orphans}</p>
-          <p className='text-c4 text-xs mt-8'>{stats.orphansPercent}% peu connectées</p>
+          <p className='text-c6 text-3xl font-bold tracking-tight'>{formatNumber(stats.orphans)}</p>
+          <p className='text-c4 text-xs mt-8'>
+            {stats.orphansPercent}% du corpus · {ORPHAN_MAX_LINKS} connexion item↔item
+          </p>
           <div className='mt-2.5 pt-2.5 border-t border-c3'>
-            <span className='text-datavisOrange text-xs font-medium'>≤2 connexions</span>
+            <span className='text-datavisOrange text-xs font-medium'>Entrantes + sortantes (items publics)</span>
           </div>
         </button>
       </div>
@@ -390,7 +395,7 @@ const OrphansView: React.FC<{ orphans: OrphanResourcesData }> = ({ orphans }) =>
                       <p className='text-c4 text-xs'>ID: {item.id}</p>
                     </div>
                     <div className='flex items-center gap-2.5'>
-                      <span className='text-orange-500 text-xs'>{item.link_count} conn.</span>
+                      <span className='text-orange-500 text-xs'>{item.link_count} conn. item↔item</span>
                       <a
                         href={omekaAdminItemUrl(item.id)}
                         target='_blank'
@@ -475,7 +480,12 @@ export const Dashboard: React.FC = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const [overview, completeness, orphans, keywords] = await Promise.all([getOverview(), getCompletenessStats(), getOrphanResources(2), getCoverageMatrix(10)]);
+        const [overview, completeness, orphans, keywords] = await Promise.all([
+          getOverview(),
+          getCompletenessStats(),
+          getOrphanResources(ORPHAN_MAX_LINKS),
+          getCoverageMatrix(10),
+        ]);
         setData({ overview, completeness, orphans, keywords });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erreur inconnue');
