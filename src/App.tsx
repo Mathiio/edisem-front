@@ -1,3 +1,4 @@
+import { lazy, Suspense, useState, useCallback, useEffect } from 'react';
 import { useThemeMode } from '@/hooks/useThemeMode';
 import { Route, Routes, Navigate } from 'react-router-dom';
 import { Intervenant } from '@/pages/people/IntervenantPage';
@@ -6,7 +7,6 @@ import { Edition } from '@/pages/corpus/ConfsByEdition';
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { CahierRecherchePage } from '@/pages/research/CahierRecherchePage';
 import { withAuth } from '@/hooks/withAuth';
-import Visualisation from '@/pages/visualisation';
 import { AppToastProvider } from '@/theme/components';
 import { Intervenants } from '@/pages/people/IntervenantsPage';
 import { Colloques } from '@/pages/corpus/Colloques';
@@ -43,7 +43,7 @@ import { NavigationTrailProvider } from './hooks/useNavigationTrail';
 import { PlaylistProvider } from './hooks/usePlaylist';
 import { EspaceEtudiantPage } from '@/pages/user-space/EspaceEtudiantPage';
 import { LoadingScreen } from './components/layout/LoadingScreen';
-import { useState, useCallback, useEffect } from 'react';
+import { RouteSuspenseFallback } from '@/components/layout/RouteSuspenseFallback';
 import { NavbarReadyContext } from '@/context/NavbarReadyContext';
 import { experimentationStudentConfig } from './pages/generic/config/experimentationStudentConfig';
 import { feedbackStudentConfig } from './pages/generic/config/feedbackStudentConfig';
@@ -69,6 +69,8 @@ const ProtectedAdminConfigurableDetailPage = withAuth(ConfigurableDetailPage, { 
 const ProtectedCreateResourcePage = withAuth(CreateResourcePage, { requiredRole: 'any' });
 const ProtectedAdminCreateResourcePage = withAuth(CreateResourcePage, { requiredPermission: 'admin' });
 //const ProtectedCahierRecherche = withAuth(CahierRecherchePage, { requiredRole: 'actant' });
+
+const VisualisationPage = lazy(() => import('@/pages/visualisation'));
 
 function App() {
   useThemeMode();
@@ -101,7 +103,14 @@ function App() {
             <Route index path='/' Component={HomePage} />
             <Route path='/login' Component={LoginPage} />
             <Route path='/intervenants' Component={Intervenants} />
-            <Route path='/visualisation' Component={Visualisation} />
+            <Route
+              path='/visualisation'
+              element={
+                <Suspense fallback={<RouteSuspenseFallback label='Chargement datavisualisation…' />}>
+                  <VisualisationPage />
+                </Suspense>
+              }
+            />
             <Route path='/recherche/' Component={CahierRecherchePage} />
             <Route path='/espace-etudiant' Component={EspaceEtudiantPage} />
             <Route path='/mon-espace' Component={StudentMySpace} />
@@ -142,17 +151,17 @@ function App() {
             {/* 🆕 NOUVELLE ARCHITECTURE GÉNÉRIQUE - ROUTES PRINCIPALES */}
             {/* ============================================ */}
             {/*
-          Toutes les pages de détails utilisent maintenant ConfigurableDetailPage
-          avec une configuration spécifique. Cela permet de :
-          - Centraliser la logique métier dans les configs
-          - Réduire la duplication de code
-          - Faciliter la maintenance et l'ajout de nouveaux types
+              Toutes les pages de détails utilisent maintenant ConfigurableDetailPage
+              avec une configuration spécifique. Cela permet de :
+              - Centraliser la logique métier dans les configs
+              - Réduire la duplication de code
+              - Faciliter la maintenance et l'ajout de nouveaux types
 
-          Pour ajouter un nouveau type :
-          1. Créez un fichier config dans @/pages/generic/config/
-          2. Importez la config ici
-          3. Ajoutez la route avec ConfigurableDetailPage
-        */}
+              Pour ajouter un nouveau type :
+              1. Créez un fichier config dans @/pages/generic/config/
+              2. Importez la config ici
+              3. Ajoutez la route avec ConfigurableDetailPage
+            */}
 
             {/* Routes contextuelles pour les conférences (séminaires, colloques, journées d'études) */}
             <Route path='/corpus/seminaires/edition/:id/:title?' Component={Edition} />

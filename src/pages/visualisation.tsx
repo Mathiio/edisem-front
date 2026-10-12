@@ -26,9 +26,8 @@ import { BGPattern } from '@/components/ui/bg-pattern';
 // Nouveaux composants extraits
 import { parseDatavisView, buildDatavisViewSearchParams, type DatavisView } from '@/config/datavisViews';
 import { outlineIconButtonClass } from '@/theme/components/button';
-import { CahiersView } from './visualisation/components/CahiersView';
-import { NetworkView } from './visualisation/views/NetworkView';
-import { FlowsView } from './visualisation/views/FlowsView';
+import { DatavisViewOutlet } from './visualisation/DatavisViewOutlet';
+import { RecitsCorpusProvider } from './visualisation/hooks/RecitsCorpusProvider';
 import { getImageForType, getRadiusForType, getSizeForType } from './visualisation/utils/nodeHelpers';
 
 // Configuration des couleurs et labels pour les types de relations
@@ -99,10 +98,6 @@ const getRelationConfig = (sourceType: string, targetType: string): { color: str
   return RELATION_CONFIG['default'];
 };
 
-// Composants Analytics
-import { CoverageMatrix } from './visualisation/components/analytics/CoverageMatrix';
-import { ActivityHeatmap } from './visualisation/components/analytics/ActivityHeatmap';
-import { Dashboard } from './visualisation/components/analytics/Dashboard';
 const containerVariants: Variants = {
   hidden: { opacity: 1 },
   visible: {
@@ -889,33 +884,33 @@ const Visualisation = () => {
 
   return (
     <Layouts className='col-span-10' noFooter>
+      <RecitsCorpusProvider>
       <div
         className={`relative w-full h-[calc(100vh-130px)] min-h-0 bg-c1 overflow-x-hidden overflow-y-hidden ${
           isFullWidth ? '' : 'rounded-xl'
         }`}>
         <div className='relative h-full w-full flex flex-col overflow-hidden'>
             <div className='flex-1 min-h-0 flex flex-col overflow-hidden'>
-                {/* Zone de contenu - Cahiers et Create en overlay, Datavis toujours monté */}
-                {activeView === 'cahiers' && (
-                  <CahiersView
-                    onSelectConfig={(filters, nodePositions) => {
+                {activeView !== 'datavis' ? (
+                <DatavisViewOutlet
+                  activeView={activeView}
+                  cahiers={{
+                    onSelectConfig: (filters, nodePositions) => {
                       handleOverlaySelect(filters, false, nodePositions);
                       navigateToView('datavis');
-                    }}
-                  />
-                )}
-                {/* Vue Réseau de proximité narrative */}
-                {activeView === 'network' && (
-                  <NetworkView
-                    isCanvasExpanded={isFullWidth}
-                    onToggleCanvasExpanded={() => setIsFullWidth((v) => !v)}
-                  />
-                )}
-                {activeView === 'flows' && <FlowsView />}
-                {/* Vues Analytics */}
-                {activeView === 'coverageMatrix' && <CoverageMatrix topKeywordsCount={coverageTopKeywords} onTopKeywordsCountChange={setCoverageTopKeywords} />}
-                {activeView === 'activityHeatmap' && <ActivityHeatmap selectedYear={heatmapYear} />}
-                {activeView === 'dashboard' && <Dashboard />}
+                    },
+                  }}
+                  network={{
+                    isCanvasExpanded: isFullWidth,
+                    onToggleCanvasExpanded: () => setIsFullWidth((v) => !v),
+                  }}
+                  coverageMatrix={{
+                    topKeywordsCount: coverageTopKeywords,
+                    onTopKeywordsCountChange: setCoverageTopKeywords,
+                  }}
+                  activityHeatmap={{ selectedYear: heatmapYear }}
+                />
+                ) : null}
                 <motion.div
                   className={`relative flex-1 min-h-0 overflow-hidden bg-c1 ${
                     isFullWidth && activeView === 'datavis'
@@ -1040,6 +1035,7 @@ const Visualisation = () => {
           </DrawerContent>
         </Drawer>
       </div>
+      </RecitsCorpusProvider>
     </Layouts>
   );
 };

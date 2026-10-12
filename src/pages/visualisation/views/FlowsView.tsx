@@ -6,6 +6,7 @@ import { outlineIconButtonClass } from '@/theme/components/button';
 import { X } from 'lucide-react';
 import { useRecitsData, type RecitNode, type RecitType } from '../hooks/useRecitsData';
 import { TYPE_CONFIG, ALL_TYPES } from '../recitTypeConfig';
+import { DatavisCorpusLoading } from '@/components/features/pages/visualisation/DatavisCorpusLoading';
 import { RecitTypesFilterSelect } from '../components/RecitTypesFilterSelect';
 
 type DimensionKey = 'figures' | 'cadrages' | 'affects' | 'enjeux' | 'promesses' | 'risques';
@@ -479,10 +480,11 @@ export function FlowsView() {
 
   if (loading) {
     return (
-      <div className='flex flex-1 items-center justify-center text-c4 text-sm'>
-        <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-c6 mr-3' />
-        Chargement des récits…
-      </div>
+      <DatavisCorpusLoading
+        label='Chargement des récits…'
+        hint='Séries temporelles par dimension Imaginaire'
+        className='flex flex-1 min-h-0 bg-c1'
+      />
     );
   }
 

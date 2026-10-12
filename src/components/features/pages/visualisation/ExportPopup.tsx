@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button, Checkbox, cn, Divider, Input } from '@heroui/react';
-import { addToast } from '@/theme/components';
+import { Button, cn, Divider, Input } from '@heroui/react';
+import { addToast, Checkbox } from '@/theme/components';
 import { useState } from 'react';
 import { GeneratedImage } from '@/pages/visualisation/types';
 import { ShareIcon } from '@/components/ui/icons';
@@ -126,8 +126,8 @@ export const ExportPopup: React.FC<ExportPopupProps> = ({ handleExportClick, gen
           isSelected={shouldExportImage}
           onValueChange={setShouldExportImage}
           radius='sm'
-          color='secondary'
-          classNames={{ wrapper: 'w-[16px] h-[16px]', icon: 'w-[10px] h-[10px]' }}>
+          size='sm'
+          classNames={{ wrapper: 'w-[16px] h-[16px]', icon: 'w-[10px] h-[10px]', label: 'text-sm text-c6' }}>
           Exporter une image de la vue
         </Checkbox>
       </div>

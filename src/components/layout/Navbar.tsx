@@ -14,6 +14,8 @@ import {
   DatavisMegaMenuTrigger,
   useDatavisMegaMenu,
 } from '@/components/layout/DatavisMegaMenu';
+import { MEGA_MENU_BACKDROP_CLASS } from '@/components/layout/megaMenuLayout';
+import { Z_NAV_CLASS } from '@/components/layout/zLayers';
 
 interface NavbarProps {
   onReady?: () => void;
@@ -122,12 +124,27 @@ export const Navbar: React.FC<NavbarProps> = ({ onReady }) => {
   const activeClass = 'bg-c2 border-c3';
   const hoverClass = 'hover:bg-c2 hover:border-c3 border-transparent';
 
+  const megaMenuOpen = corpusMenu.isOpen || datavisMenu.isOpen;
+
+  const dismissMegaMenus = () => {
+    corpusMenu.closeImmediately();
+    datavisMenu.closeImmediately();
+  };
+
   return (
     <>
+      {megaMenuOpen ? (
+        <div
+          className={MEGA_MENU_BACKDROP_CLASS}
+          aria-hidden
+          onClick={dismissMegaMenus}
+        />
+      ) : null}
+
       <nav
-        className={`sticky top-0 left-0 right-0 z-30 transition-all duration-300 relative ${
-          hasScrolled ? 'bg-c1/90 backdrop-blur-sm shadow-lg' : 'bg-transparent'
-        } ${corpusMenu.isOpen || datavisMenu.isOpen ? 'bg-c1 shadow-lg' : ''}`}>
+        className={`sticky top-0 left-0 right-0 ${Z_NAV_CLASS} transition-all duration-300 relative ${
+          hasScrolled || megaMenuOpen ? 'bg-c1/95 backdrop-blur-sm shadow-lg' : 'bg-transparent'
+        }`}>
         <div className='max-w-screen-2xl mx-auto px-5 pt-4'>
           <div className='relative'>
             <div className='flex items-center justify-between pb-4'>

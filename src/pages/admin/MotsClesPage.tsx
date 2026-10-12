@@ -461,8 +461,8 @@ const KeywordExplorerSection: React.FC = () => {
   return (
     <section className='flex flex-col gap-6'>
 
-      {/* Barre de recherche — z élevé pour passer au-dessus du footer (frère dans la grille Layouts) */}
-      <div className='relative z-[200] w-full'>
+      {/* Barre de recherche — z local pour le dropdown (sous la navbar globale z-[100]) */}
+      <div className='relative z-20 w-full'>
         <div className='flex items-center gap-2 bg-c2 border border-c3 rounded-xl px-4 py-2.5 focus-within:border-c4 transition-colors'>
           {isSearching
             && <Spinner size='sm' color='current' className='text-c5 shrink-0' />
@@ -490,7 +490,7 @@ const KeywordExplorerSection: React.FC = () => {
         {/* Suggestions dropdown */}
         {showSugg && suggestions.length > 0 && (
           <div
-            className='absolute top-full left-0 right-0 mt-1 bg-c1 border border-c3 rounded-xl shadow-lg z-[201] overflow-hidden'
+            className='absolute top-full left-0 right-0 mt-1 bg-c1 border border-c3 rounded-xl shadow-lg z-30 overflow-hidden'
             onMouseDown={e => e.preventDefault()}
           >
             {suggestions.map(kw => (
@@ -507,7 +507,7 @@ const KeywordExplorerSection: React.FC = () => {
         )}
 
         {showSugg && suggestions.length === 0 && !isSearching && query.trim().length > 0 && (
-          <div className='absolute top-full left-0 right-0 mt-1 bg-c1 border border-c3 rounded-xl shadow-lg z-[201] px-4 py-3 text-sm text-c4'>
+          <div className='absolute top-full left-0 right-0 mt-1 bg-c1 border border-c3 rounded-xl shadow-lg z-30 px-4 py-3 text-sm text-c4'>
             Aucun mot-clé trouvé pour « {query} »
           </div>
         )}
@@ -912,7 +912,7 @@ const KeywordsDeleteSection: React.FC = () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const MotsClesPage: React.FC = () => (
-  <Layouts className='relative z-[100] col-span-10 flex flex-col gap-12 pt-8'>
+  <Layouts className='col-span-10 flex flex-col gap-12 pt-8'>
     <div className='flex flex-col gap-1'>
       <h1 className='text-4xl font-medium text-c6'>Gestion des mots-clés</h1>
       <p className='text-c4 text-sm'>

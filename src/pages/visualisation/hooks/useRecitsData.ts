@@ -1,4 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
+import { fetchRecitsCorpusFromApi } from '@/services/DatavisCorpus';
+
+import { useRecitsCorpusOptional } from './RecitsCorpusContext';
 
 import { omekaApiUrl, OMEKA_API_BASE } from '@/utils/omekaApi';
 
@@ -34,6 +38,10 @@ export interface RecitNode {
   keywordLabels: string[];
   // Domaine(s) du récit
   domaines: string[];
+  /** Questions guide (cito:discusses — titres affichés) */
+  discusses: string[];
+  /** Liens directs vers items Questions guide (template 134), si type resource */
+  discussQuestionIds: number[];
   // Date brute (dcterms:issued, sinon dcterms:date) et année extraite
   date: string;
   year: number | null;
@@ -79,6 +87,37 @@ function extractLinkedIds(item: any, property: string): number[] {
     .filter((v): v is number => typeof v === 'number');
 }
 
+/**
+ * cito:discusses — souvent type resource (value_resource_id + display_title), pas @value literal.
+ */
+function extractDiscusses(item: any): { titles: string[]; questionIds: number[] } {
+  const vals: any[] = item['cito:discusses'] ?? [];
+  const titles: string[] = [];
+  const questionIds: number[] = [];
+  const seenTitle = new Set<string>();
+  const seenId = new Set<number>();
+
+  for (const v of vals) {
+    if (typeof v.value_resource_id === 'number') {
+      const id = v.value_resource_id;
+      if (!seenId.has(id)) {
+        seenId.add(id);
+        questionIds.push(id);
+      }
+    }
+    const raw = (v['@value'] ?? v.display_title) as string | undefined;
+    if (typeof raw === 'string') {
+      const t = raw.trim();
+      if (t && !seenTitle.has(t)) {
+        seenTitle.add(t);
+        titles.push(t);
+      }
+    }
+  }
+
+  return { titles, questionIds };
+}
+
 const TYPE_TO_URL: Record<RecitType, string> = {
   recit_citoyen: '/corpus/recit-citoyen',
   recit_mediatique: '/corpus/recit-mediatique',
@@ -105,6 +144,8 @@ function normalizeItem(item: any): RecitNode | null {
     ''
   ).trim();
 
+  const { titles: discusses, questionIds: discussQuestionIds } = extractDiscusses(item);
+
   return {
     id: item['o:id'],
     title: item['o:title'] ?? 'Sans titre',
@@ -118,6 +159,8 @@ function normalizeItem(item: any): RecitNode | null {
     keywordIds: extractLinkedIds(item, 'jdc:hasConcept'),
     keywordLabels: extractLinkedLabels(item, 'jdc:hasConcept'),
     domaines: extractLinkedLabels(item, 'dcterms:subject'),
+    discusses,
+    discussQuestionIds,
     date,
     year: extractYear(date),
     url: `${TYPE_TO_URL[type]}/${item['o:id']}`,
@@ -147,6 +190,38 @@ async function fetchAllByTemplate(templateId: number): Promise<RecitNode[]> {
   }
 
   return nodes;
+}
+
+/** Charge tous les récits (5 templates) — API Analytics si dispo, sinon REST Omeka paginé. */
+export async function fetchAllRecitNodes(): Promise<RecitNode[]> {
+  const fromApi = await fetchRecitsCorpusFromApi();
+  if (fromApi?.length) return fromApi;
+
+  const templateIds = Object.keys(TEMPLATE_TO_TYPE).map(Number);
+  const results = await Promise.allSettled(templateIds.map(fetchAllByTemplate));
+  const nodes: RecitNode[] = [];
+  for (const result of results) {
+    if (result.status === 'fulfilled') nodes.push(...result.value);
+  }
+  return nodes;
+}
+
+/** Filtre des liens pré-calculés (minWeight=1) sans recalculer O(n²). */
+export function filterProximityLinks(links: ProximityLink[], minWeight: number): ProximityLink[] {
+  if (minWeight <= 1) return links;
+  return links.filter((l) => l.weight >= minWeight);
+}
+
+/** Nombre de dimensions Imaginaire de l'IA partagées (0–6), hors mots-clés. */
+export function imaginaireProximityWeight(a: RecitNode, b: RecitNode): number {
+  let w = 0;
+  if (intersection(a.figures, b.figures).length > 0) w++;
+  if (intersection(a.enjeux, b.enjeux).length > 0) w++;
+  if (intersection(a.cadrages, b.cadrages).length > 0) w++;
+  if (intersection(a.affects, b.affects).length > 0) w++;
+  if (intersection(a.promesses, b.promesses).length > 0) w++;
+  if (intersection(a.risques, b.risques).length > 0) w++;
+  return w;
 }
 
 /** Intersection de deux tableaux de strings */
@@ -227,40 +302,51 @@ export interface RecitsDataState {
   error: string | null;
 }
 
-/** Hook principal : charge tous les récits + calcule les liens */
+/** Hook principal — utilise le cache RecitsCorpusProvider si présent. */
 export function useRecitsData(minWeight = 1): RecitsDataState & { reload: () => void } {
-  const [state, setState] = useState<RecitsDataState>({
+  const corpus = useRecitsCorpusOptional();
+  const linksFromCorpus = useMemo(
+    () => (corpus ? filterProximityLinks(corpus.baseLinks, minWeight) : []),
+    [corpus, minWeight],
+  );
+
+  const [fallback, setFallback] = useState<RecitsDataState>({
     nodes: [],
     links: [],
     loading: true,
     error: null,
   });
 
-  const load = useCallback(async () => {
-    setState((prev) => ({ ...prev, loading: true, error: null }));
-
+  const loadFallback = useCallback(async () => {
+    setFallback((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      const templateIds = Object.keys(TEMPLATE_TO_TYPE).map(Number);
-      const results = await Promise.allSettled(templateIds.map(fetchAllByTemplate));
-
-      const nodes: RecitNode[] = [];
-      for (const result of results) {
-        if (result.status === 'fulfilled') {
-          nodes.push(...result.value);
-        }
-      }
-
-      const links = computeProximityLinks(nodes, minWeight);
-
-      setState({ nodes, links, loading: false, error: null });
+      const nodes = await fetchAllRecitNodes();
+      const baseLinks = computeProximityLinks(nodes, 1);
+      setFallback({
+        nodes,
+        links: filterProximityLinks(baseLinks, minWeight),
+        loading: false,
+        error: null,
+      });
     } catch (err) {
-      setState({ nodes: [], links: [], loading: false, error: String(err) });
+      setFallback({ nodes: [], links: [], loading: false, error: String(err) });
     }
   }, [minWeight]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (corpus) return;
+    void loadFallback();
+  }, [corpus, loadFallback]);
 
-  return { ...state, reload: load };
+  if (corpus) {
+    return {
+      nodes: corpus.nodes,
+      links: linksFromCorpus,
+      loading: corpus.loading,
+      error: corpus.error,
+      reload: corpus.reload,
+    };
+  }
+
+  return { ...fallback, reload: loadFallback };
 }

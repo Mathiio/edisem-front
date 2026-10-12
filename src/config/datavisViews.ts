@@ -5,7 +5,10 @@ export type DatavisView =
   | 'activityHeatmap'
   | 'dashboard'
   | 'network'
-  | 'flows';
+  | 'flows'
+  | 'questionsGuide'
+  | 'semanticMap'
+  | 'corpusLab';
 
 const VALID_VIEWS: DatavisView[] = [
   'datavis',
@@ -15,9 +18,15 @@ const VALID_VIEWS: DatavisView[] = [
   'dashboard',
   'network',
   'flows',
+  'questionsGuide',
+  'semanticMap',
+  'corpusLab',
 ];
 
 export function parseDatavisView(param: string | null): DatavisView {
+  if (param === 'guideInsights') {
+    return 'corpusLab';
+  }
   if (param && (VALID_VIEWS as string[]).includes(param)) {
     return param as DatavisView;
   }

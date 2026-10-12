@@ -5,6 +5,19 @@ import tailwindcss from '@tailwindcss/vite';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/d3')) return 'vendor-d3';
+          if (id.includes('node_modules/framer-motion')) return 'vendor-motion';
+          if (id.includes('node_modules/@mui/x-charts') || id.includes('node_modules/@mui/material')) {
+            return 'vendor-mui';
+          }
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       // This allows you to do things like `import Component from '@/components/Component'`

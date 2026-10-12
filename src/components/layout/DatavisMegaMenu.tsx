@@ -7,6 +7,9 @@ import {
   LayoutDashboard,
   Network,
   Waves,
+  HelpCircle,
+  Map,
+  FlaskConical,
   type LucideIcon,
 } from 'lucide-react';
 import { ArrowIcon, SearchIcon } from '@/components/ui/icons';
@@ -196,6 +199,9 @@ export const DatavisMegaMenuPanel: React.FC<{
               <MenuSection label='Récits & imaginaires'>
                 <DatavisMenuLink view='network' label='Réseau de proximité' icon={Network} onNavigate={onClose} />
                 <DatavisMenuLink view='flows' label='Flux temporels' icon={Waves} onNavigate={onClose} />
+                <DatavisMenuLink view='questionsGuide' label='Questions guide' icon={HelpCircle} onNavigate={onClose} />
+                <DatavisMenuLink view='semanticMap' label='Carte sémantique' icon={Map} onNavigate={onClose} />
+                <DatavisMenuLink view='corpusLab' label='Lab corpus' icon={FlaskConical} onNavigate={onClose} />
               </MenuSection>
             </div>
 

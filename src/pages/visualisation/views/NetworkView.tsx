@@ -20,6 +20,7 @@ import {
   type ProximityLink,
 } from '../hooks/useRecitsData';
 import { TYPE_CONFIG, ALL_TYPES } from '../recitTypeConfig';
+import { DatavisCorpusLoading } from '@/components/features/pages/visualisation/DatavisCorpusLoading';
 import { RecitTypesFilterSelect } from '../components/RecitTypesFilterSelect';
 
 // PNG public disponibles — une bulle différente par type de récit
@@ -917,13 +918,15 @@ export function NetworkView({
   // ─── Chargement ────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className='flex-1 flex items-center justify-center bg-c1'>
-        <div className='text-center text-c5'>
-          <div className='animate-spin rounded-full h-10 w-10 border-b-2 border-c5 mx-auto mb-4' />
-          <p className='text-sm'>Chargement des récits…</p>
-          <p className='text-xs text-c4 mt-1'>Analyse des {nodes.length} récits disponibles</p>
-        </div>
-      </div>
+      <DatavisCorpusLoading
+        label='Chargement des récits…'
+        hint={
+          nodes.length > 0
+            ? `Calcul des liens de proximité (${nodes.length} récits)`
+            : 'Réseau de proximité narrative'
+        }
+        className='flex flex-1 bg-c1'
+      />
     );
   }
 
