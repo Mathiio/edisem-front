@@ -933,6 +933,17 @@ export const InfoIcon: React.FC<IconSvgProps> = ({ size = 24, width, height, ...
   </svg>
 );
 
+export const SparklesIcon: React.FC<IconSvgProps> = ({ size = 24, width, height, ...props }) => (
+  <svg width={size || width} height={size || height} viewBox='0 0 22 22' fill='none' {...props}>
+    <path
+      fill='currentColor'
+      fillRule='evenodd'
+      clipRule='evenodd'
+      d='M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576l.813-2.846A.75.75 0 019 4.5zM18 1.5a.75.75 0 01.728.568l.258 1.036c.085.339-.011.697-.254.94l-1.036 1.036a.75.75 0 01-1.054 0l-1.036-1.036a.75.75 0 01-.254-.94l.258-1.036A.75.75 0 0118 1.5zM16.5 15a.75.75 0 01.728.568l.258 1.036c.085.339-.011.697-.254.94l-1.036 1.036a.75.75 0 01-1.054 0l-1.036-1.036a.75.75 0 01-.254-.94l.258-1.036a.75.75 0 01.728-.568z'
+    />
+  </svg>
+);
+
 export const LockIcon: React.FC<IconSvgProps> = ({ size = 24, width, height, ...props }) => (
   <svg height={size || height} viewBox='0 0 24 24' width={size || width} fill='none' {...props}>
     <path

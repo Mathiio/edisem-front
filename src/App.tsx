@@ -56,11 +56,13 @@ import { PlaylistDetailPage } from '@/pages/user-space/PlaylistDetailPage';
 import { MotsClesPage } from '@/pages/admin/MotsClesPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import GlobalAdministration from '@/pages/admin/GlobalAdministration';
+import { CorpusChatPage } from '@/pages/admin/CorpusChatPage';
 import { CreateResourcePage } from '@/pages/generic/CreateResourcePage';
 
 const ProtectedUsersPage = withAuth(AdminDashboard, { requiredPermission: 'admin' });
 const ProtectedAdministration = withAuth(GlobalAdministration, { requiredOmekaRole: 'global_admin' });
 const ProtectedMotsCles = withAuth(MotsClesPage, { requiredPermission: 'admin' });
+const ProtectedCorpusChat = withAuth(CorpusChatPage, { requiredOmekaRole: 'global_admin' });
 const ProtectedPlaylistsPage = withAuth(PlaylistsPage, { requiredRole: 'actant' });
 const ProtectedPlaylistDetailPage = withAuth(PlaylistDetailPage, { requiredRole: 'actant' });
 
@@ -127,6 +129,9 @@ function App() {
 
             {/* Temporaire — gestion mots-clés */}
             <Route path='/mots-cles' Component={ProtectedMotsCles} />
+
+            {/* Chat IA — global_admin uniquement */}
+            <Route path='/ia' Component={ProtectedCorpusChat} />
 
             <Route path='/espace-etudiant/experimentation/:id' element={<ConfigurableDetailPage config={experimentationStudentConfig} />} />
             <Route path='/espace-etudiant/outil/:id' Component={ToolDetailPage} />

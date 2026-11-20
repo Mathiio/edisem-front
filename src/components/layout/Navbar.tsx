@@ -4,6 +4,9 @@ import { Image } from '@/theme/components';
 import Logo from '@/assets/svg/logo.svg';
 import { ProfilDropdown } from '@/components/layout/ProfilDropdown';
 import { SearchModal, SearchModalRef } from '@/components/features/shared/search/SearchModal';
+import { useThemeMode } from '@/hooks/useThemeMode';
+import { SunIcon, MoonIcon } from '@/components/ui/icons';
+import { outlineIconButtonClass } from '@/theme/components/button';
 import {
   CorpusMegaMenuPanel,
   CorpusMegaMenuTrigger,
@@ -125,6 +128,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onReady }) => {
   const hoverClass = 'hover:bg-c2 hover:border-c3 border-transparent';
 
   const megaMenuOpen = corpusMenu.isOpen || datavisMenu.isOpen;
+  const { isDark, toggleThemeMode } = useThemeMode();
 
   const dismissMegaMenus = () => {
     corpusMenu.closeImmediately();
@@ -184,6 +188,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onReady }) => {
 
               <div className='flex items-center gap-2.5'>
                 <SearchModal ref={searchModalRef} />
+                <button
+                  type='button'
+                  className={outlineIconButtonClass}
+                  onClick={toggleThemeMode}
+                  title={isDark ? 'Passer au thème clair' : 'Passer au thème sombre'}
+                  aria-label={isDark ? 'Thème clair' : 'Thème sombre'}
+                >
+                  {isDark ? <SunIcon size={14} className='text-c6 shrink-0' /> : <MoonIcon size={14} className='text-c6 shrink-0' />}
+                </button>
                 <ProfilDropdown />
               </div>
             </div>

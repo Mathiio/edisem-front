@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useCallback, useMemo } from 'react';
-import { UsersIcon, UserIcon, Logout, SunIcon, MoonIcon, SettingsIcon, KeywordIcon, BookMarkIcon } from '@/components/ui/icons';
+import { UsersIcon, UserIcon, Logout, SettingsIcon, KeywordIcon, BookMarkIcon, SparklesIcon } from '@/components/ui/icons';
 import { User } from '@heroui/react';
 import {
   Dropdown,
@@ -14,15 +14,12 @@ import {
   dropdownMenuItemClass,
   dropdownItemInnerPadding,
 } from '@/theme/components/dropdown';
-import { useThemeMode } from '@/hooks/useThemeMode';
 import { useAuth } from '@/hooks/useAuth';
 import { getRoleLabel } from '@/config/permissions';
 
 export const ProfilDropdown = () => {
   const navigate = useNavigate();
   const { isAuthenticated, userData, logout, can } = useAuth();
-  const { isDark, toggleThemeMode } = useThemeMode();
-
   const handleLogout = useCallback(() => {
     logout();
     navigate('/');
@@ -130,11 +127,13 @@ export const ProfilDropdown = () => {
                 </Link>
               </DropdownItem>
 
-              <DropdownItem key='theme' className={dropdownMenuItemClass}>
-                <button onClick={toggleThemeMode} className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
-                  {isDark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
-                  <span className='text-base font-normal'>{isDark ? 'Thème clair' : 'Thème sombre'}</span>
-                </button>
+              <DropdownItem key='ia' className={`${dropdownMenuItemClass} ${isGlobalAdmin ? '' : 'hidden'}`}>
+                <Link to='/ia' className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
+                  <span className='inline-flex size-4 shrink-0 items-center justify-center overflow-visible' aria-hidden>
+                    <SparklesIcon size={16} className='scale-[1.25] origin-center' />
+                  </span>
+                  <p className='text-base font-normal'>Assistant IA</p>
+                </Link>
               </DropdownItem>
 
               <DropdownItem key='logout' className={dropdownMenuItemClass}>
@@ -156,13 +155,6 @@ export const ProfilDropdown = () => {
               </Link>
             </DropdownItem>
 
-            {/* Theme toggle for unauthenticated users */}
-            <DropdownItem key='theme' className={dropdownMenuItemClass}>
-              <button onClick={toggleThemeMode} className={`flex justify-start gap-2 hover:bg-c3 items-center w-full ${dropdownItemInnerPadding} rounded-lg transition-all ease-in-out duration-200 cursor-pointer`}>
-                {isDark ? <SunIcon size={16} /> : <MoonIcon size={16} />}
-                <span className='text-base font-normal'>{isDark ? 'Thème clair' : 'Thème sombre'}</span>
-              </button>
-            </DropdownItem>
           </DropdownSection>
         )}
       </DropdownMenu>
