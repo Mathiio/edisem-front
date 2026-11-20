@@ -71,6 +71,7 @@ import {
   isLinkedResourceFormField,
 } from './simplifiedConfigAdapter';
 import { invalidateItemPageCache } from '@/services/itemPage';
+import { persistInlineChildViews, seedInlineChildFormData } from '@/lib/inlineChildViews';
 import { DEFAULT_AUTHOR_TEMPLATE_IDS } from '@/components/features/forms/edit/MediaDropzone';
 import {
   type MediaGalleryItem,
@@ -784,6 +785,10 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
         if (hydrated.length > 0) extractedData[viewKey] = hydrated;
       });
 
+      if (config.inlineChildViews?.length) {
+        Object.assign(extractedData, seedInlineChildFormData(itemDetails, config.inlineChildViews));
+      }
+
       const contributorHydrationProperties = getContributorHydrationProperties(config);
       if (contributorHydrationProperties.length > 0) {
         const resourceCache = itemDetails.resourceCache || {};
@@ -1164,6 +1169,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       'thumbnail_display_urls',
       'editionLink',
     ]);
+    config.inlineChildViews?.forEach((v) => ignoredSaveKeys.add(v.viewKey));
 
     for (const [key, value] of Object.entries(data)) {
       if (ignoredSaveKeys.has(key) || key.startsWith('__') || value === undefined || value === null) continue;
@@ -1376,6 +1382,10 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       }
     }
 
+    if (config.inlineChildViews?.length) {
+      await persistInlineChildViews(id!, config.resourceTemplateId, config.inlineChildViews, data);
+    }
+
     invalidateItemPageCache(id);
     return result;
   };
@@ -1533,6 +1543,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
       'fullUrl',
       ...formFieldKeys,
     ]);
+    config.inlineChildViews?.forEach((v) => ignoredCreateKeys.add(v.viewKey));
 
     const linkedResourceViewProperties = new Set<string>();
     config.viewOptions?.forEach((view) => {
@@ -1633,6 +1644,10 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     }
     const result = await response.json();
     const newItemId = result['o:id'];
+
+    if (config.inlineChildViews?.length) {
+      await persistInlineChildViews(newItemId, config.resourceTemplateId, config.inlineChildViews, data);
+    }
 
     if (data.mediaOrder && Array.isArray(data.mediaOrder) && data.mediaOrder.length > 0) {
       await persistMediaGallery(newItemId, {

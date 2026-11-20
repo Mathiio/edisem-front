@@ -152,6 +152,9 @@ export interface GenericDetailPageConfig {
   // Mapping viewKey → propriété Omeka S (généré automatiquement depuis les vues)
   viewKeyToProperty?: Record<string, string>;
 
+  /** Citations / micro-résumés édités inline (hors lien Omeka classique) */
+  inlineChildViews?: import('@/lib/inlineChildViews').InlineChildViewConfig[];
+
   /** property_id Omeka des champs vocabGroup (ex. Imaginaire de l'IA) — utilisé à la sauvegarde */
   vocabPropertyIds?: Record<string, number>;
 

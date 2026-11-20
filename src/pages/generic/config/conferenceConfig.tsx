@@ -65,6 +65,7 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
     {
       key: 'MicroResumes',
       title: 'Micro-résumés',
+      property: 'bibo:abstract',
       renderType: 'microresumes',
       resourceTemplateId: 125,
       editable: true,
@@ -72,6 +73,7 @@ export const conferenceConfigSimplified: SimplifiedDetailConfig = {
     {
       key: 'Citations',
       title: 'Citations',
+      property: 'schema:citation',
       renderType: 'citations',
       resourceTemplateId: 80,
       editable: true,

@@ -14,8 +14,9 @@
  * ✅ Validation et gestion des erreurs
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AddIcon } from '@/components/ui/icons';
+import { AlertModal } from '@/components/ui/AlertModal';
 import { modalCloseButtonClasses, ModalCloseIcon } from '@/theme/components/modal';
 import { getTemplatePropertiesMap } from '@/services/Items';
 import { OMEKA_PROPERTY_IDS } from '@/config/resourceConfig';
@@ -30,14 +31,18 @@ import { Mediagraphies } from '@/components/features/resource-links/MediagraphyC
 import { Citations } from '@/components/features/resource-links/CitationsCards';
 import { Microresumes } from '@/components/features/resource-links/MicroresumesCards';
 import { getItemPage, invalidateItemPageCache, reorderItemMedia } from '@/services/itemPage';
+import { buildInlineChildViewsFromConfig, persistInlineChildViews } from '@/lib/inlineChildViews';
 import { shouldOpenInLinkedResourcePopup } from '@/config/linkedResourcePopupConfig';
 import { createItemPageDataFetcher, createProgressiveItemPageDataFetcher } from './itemPageFastFetcher';
 import { ReferenceAddButtons } from '@/components/features/forms/edit/AddResourceCard';
 import { outlineButtonClass } from '@/theme/components/button';
+import { dropdownTriggerButtonClass } from '@/theme/components/dropdown';
 import { formatEditAddButtonLabel } from '@/lib/editModeLabels';
 import type { MediaGalleryOrderEntry, MediaGallerySavePayload } from '@/lib/mediaGallery';
 import { mediaUrlKey } from '@/lib/mediaGallery';
 import { GenericDetailPage } from './GenericDetailPage';
+import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/ui/form/AutoResizingTextarea';
+import { ResourcePicker } from '@/components/features/forms/modals/ResourcePicker';
 
 // ========================================
 // Helpers pour timecodes
@@ -57,11 +62,83 @@ const parseTimecode = (str: string): number => {
   return parts[0] || 0;
 };
 
+const inlineChildCardClass = 'relative flex flex-col gap-2 p-3 bg-c1 rounded-lg border-2 border-c3';
 const inlineFieldClass =
   'w-full bg-c2 border-2 border-c3 rounded-lg px-3 py-2 text-c6 text-sm resize-none focus:outline-none focus:border-c3';
 const inlineTimeFieldClass =
   'bg-c2 border-2 border-c3 rounded-lg px-3 py-2 text-c6 text-sm w-28 focus:outline-none focus:border-c3';
-const inlineRemoveButtonClass = [modalCloseButtonClasses, 'inline-flex items-center justify-center shrink-0 p-1.5 text-xl'].join(' ');
+/** Même rendu que `ItemsList` (bibliographies) et chips mots-clés (`selectedResourceRemoveButtonClass`). */
+const inlineRemoveButtonClass = [modalCloseButtonClasses, 'inline-flex items-center justify-center shrink-0 p-1 text-sm'].join(' ');
+const inlineToolChipClass =
+  'flex items-center gap-2 pl-2 pr-1 h-10 border-2 border-c3 bg-c2 text-c6 rounded-lg text-sm shrink-0 max-w-full';
+const MICRORESUME_OUTIL_TEMPLATE_IDS = [114, 129];
+
+const InlineChildRemoveConfirmModal: React.FC<{
+  isOpen: boolean;
+  resourceLabel: string;
+  preview?: string;
+  onClose: () => void;
+  onConfirm: () => void;
+}> = ({ isOpen, resourceLabel, preview, onClose, onConfirm }) => (
+  <AlertModal
+    isOpen={isOpen}
+    onClose={onClose}
+    title={`Retirer ce ${resourceLabel} ?`}
+    type='danger'
+    confirmLabel='Retirer'
+    onConfirm={onConfirm}
+    description={
+      <>
+        {preview ? (
+          <p>
+            <span className='text-c6 font-medium line-clamp-2'>&quot;{preview}&quot;</span>
+          </p>
+        ) : null}
+        <p className={preview ? 'mt-2.5' : undefined}>
+          Il sera retiré de cette conférence. Après sauvegarde, il sera supprimé définitivement dans Omeka S.
+        </p>
+        <p className='text-c4 text-sm mt-2.5'>Cette action est irréversible.</p>
+      </>
+    }
+  />
+);
+
+function useConfirmInlineChildRemove(
+  items: { id?: number; citation?: string; title?: string }[],
+  remove: (i: number) => void,
+  resourceLabel: string,
+) {
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null);
+
+  const requestRemove = (i: number) => {
+    if (items[i]?.id) setPendingIndex(i);
+    else remove(i);
+  };
+
+  const preview =
+    pendingIndex != null
+      ? resourceLabel === 'citation'
+        ? (items[pendingIndex]?.citation || '').trim().slice(0, 120)
+        : (items[pendingIndex]?.title || items[pendingIndex]?.citation || '').trim().slice(0, 120)
+      : '';
+
+  const modal = (
+    <InlineChildRemoveConfirmModal
+      isOpen={pendingIndex !== null}
+      resourceLabel={resourceLabel}
+      preview={preview || undefined}
+      onClose={() => setPendingIndex(null)}
+      onConfirm={() => {
+        if (pendingIndex !== null) {
+          remove(pendingIndex);
+          setPendingIndex(null);
+        }
+      }}
+    />
+  );
+
+  return { requestRemove, modal };
+}
 
 const mapReferenceToToolItem = (
   ref: any,
@@ -152,19 +229,21 @@ const InlineCitationForm: React.FC<{
     onChange(updated);
   };
   const remove = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+  const { requestRemove, modal } = useConfirmInlineChildRemove(items, remove, 'citation');
 
   return (
     <div className='flex flex-col gap-2.5'>
       {items.map((item, i) => (
-        <div key={i} className='relative flex flex-col gap-2 p-3 bg-c2 rounded-lg border-2 border-c3'>
+        <div key={item.id ?? `new-citation-${i}`} className={inlineChildCardClass}>
           <button
             type='button'
-            onClick={() => remove(i)}
-            className={`absolute top-2 right-2 ${inlineRemoveButtonClass}`}
+            onClick={() => requestRemove(i)}
+            className={`absolute top-3 right-3 z-10 ${inlineRemoveButtonClass}`}
+            title='Supprimer'
             aria-label='Supprimer la citation'>
             <ModalCloseIcon />
           </button>
-          <div className='flex gap-2 items-center pr-8'>
+          <div className='flex gap-2 items-center'>
             <input
               type='text'
               value={formatTimecode(item.startTime || 0)}
@@ -181,15 +260,16 @@ const InlineCitationForm: React.FC<{
               className={inlineTimeFieldClass}
             />
           </div>
-          <textarea
-            value={item.citation}
+          <AutoResizingField
+            value={item.citation ?? ''}
             onChange={(e) => update(i, 'citation', e.target.value)}
             placeholder='Contenu de la citation...'
-            className={inlineFieldClass}
-            rows={3}
+            isReadOnly={false}
+            textareaProps={getAutoResizeTextareaProps({ size: 'sm' })}
           />
         </div>
       ))}
+      {modal}
       <button type='button' onClick={add} className={outlineButtonClass}>
         <AddIcon size={14} className='text-c4' />
         {formatEditAddButtonLabel('Citation')}
@@ -206,26 +286,42 @@ const InlineMicroresumeForm: React.FC<{
   items: any[];
   onChange: (items: any[]) => void;
 }> = ({ items, onChange }) => {
-  const add = () => onChange([...items, { title: '', description: '', startTime: 0, endTime: 0 }]);
+  const [outilPickerIndex, setOutilPickerIndex] = useState<number | null>(null);
+
+  const add = () => onChange([...items, { title: '', description: '', startTime: 0, endTime: 0, outils: [], outilIds: [] }]);
   const update = (i: number, field: string, value: any) => {
     const updated = [...items];
     updated[i] = { ...updated[i], [field]: value };
     onChange(updated);
   };
+  const setOutils = (i: number, outils: { id: number; title: string; thumbnail?: string | null }[]) => {
+    const updated = [...items];
+    updated[i] = {
+      ...updated[i],
+      outils,
+      outilIds: outils.map((o) => o.id),
+    };
+    onChange(updated);
+  };
   const remove = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+  const { requestRemove, modal } = useConfirmInlineChildRemove(items, remove, 'micro-résumé');
+
+  const pickerItem = outilPickerIndex != null ? items[outilPickerIndex] : null;
+  const pickerSelectedIds = Array.isArray(pickerItem?.outils) ? pickerItem.outils.map((o: { id: number }) => o.id) : [];
 
   return (
     <div className='flex flex-col gap-2.5'>
       {items.map((item, i) => (
-        <div key={i} className='relative flex flex-col gap-2 p-3 bg-c2 rounded-lg border-2 border-c3'>
+        <div key={item.id ?? `new-micro-${i}`} className={inlineChildCardClass}>
           <button
             type='button'
-            onClick={() => remove(i)}
-            className={`absolute top-2 right-2 ${inlineRemoveButtonClass}`}
+            onClick={() => requestRemove(i)}
+            className={`absolute top-3 right-3 z-10 ${inlineRemoveButtonClass}`}
+            title='Supprimer'
             aria-label='Supprimer le micro-résumé'>
             <ModalCloseIcon />
           </button>
-          <div className='flex gap-2 items-center pr-8'>
+          <div className='flex gap-2 items-center'>
             <input
               type='text'
               value={formatTimecode(item.startTime || 0)}
@@ -249,15 +345,73 @@ const InlineMicroresumeForm: React.FC<{
             placeholder='Titre du micro-résumé'
             className={inlineFieldClass}
           />
-          <textarea
-            value={item.description}
+          <AutoResizingField
+            value={item.description ?? ''}
             onChange={(e) => update(i, 'description', e.target.value)}
             placeholder='Description...'
-            className={inlineFieldClass}
-            rows={3}
+            isReadOnly={false}
+            textareaProps={getAutoResizeTextareaProps({ size: 'sm' })}
           />
+          <div className='flex flex-wrap gap-2 items-center'>
+            {(Array.isArray(item.outils) ? item.outils : []).map((outil: { id: number; title: string; thumbnail?: string | null }) => (
+              <div key={outil.id} className={inlineToolChipClass}>
+                {outil.thumbnail ? (
+                  <img src={outil.thumbnail} alt='' className='w-6 h-6 rounded-md object-cover shrink-0' />
+                ) : null}
+                <span className='truncate max-w-[12rem]'>{outil.title || `Outil #${outil.id}`}</span>
+                <button
+                  type='button'
+                  onClick={() => setOutils(i, [])}
+                  className={inlineRemoveButtonClass}
+                  aria-label="Retirer l'outil">
+                  <ModalCloseIcon />
+                </button>
+              </div>
+            ))}
+            {!(Array.isArray(item.outils) && item.outils.length > 0) && (
+              <button
+                type='button'
+                onClick={() => setOutilPickerIndex(i)}
+                className={`${dropdownTriggerButtonClass} shrink-0`}>
+                <AddIcon size={14} className='text-c4 shrink-0' />
+                {formatEditAddButtonLabel('Outil')}
+              </button>
+            )}
+          </div>
         </div>
       ))}
+      {modal}
+      <ResourcePicker
+        isOpen={outilPickerIndex !== null}
+        onClose={() => setOutilPickerIndex(null)}
+        title="Lier un outil"
+        resourceTemplateIds={MICRORESUME_OUTIL_TEMPLATE_IDS}
+        multiSelect={false}
+        selectedIds={pickerSelectedIds}
+        onSelect={(resources) => {
+          if (outilPickerIndex == null) return;
+          const r = resources[0];
+          if (!r) {
+            setOutilPickerIndex(null);
+            return;
+          }
+          const id = Number(r['o:id'] ?? r.id);
+          const thumbnail =
+            r.thumbnail_display_urls?.square ||
+            r.thumbnailUrl ||
+            r.thumbnail ||
+            r.picture ||
+            null;
+          setOutils(outilPickerIndex, [
+            {
+              id,
+              title: getLinkedResourceTitle(r),
+              thumbnail,
+            },
+          ]);
+          setOutilPickerIndex(null);
+        }}
+      />
       <button type='button' onClick={add} className={outlineButtonClass}>
         <AddIcon size={14} className='text-c4' />
         {formatEditAddButtonLabel('Micro-résumé')}
@@ -269,7 +423,6 @@ import { getResourceConfigByTemplateId, isFormOnlyResourceType, resolveResourceT
 import { buildCachedResourceUrl, extractExternalUrlFromOmekaItem, getResourceThumbnail, getYouTubeThumbnail, isOverviewMediaUrl, pickOmekaDisplayThumbnail, pickOmekaMediaThumbnail, readOmekaPersonFirstName, readOmekaPersonLastName, resolveOmekaThumbnail } from '@/lib/resourceUtils';
 import { isValidYouTubeUrl } from '@/lib/utils';
 import { enrichItemWithResourceOwner } from '@/lib/resourceOwner';
-import AutoResizingField, { getAutoResizeTextareaProps } from '@/components/ui/form/AutoResizingTextarea';
 import {
   inferViewCreateOnly,
   getLinkedResourceId,
@@ -1438,10 +1591,14 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
         if (Array.isArray(enrichedData)) return enrichedData.length;
         return getResourceIds(itemDetails, view.property || '').length;
       }
-      case 'microresumes':
+      case 'microresumes': {
+        if (Array.isArray(formData?.[view.key])) return formData[view.key].length;
         return Array.isArray(itemDetails?.microResumes) ? itemDetails.microResumes.length : 0;
-      case 'citations':
+      }
+      case 'citations': {
+        if (Array.isArray(formData?.[view.key])) return formData[view.key].length;
         return Array.isArray(itemDetails?.citations) ? itemDetails.citations.length : 0;
+      }
       case 'categories': {
         if (!view.categories) return 0;
         const hasContent = view.categories.some((cat) =>
@@ -1975,36 +2132,42 @@ const createViewFromSimpleView = (view: SimplifiedViewConfig): ViewOption => {
         case 'citations': {
           const citations = itemDetails?.citations || [];
           const canEditCitations = isEditing && view.editable !== false;
-          const newCitations = (formData?.[view.key] as any[]) || [];
-          return (
-            <div className='flex flex-col gap-4 h-full min-h-0'>
-              <Citations
-                citations={citations}
-                loading={false}
-                onTimeChange={onTimeChange ?? (() => {})}
+          const editItems = (formData?.[view.key] as any[]) ?? [];
+          if (canEditCitations && onItemsChange) {
+            return (
+              <InlineCitationForm
+                items={editItems}
+                onChange={(items) => onItemsChange(view.key, items)}
               />
-              {canEditCitations && onItemsChange && (
-                <InlineCitationForm items={newCitations} onChange={(items) => onItemsChange(view.key, items)} />
-              )}
-            </div>
+            );
+          }
+          return (
+            <Citations
+              citations={citations}
+              loading={false}
+              onTimeChange={onTimeChange ?? (() => {})}
+            />
           );
         }
 
         case 'microresumes': {
           const microresumes = itemDetails?.microResumes || [];
           const canEditMicroresumes = isEditing && view.editable !== false;
-          const newMicroresumes = (formData?.[view.key] as any[]) || [];
-          return (
-            <div className='flex flex-col gap-4 h-full min-h-0'>
-              <Microresumes
-                microresumes={microresumes}
-                loading={false}
-                onTimeChange={onTimeChange ?? (() => {})}
+          const editItems = (formData?.[view.key] as any[]) ?? [];
+          if (canEditMicroresumes && onItemsChange) {
+            return (
+              <InlineMicroresumeForm
+                items={editItems}
+                onChange={(items) => onItemsChange(view.key, items)}
               />
-              {canEditMicroresumes && onItemsChange && (
-                <InlineMicroresumeForm items={newMicroresumes} onChange={(items) => onItemsChange(view.key, items)} />
-              )}
-            </div>
+            );
+          }
+          return (
+            <Microresumes
+              microresumes={microresumes}
+              loading={false}
+              onTimeChange={onTimeChange ?? (() => {})}
+            />
           );
         }
 
@@ -2197,13 +2360,20 @@ export const convertToGenericConfig = (config: SimplifiedDetailConfig): GenericD
     resourceTemplateId: config.templateId,
     formFields,
 
-    // Mapping viewKey → propriété Omeka S (généré depuis les vues)
+    // Mapping viewKey → propriété Omeka S (hors citations / micro-résumés inline)
     viewKeyToProperty: config.views?.reduce((map, view) => {
-      if (view.key && view.property) {
+      if (
+        view.key &&
+        view.property &&
+        view.renderType !== 'citations' &&
+        view.renderType !== 'microresumes'
+      ) {
         map[view.key] = view.property;
       }
       return map;
     }, {} as Record<string, string>),
+
+    inlineChildViews: buildInlineChildViewsFromConfig(config.views),
 
     // property_id des champs vocabGroup (Imaginaire de l'IA…) pour la sauvegarde via GenericEditPage
     vocabPropertyIds: config.views?.reduce((map, view) => {
@@ -2530,7 +2700,7 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
         }
       });
 
-      // Clés à ignorer
+      // Clés à ignorer (y compris vues inline citations / micro-résumés)
       const ignoredKeys = new Set([
         'mediaFiles',
         'mediaToDelete',
@@ -2554,6 +2724,7 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
         '@type',
         'thumbnail_display_urls',
       ]);
+      buildInlineChildViewsFromConfig(config.views).forEach((v) => ignoredKeys.add(v.viewKey));
 
       // Mapping viewKey → propriété Omeka (uniquement vues « ressources liées »)
       const { linkedViewKeys, linkedOmekaProperties } = buildLinkedResourceViewMaps(config.views);
@@ -2785,6 +2956,11 @@ export const createHandleSave = (config: SimplifiedDetailConfig) => {
       if (mediaErrors.length > 0) {
         console.warn('[handleSave] Erreurs médias:', mediaErrors);
       }
+      }
+
+      const inlineViews = buildInlineChildViewsFromConfig(config.views);
+      if (inlineViews.length > 0) {
+        await persistInlineChildViews(itemId, config.templateId, inlineViews, data);
       }
 
       invalidateItemPageCache(itemId);
