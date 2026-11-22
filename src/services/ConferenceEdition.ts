@@ -12,6 +12,7 @@ import {
   type EditionTypeKey,
   conferenceTermToEditionTypeKey,
 } from '@/config/editionConfig';
+import { requireOmekaOwnerForCreate } from '@/lib/currentOmekaUser';
 import { omekaApiUrl, OMEKA_API_BASE } from '@/utils/omekaApi';
 
 export type EditionLinkFormState = {
@@ -160,21 +161,14 @@ async function putEditionItem(editionId: number, body: Record<string, unknown>) 
   }
 }
 
-function getConnectedOmekaOwner(): { 'o:id': number } | undefined {
-  const raw = localStorage.getItem('omekaUserId');
-  const id = raw ? parseInt(raw, 10) : NaN;
-  return id > 0 ? { 'o:id': id } : undefined;
-}
-
 async function createEditionItem(
   meta: Pick<EditionLinkFormState, 'title' | 'year' | 'season'>,
   conferenceId: number,
 ): Promise<number> {
-  const owner = getConnectedOmekaOwner();
   const body: Record<string, unknown> = {
     'o:resource_template': { 'o:id': EDITION_TEMPLATE_ID },
     'o:is_public': true,
-    ...(owner ? { 'o:owner': owner } : {}),
+    'o:owner': requireOmekaOwnerForCreate(),
     'dcterms:title': [{ type: 'literal', property_id: 1, '@value': meta.title.trim(), is_public: true }],
     'schema:isRelatedTo': [
       {

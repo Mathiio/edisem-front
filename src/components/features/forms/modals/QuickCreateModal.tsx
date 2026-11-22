@@ -3,6 +3,7 @@ import { Button, Input, Spinner } from '@heroui/react';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@/theme/components/modal';
 import { addToast } from '@/theme/components';
 
+import { requireOmekaOwnerForCreate } from '@/lib/currentOmekaUser';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl, omekaAuthErrorMessage } from '@/utils/omekaApi';
 
 // Property IDs Omeka S (stables — identiques pour toutes les instances)
@@ -60,11 +61,9 @@ export const QuickCreateModal: React.FC<QuickCreateModalProps> = ({
 
     setSaving(true);
     try {
-      const omekaUserId = localStorage.getItem('omekaUserId');
-
       const itemData: Record<string, any> = {
         'o:resource_template': { 'o:id': templateId },
-        ...(omekaUserId ? { 'o:owner': { 'o:id': parseInt(omekaUserId, 10) } } : {}),
+        'o:owner': requireOmekaOwnerForCreate(),
       };
 
       for (const field of fields) {

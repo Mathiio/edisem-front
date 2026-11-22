@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { hasPermission, type Permission } from '@/config/permissions';
+import { getCurrentOmekaUserId, syncOmekaUserIdStorage } from '@/lib/currentOmekaUser';
 
 export interface UserData {
   id: number;
@@ -101,7 +102,11 @@ export const useAuth = () => {
 
       if (user && user !== 'null') {
         try {
-          setUserData(JSON.parse(user));
+          const parsed = JSON.parse(user) as UserData;
+          setUserData(parsed);
+          if (getCurrentOmekaUserId(parsed) != null) {
+            syncOmekaUserIdStorage();
+          }
         } catch {
           setUserData(null);
         }
@@ -127,9 +132,7 @@ export const useAuth = () => {
     localStorage.setItem('userType', user.type || '');
     localStorage.setItem('token', token);
 
-    if (user.omekaUserId) {
-      localStorage.setItem('omekaUserId', String(user.omekaUserId));
-    }
+    syncOmekaUserIdStorage();
 
     setIsAuthenticated(true);
     setUserData(user);

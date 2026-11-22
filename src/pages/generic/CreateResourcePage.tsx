@@ -4,6 +4,7 @@ import { Spinner } from '@heroui/react';
 import { Button } from '@/theme/components/button';
 import { GenericDetailPageConfig } from './config';
 import { getResourceEditUrl } from '@/config/resourceConfig';
+import { requireOmekaOwnerForCreate } from '@/lib/currentOmekaUser';
 import { getAutoContributorConfig } from '@/lib/resourceEditHelpers';
 import { getTemplatePropertiesMap } from '@/services/Items';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl } from '@/utils/omekaApi';
@@ -45,7 +46,6 @@ export const CreateResourcePage: React.FC<CreateResourcePageProps> = ({ config }
           throw new Error('resourceTemplateId non défini dans la config');
         }
 
-        const omekaUserId = localStorage.getItem('omekaUserId');
         const userId = localStorage.getItem('userId');
         const courseId = searchParams.get('courseId');
 
@@ -54,11 +54,8 @@ export const CreateResourcePage: React.FC<CreateResourcePageProps> = ({ config }
         const itemData: Record<string, any> = {
           'o:resource_template': { 'o:id': config.resourceTemplateId },
           'o:is_public': false,
+          'o:owner': requireOmekaOwnerForCreate(),
         };
-
-        if (omekaUserId && parseInt(omekaUserId, 10) > 0) {
-          itemData['o:owner'] = { 'o:id': parseInt(omekaUserId, 10) };
-        }
 
         if (courseId) {
           const coursePropertyId = propMap['dcterms:isPartOf'] || 33;

@@ -5,6 +5,7 @@
 
 import { getTemplatePropertiesMap } from '@/services/Items';
 import { deleteUserResource } from '@/services/UserSpace';
+import { requireOmekaOwnerForCreate } from '@/lib/currentOmekaUser';
 import { OMEKA_API_BASE as API_BASE, omekaApiUrl } from '@/utils/omekaApi';
 
 export interface InlineChildViewConfig {
@@ -129,14 +130,11 @@ async function createChildItem(
   templateId: number,
   body: Record<string, unknown>,
 ): Promise<number> {
-  const omekaUserId = localStorage.getItem('omekaUserId');
   const payload: Record<string, unknown> = {
     'o:resource_template': { 'o:id': templateId },
     ...body,
+    'o:owner': requireOmekaOwnerForCreate(),
   };
-  if (omekaUserId && parseInt(omekaUserId, 10) > 0) {
-    payload['o:owner'] = { 'o:id': parseInt(omekaUserId, 10) };
-  }
   const response = await fetch(omekaApiUrl(`${API_BASE}items`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

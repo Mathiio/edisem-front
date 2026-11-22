@@ -58,6 +58,7 @@ import {
   shouldHardDeleteLinkedResource,
   canDeleteLinkedResource,
 } from '@/lib/resourceEditHelpers';
+import { getCurrentOmekaUserId, requireOmekaOwnerForCreate } from '@/lib/currentOmekaUser';
 import { deleteUserResource } from '@/services/UserSpace';
 import { useFormState } from '@/hooks/useFormState';
 import { useAuth } from '@/hooks/useAuth';
@@ -408,7 +409,7 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
   const isGlobalAdminEdit =
     searchParams.get('globalAdmin') === '1' && userData?.role === 'global_admin';
   const editExitPath = getEditExitPath(isGlobalAdminEdit, userData?.type);
-  const currentOmekaUserId = userData?.omekaUserId ?? (localStorage.getItem('omekaUserId') ? parseInt(localStorage.getItem('omekaUserId')!, 10) : null);
+  const currentOmekaUserId = getCurrentOmekaUserId(userData);
 
   const mode: PageMode = initialMode;
   const isDraft = isDraftProp;
@@ -1397,13 +1398,10 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     if (!config.resourceTemplateId) throw new Error('resourceTemplateId non défini');
 
     const userId = localStorage.getItem('userId');
-    const omekaUserId = localStorage.getItem('omekaUserId');
     const propMap = Object.keys(propertiesMap).length > 0 ? propertiesMap : await getTemplatePropertiesMap(config.resourceTemplateId!);
     const itemData: Record<string, any> = { 'o:resource_template': { 'o:id': config.resourceTemplateId } };
 
-    if (omekaUserId && parseInt(omekaUserId, 10) > 0) {
-      itemData['o:owner'] = { 'o:id': parseInt(omekaUserId, 10) };
-    }
+    itemData['o:owner'] = requireOmekaOwnerForCreate(userData);
 
     const urlParams = new URLSearchParams(window.location.search);
     const courseId = urlParams.get('courseId');
@@ -2125,14 +2123,11 @@ export const GenericEditPage: React.FC<GenericEditPageProps> = ({
     if (!createItemSetTitle.trim()) return;
     setCreateItemSetLoading(true);
     try {
-      const itemSetOmekaUserId = localStorage.getItem('omekaUserId');
       const body: Record<string, unknown> = {
         'o:item_set': createItemSetModalState.itemSetIds.map((setId) => ({ 'o:id': setId })),
         'dcterms:title': [{ type: 'literal', '@value': createItemSetTitle.trim(), property_id: 1, is_public: true }],
+        'o:owner': requireOmekaOwnerForCreate(userData),
       };
-      if (itemSetOmekaUserId && parseInt(itemSetOmekaUserId, 10) > 0) {
-        body['o:owner'] = { 'o:id': parseInt(itemSetOmekaUserId, 10) };
-      }
       const response = await fetch(omekaApiUrl(`${API_BASE}items`), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!response.ok) throw new Error('Erreur création');
       const created = await response.json();
