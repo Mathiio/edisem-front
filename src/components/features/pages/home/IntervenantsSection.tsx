@@ -35,7 +35,7 @@ export const IntervenantsSection: React.FC = () => {
   }, []);
 
   return (
-    <section className="flex gap-12 h-[600px] items-center">
+    <section className="flex gap-12 h-[600px] items-center" data-testid={loading ? 'intervenants-section-loading' : 'intervenants-section-ready'}>
       {/* Left side - Title and description */}
       <div className="flex-1 flex flex-col justify-center gap-5 max-w-md relative z-50">
         <h2 className="text-c6 text-6xl transition-all ease-in-out duration-200 leading-[1.1]"> 
@@ -64,6 +64,10 @@ export const IntervenantsSection: React.FC = () => {
           <div className="relative w-full h-[500px] flex items-center justify-center">
              <div className="w-[260px] h-[320px] animate-pulse bg-c3/20 rounded-4xl border border-c3/50 shadow-2xl" />
           </div>
+        ) : actants.length === 0 ? (
+          <p data-testid="intervenant-empty" className="text-c4 text-sm py-8" role="status">
+            Aucun intervenant à afficher pour le moment.
+          </p>
         ) : (
           <div className="relative w-[600px] h-[500px] flex items-center justify-center">
             {actants.slice(0, 6).map((actant, index) => (

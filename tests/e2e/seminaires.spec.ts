@@ -58,10 +58,7 @@ for (const corpus of CORPUS_PAGES) {
         });
 
         test('displays at least one edition card', async ({ page }) => {
-            // Wait for the carousel to resolve (cards OR the empty sentinel)
-            await expect(
-                page.getByTestId('edition-card').first().or(page.getByTestId('edition-card-empty'))
-            ).toBeVisible({ timeout: 20_000 });
+            await expect(page.getByTestId('corpus-carousel-ready')).toBeVisible({ timeout: 20_000 });
 
             const hasCards = await page.getByTestId('edition-card').count() > 0;
             test.skip(!hasCards, `No ${corpus.name} edition data available in the test environment`);
@@ -73,9 +70,7 @@ for (const corpus of CORPUS_PAGES) {
         });
 
         test('edition card shows a "conferences" count', async ({ page }) => {
-            await expect(
-                page.getByTestId('edition-card').first().or(page.getByTestId('edition-card-empty'))
-            ).toBeVisible({ timeout: 20_000 });
+            await expect(page.getByTestId('corpus-carousel-ready')).toBeVisible({ timeout: 20_000 });
 
             const hasCards = await page.getByTestId('edition-card').count() > 0;
             test.skip(!hasCards, `No ${corpus.name} edition data available in the test environment`);
@@ -86,9 +81,7 @@ for (const corpus of CORPUS_PAGES) {
         });
 
         test('clicking an edition card navigates to the edition detail page', async ({ page }) => {
-            await expect(
-                page.getByTestId('edition-card').first().or(page.getByTestId('edition-card-empty'))
-            ).toBeVisible({ timeout: 20_000 });
+            await expect(page.getByTestId('corpus-carousel-ready')).toBeVisible({ timeout: 20_000 });
 
             const hasCards = await page.getByTestId('edition-card').count() > 0;
             test.skip(!hasCards, `No ${corpus.name} edition data available in the test environment`);

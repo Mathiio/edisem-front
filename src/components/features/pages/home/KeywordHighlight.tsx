@@ -18,9 +18,11 @@ const fadeIn: Variants = {
 export const KeywordHighlight: React.FC = () => {
   const [selectedKeyword, setSelectedKeyword] = useState<Keyword | null>(null);
   const [filteredResources, setFilteredResources] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAndProcessData = async () => {
+      setLoading(true);
       try {
         const keywords = await Items.getKeywords();
         if (!Array.isArray(keywords) || keywords.length === 0) return;
@@ -42,16 +44,30 @@ export const KeywordHighlight: React.FC = () => {
         }
       } catch (error) {
         console.error('Erreur lors de la récupération des données:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchAndProcessData();
   }, []);
 
-  if (!selectedKeyword || filteredResources.length === 0) return null;
+  if (loading) {
+    return <div data-testid="keyword-section-loading" className="w-full min-h-[120px] py-12" aria-busy="true" />;
+  }
+
+  if (!selectedKeyword || filteredResources.length === 0) {
+    return (
+      <div data-testid="keyword-section-ready" className="w-full py-12 flex justify-center">
+        <p data-testid="keyword-section-empty" className="text-c4 text-sm" role="status">
+          Aucun mot-clé à mettre en avant pour le moment.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div data-testid="keyword-section" className='w-full justify-center flex items-center flex-col gap-6 overflow-visible'>
+    <div data-testid="keyword-section-ready" className='w-full justify-center flex items-center flex-col gap-6 overflow-visible'>
       <div className='py-12 gap-5 justify-between flex items-center flex-col'>
         <h2 className='z-[12] text-5xl text-c6 font-medium flex flex-col items-center transition-all ease-in-out duration-200 '>
           <span>Sujets autour de</span>

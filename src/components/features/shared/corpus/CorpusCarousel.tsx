@@ -80,7 +80,7 @@ export const CorpusCarousel = ({ editions, loading = false, title, basePath = '/
 
   if (loading) {
      return (
-        <div className="w-full max-w-full">
+        <div className="w-full max-w-full" data-testid="corpus-carousel-loading" aria-busy="true">
              <FullCarrousel
               title={title}
               data={[1,2,3]} // Dummy data for skeleton
@@ -93,11 +93,17 @@ export const CorpusCarousel = ({ editions, loading = false, title, basePath = '/
   }
 
   if (!editions || editions.length === 0) {
-    return <div data-testid="edition-card-empty" />;
+    return (
+      <div className="w-full max-w-full" data-testid="corpus-carousel-ready">
+        <p data-testid="edition-card-empty" className="py-8 text-c4 text-sm" role="status">
+          Aucune édition à afficher pour le moment.
+        </p>
+      </div>
+    );
   }
 
   return (
-    <div className="w-full max-w-full">
+    <div className="w-full max-w-full" data-testid="corpus-carousel-ready">
         <FullCarrousel
           title={title}
           data={sortedEditions}
