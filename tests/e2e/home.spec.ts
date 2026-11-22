@@ -88,9 +88,8 @@ test.describe('Home page', () => {
 
     // ── KeywordHighlight section ──────────────────────────────────────────────
     test('KeywordHighlight: section is visible on the page', async ({ page }) => {
-        await expect(
-            page.getByTestId('keyword-section-ready').or(page.getByTestId('keyword-section-empty')),
-        ).toBeVisible({ timeout: 30_000 });
+        // État vide et contenu partagent le même conteneur (évite strict mode avec .or() parent/enfant)
+        await expect(page.getByTestId('keyword-section-ready')).toBeVisible({ timeout: 30_000 });
     });
 
     test('KeywordHighlight: displays at least one result card', async ({ page }) => {
