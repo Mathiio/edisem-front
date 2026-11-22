@@ -460,7 +460,8 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
         if (prev.size === next.size && [...prev].every((id) => next.has(id))) return prev;
         return next;
       });
-      setSearchTerm((prev) => (prev === '' ? prev : ''));
+      setSearchTerm('');
+      setApiSearchResults(null);
     } else {
       pendingCreatedRef.current.clear();
       sessionCreatedIdsRef.current.clear();
@@ -542,6 +543,12 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
     return result;
   }, [resourcesForActiveTab, searchTerm, filterFn, getDisplayValue, apiSearchResults]);
 
+  const clearPickerSearch = useCallback(() => {
+    setSearchTerm('');
+    setApiSearchResults(null);
+    setApiSearchLoading(false);
+  }, []);
+
   // Toggle selection
   const toggleSelection = (resource: any) => {
     const id = getResourceId(resource);
@@ -555,6 +562,8 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
       }
       if (!maxSelection || newSelected.size < maxSelection) {
         newSelected.add(id);
+        // Retour à la liste complète pour enchaîner (mots-clés, contenus associés…)
+        clearPickerSearch();
       }
     }
 
@@ -569,6 +578,7 @@ export const ResourcePicker: React.FC<ResourcePickerProps> = ({
 
   // Handle confirm
   const handleConfirm = () => {
+    clearPickerSearch();
     const selectedFromList = (resources || []).filter((r) => localSelectedIds.has(getResourceId(r)));
     const foundIds = new Set(selectedFromList.map((r) => getResourceId(r)));
     const orphanResources = [...localSelectedIds]
